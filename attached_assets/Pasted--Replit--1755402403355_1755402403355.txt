@@ -1,0 +1,161 @@
+좋아—아래 문구를 **그대로 Replit 프롬프트 빌더**에 붙여넣으세요.
+가능한 한 자동으로 **디자인+기능 최대치**를 뽑아내도록, 구현 지시를 아주 구체적으로 적어놨어요.
+(이 빌더가 전부를 100% 만들어주진 않지만, 이 프롬프트로 뼈대/스타일/기능을 많이 끌어낼 수 있습니다.)
+
+---
+
+## ▶ Replit 프롬프트 빌더에 붙여넣을 내용
+
+**Build a production-ready web app named `snaver` (PC-optimized) to track a store’s ranks on Naver Shopping by keyword. Implement backend + frontend in one repo.**
+
+### Tech & Conventions
+
+* Stack: **Node.js (ESM) + Express + PostgreSQL + Puppeteer(stealth) + node-cron**
+* Use **www/** as static web root. Serve SPA pages from there.
+* Language: **Korean UI**. No emojis. Clean, professional dashboard like the reference image (left sidebar, content table, tags, filter bar, pagination style pills).
+* Styling: **Tailwind CDN + light custom CSS** (no CSS frameworks beyond Tailwind).
+* Charts: **Chart.js** line chart.
+* Drag & drop: **SortableJS**.
+* Env: `.env` with
+  `PORT=3000`
+  `DATABASE_URL=postgres://user:pass@host:5432/snaver_db`
+  `JWT_SECRET=generate_long_random`
+  `CRAWL_PAGE_SIZE=40` (page = 40 items)
+  `CRAWL_MAX_ITEMS=200` (stop after 200)
+* Scripts:
+  `"dev": "nodemon index.js"`, `"start": "node index.js"`, `"db:migrate": "bash ops/run_migrations.sh"`
+
+### Database (PostgreSQL)
+
+Create schema **snaver\_db** and these tables:
+
+```sql
+CREATE SCHEMA IF NOT EXISTS snaver_db;
+
+CREATE TABLE IF NOT EXISTS snaver_db.users(
+  id BIGSERIAL PRIMARY KEY,
+  username VARCHAR(32) UNIQUE NOT NULL,
+  email VARCHAR(120) UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TYPE snaver_db.product_type AS ENUM ('ad','organic');
+
+CREATE TABLE IF NOT EXISTS snaver_db.products(
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES snaver_db.users(id) ON DELETE CASCADE,
+  product_no VARCHAR(64) NOT NULL,
+  keyword VARCHAR(200) NOT NULL,
+  type snaver_db.product_type NOT NULL,   -- ad or organic
+  interval_min INT NOT NULL CHECK (interval_min IN (5,10,15,30,60)),
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  sort_order INT NOT NULL DEFAULT 1000,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (user_id, product_no, keyword, type)
+);
+
+CREATE TABLE IF NOT EXISTS snaver_db.tracks(
+  id BIGSERIAL PRIMARY KEY,
+  product_id BIGINT NOT NULL REFERENCES snaver_db.products(id) ON DELETE CASCADE,
+  checked_at TIMESTAMPTZ DEFAULT now(),
+  is_ad BOOLEAN NOT NULL,
+  page INT,
+  rank_on_page INT,
+  global_rank INT,
+  price_krw BIGINT,
+  mall_name TEXT,
+  product_link TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_tracks_product_time ON snaver_db.tracks(product_id, checked_at DESC);
+```
+
+Add `ops/init_db.sql` with the SQL above and `ops/run_migrations.sh` that runs it using `$DATABASE_URL`.
+
+### Backend
+
+* **index.js**
+
+  * `import "dotenv/config";` then boot an Express app on `PORT`.
+  * `app.use(express.json()); app.use(cors());`
+  * Serve static from `www/`.
+  * Health: `GET /api/_health → { ok:true, service:"snaver-api" }`
+  * Mount routes:
+
+    * `/api/auth` – register/login using bcrypt + JWT (7d). Password rule: 8+ chars with upper/lower/number/special. Inputs: 아이디, 이메일, 비밀번호.
+    * `/api/products` (JWT required): CRUD, list with `?type=ad|organic&active=true|false`, update `active` toggle, update `sort_order`, and `POST /:id/refresh` to run a one-off crawl and insert a track.
+    * `/api/tracks` (JWT): `GET ?product_id=&from=&to=` returns time-ordered samples.
+
+* **Crawler** (`crawler/shoppingCrawler.js`)
+
+  * Use **puppeteer-extra + stealth**; UA fixed to desktop Chrome. Viewport 1440×900.
+  * Build URL: `https://search.shopping.naver.com/search/all?query=<keyword>&pagingIndex=<n>&pagingSize=40&sort=rel&viewType=list`
+  * Iterate pages until MAX (200) or found match. For each result block, parse:
+
+    * productNo (from `/products/<num>` or query params like `nv_mid`, `productId`)
+    * link, mall name, price
+    * **isAd heuristic**: text contains “광고/AD/파워링크” OR URL has ad params (`ad_`, `acq`, `adQuery`).
+  * Respect `wantAd` flag to keep only ad vs organic when checking for the target product.
+  * Return: `{page, rank_on_page, global_rank, price_krw, mall_name, product_link, is_ad}` or `{notFound:true}`.
+
+* **Scheduler** (`core/scheduler.js`)
+
+  * `node-cron` tick every minute. For each `products.active = true`, run when `now.minute % interval_min === 0`.
+  * Insert a `tracks` row whether found or not (not found → null page/rank).
+
+### Frontend (www/)
+
+* PC-only layout, left sidebar like reference. **No emojis.** Sections:
+
+  1. **광고 순위 추적** – show only active `type=ad`
+  2. **일반 순위 추적** – show only active `type=organic`
+  3. **광고 제품 관리** – show inactive `type=ad`
+  4. **일반 제품 관리** – show inactive `type=organic`
+* Pages:
+
+  * `index.html` – 로그인/회원가입(같은 페이지, 상단 로그인 폼 + 하단 가입 폼)
+  * `dashboard.html` – 사이드바 + 상단 툴바(Showing selector, Filter, Export dummy). 메인 리스트는 카드/테이블 하이브리드:
+
+    * 열: 제품명(키워드) & 제품번호, 주기, 유형 배지(Active/On Sale 느낌의 pill), **수동검색**, **통계**, **비활성**(또는 관리뷰에선 활성/수정/삭제)
+    * 리스트는 SortableJS로 드래그 정렬 → `sort_order` 저장(PATCH).
+  * `css/style.css` – 공통 버튼/배지/카드 스타일 (Tailwind utility 보강).
+  * `js/app.js` – 인증 토큰 저장, 제품 리스트 로딩, 버튼 액션, 드래그 정렬 저장, 통계 모달.
+* **통계(Chart.js)**: 리스트 항목의 **통계** 버튼 → 기간(From/To) 선택 후 라인 차트. y축은 “순위(낮을수록 상위)”라서 시각적으로 위가 더 좋게 보이도록 reverse scale 사용. `global_rank` 미수집 시 220으로 표시.
+
+### API Contract (요약)
+
+* `POST /api/auth/register { username,email,password } → { ok,user }`
+* `POST /api/auth/login { usernameOrEmail,password } → { ok,token,user }`
+* `GET /api/products?type=ad|organic&active=true|false` → list
+* `POST /api/products { product_no, keyword, type:'ad'|'organic', interval_min:5|10|15|30|60, active }`
+* `PATCH /api/products/:id { ...partial }`
+* `DELETE /api/products/:id`
+* `POST /api/products/:id/refresh` → run crawl once and insert a track
+* `GET /api/tracks?product_id=&from=&to=` → samples
+
+### UX Notes
+
+* 회원가입 후 로그인 → **제품 등록(제품번호, 키워드, 주기, 일반/광고 선택)** → 활성화된 목록은 “광고/일반 순위 추적”에 보이고 자동 수집됨.
+* “비활성”하면 추적 중지, “관리” 섹션에서 “활성”하면 재개.
+* “수동검색”은 즉시 한 번 크롤링 후 결과 저장.
+* 제품 링크는 새 탭으로 열기 (`target="_blank"`).
+
+### Security & Ops
+
+* JWT Bearer required for products/tracks.
+* Bcrypt(12 rounds) for passwords.
+* Centralized `core/db.js` with pg Pool. SSL off for localhost, on for hosted.
+* Handle puppeteer errors and keep scheduler alive (log error, continue).
+* Provide **README** quickstart: `npm install → npm run db:migrate → npm run dev → open /`.
+
+**Deliver: a working Node/Express app, schema migration scripts, static PC dashboard in `www/`, and a Puppeteer-based crawler + minute scheduler that separates ad vs organic ranks on Naver Shopping up to 200 items.**
+
+---
+
+### 사용 팁
+
+* 빌더가 DB 마이그레이션 스크립트까지 전부 만들지 못하면, 생성 후 좌측 파일탐색기에서 `ops/` 폴더와 SQL 파일만 수동으로 추가하고 `npm run db:migrate`를 실행하세요.
+* Puppeteer는 Replit에서 처음 실행 시 조금 느릴 수 있습니다. `--no-sandbox --disable-setuid-sandbox` 옵션을 꼭 포함하도록 지시했습니다.
+
+필요하면 “상세 스탭”으로 빌더가 만들어준 결과에 **부족한 부분 채우기**도 바로 이어서 도와드릴게요.

@@ -1,0 +1,145 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Inter:wght@400;500;600&display=swap');
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0, 0%, 98%);
+  --foreground: hsl(210, 25%, 7.8%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(210, 25%, 7.8%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(210, 25%, 7.8%);
+  --primary: hsl(210, 79%, 46%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(210, 4%, 26%);
+  --secondary-foreground: hsl(0, 0%, 100%);
+  --muted: hsl(210, 9%, 94%);
+  --muted-foreground: hsl(210, 25%, 7.8%);
+  --accent: hsl(210, 9%, 94%);
+  --accent-foreground: hsl(210, 25%, 7.8%);
+  --destructive: hsl(0, 84%, 60%);
+  --destructive-foreground: hsl(0, 0%, 100%);
+  --border: hsl(214, 32%, 91%);
+  --input: hsl(214, 32%, 91%);
+  --ring: hsl(210, 79%, 46%);
+  --radius: 0.5rem;
+  --surface: hsl(0, 0%, 100%);
+  --success: hsl(122, 39%, 49%);
+  --warning: hsl(35, 91%, 62%);
+  --error: hsl(0, 84%, 60%);
+  --font-korean: 'Noto Sans KR', sans-serif;
+  --font-ui: 'Inter', sans-serif;
+}
+
+.dark {
+  --background: hsl(222, 84%, 5%);
+  --foreground: hsl(210, 40%, 98%);
+  --card: hsl(222, 84%, 5%);
+  --card-foreground: hsl(210, 40%, 98%);
+  --popover: hsl(222, 84%, 5%);
+  --popover-foreground: hsl(210, 40%, 98%);
+  --primary: hsl(210, 79%, 46%);
+  --primary-foreground: hsl(222, 84%, 5%);
+  --secondary: hsl(217, 33%, 17%);
+  --secondary-foreground: hsl(210, 40%, 98%);
+  --muted: hsl(217, 33%, 17%);
+  --muted-foreground: hsl(215, 20%, 65%);
+  --accent: hsl(217, 33%, 17%);
+  --accent-foreground: hsl(210, 40%, 98%);
+  --destructive: hsl(0, 62%, 30%);
+  --destructive-foreground: hsl(210, 40%, 98%);
+  --border: hsl(217, 33%, 17%);
+  --input: hsl(217, 33%, 17%);
+  --ring: hsl(210, 79%, 46%);
+  --surface: hsl(222, 84%, 5%);
+  --success: hsl(122, 39%, 49%);
+  --warning: hsl(35, 91%, 62%);
+  --error: hsl(0, 84%, 60%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-korean;
+  }
+}
+
+@layer utilities {
+  .font-korean {
+    font-family: var(--font-korean);
+  }
+  
+  .font-ui {
+    font-family: var(--font-ui);
+  }
+  
+  .bg-surface {
+    background-color: var(--surface);
+  }
+  
+  .text-success {
+    color: var(--success);
+  }
+  
+  .bg-success {
+    background-color: var(--success);
+  }
+  
+  .text-warning {
+    color: var(--warning);
+  }
+  
+  .bg-warning {
+    background-color: var(--warning);
+  }
+  
+  .text-error {
+    color: var(--error);
+  }
+  
+  .bg-error {
+    background-color: var(--error);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(210, 9%, 85%);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(210, 9%, 75%);
+}
+
+/* Sortable ghost style */
+.sortable-ghost {
+  opacity: 0.4;
+}
+
+/* Hover effects */
+.nav-item:hover {
+  transition: all 0.2s ease;
+}
+
+/* Focus styles for better accessibility */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
