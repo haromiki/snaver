@@ -3,11 +3,14 @@ import { apiRequest, getQueryFn } from "@/lib/queryClient";
 
 // DO NOT MODIFY BELOW: Server-only logic injected (navigate + VITE check)
 import { useLocation } from "wouter";
-const [, navigate] = useLocation();
 // DO NOT MODIFY ABOVE
 
 export function useAuth() {
   const queryClient = useQueryClient();
+
+  // DO NOT MODIFY BELOW: Server-only logic injected (navigate + VITE check)
+  const [, navigate] = useLocation();
+  // DO NOT MODIFY ABOVE
 
   const { data: user, isLoading } = useQuery({
     queryKey: ["/api/auth/me"],
