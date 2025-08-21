@@ -44,18 +44,19 @@ if (import.meta.env.VITE_IS_SERVER_DEPLOY) {
 ```
 
 ### App.tsx (client/src/App.tsx)
-5. **Lines 11-13**: Server-specific basePath variable declaration
+5. **Lines 11-16**: Server-specific basePath variable declaration
 ```typescript
 // 👇️ DO NOT MODIFY BELOW: Server-specific routing fix (snaver base)
-const basePath = window.location.hostname.includes("replit.dev") ? "/" : "/snaver";
+const basePath =
+  import.meta.env.VITE_IS_SERVER_DEPLOY === "true"
+    ? "/snaver"
+    : "/";
 // 👆️ DO NOT MODIFY ABOVE
 ```
 
-6. **Lines 16-18**: Server-specific routing base configuration in Router function
+6. **Line 59**: Server-specific Router base prop configuration
 ```typescript
-// 👇️ DO NOT MODIFY BELOW: Server-specific routing fix (snaver base)
-useLocation({ base: basePath });
-// 👆️ DO NOT MODIFY ABOVE
+<Router base={basePath}>
 ```
 
 These sections contain server-specific routing logic that must remain unchanged.
