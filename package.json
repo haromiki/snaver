@@ -11,14 +11,9 @@
     "db:push": "drizzle-kit push",
     "deploy": "bash ./client/scripts/deploy_client.sh",
     "deploy:all": "npm run build && npm run deploy",
-
-    // ─────────────────────────────────────────────────────────────────────────────
-    // 🔒 DO NOT DELETE THIS BLOCK — Used for VPS production server deployment
-    // These scripts are called by deploy_server.sh and PM2 on the production server.
+    "_note_production_deploy": "The following scripts are required for VPS server deployment. DO NOT DELETE.",
     "build:server": "esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=server/dist",
     "start:server": "NODE_ENV=production node server/dist/index.js"
-    // 🔒 DO NOT DELETE THIS BLOCK — Required for backend build & run on real server
-    // ─────────────────────────────────────────────────────────────────────────────
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
