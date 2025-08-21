@@ -1,4 +1,4 @@
-import { useLocation, Switch, Route, Redirect } from "wouter";
+import { Router, useLocation, Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -12,12 +12,12 @@ import NotFound from "@/pages/not-found";
 const basePath = window.location.hostname.includes("replit.dev") ? "/" : "/snaver";
 // 👆️ DO NOT MODIFY ABOVE
 
-function Router() {
-  // 👇️ DO NOT MODIFY BELOW: Server-specific routing fix (snaver base)
-  useLocation({ base: basePath });
-  // 👆️ DO NOT MODIFY ABOVE
-
+function RouterWithRoutes() {
   const { user, isLoading } = useAuth();
+  const [location] = useLocation();
+
+  console.log("🧭 [디버그] 현재 location:", location);
+  console.log("🧭 [디버그] basePath:", basePath);
 
   if (isLoading) {
     return (
@@ -55,7 +55,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Router />
+        {/* ✅ basePath를 Router에 직접 적용해야 경로가 올바르게 인식됩니다 */}
+        <Router base={basePath}>
+          <RouterWithRoutes />
+        </Router>
       </TooltipProvider>
     </QueryClientProvider>
   );
