@@ -9,15 +9,17 @@ import Dashboard from "@/pages/dashboard";
 import NotFound from "@/pages/not-found";
 
 // 👇️ DO NOT MODIFY BELOW: Server-specific routing fix (snaver base)
-const basePath =
-  import.meta.env.VITE_IS_SERVER_DEPLOY === "true"
-    ? "/snaver"
-    : "/";
+const basePath = window.location.hostname.includes("replit.dev")
+  ? "/"
+  : "/snaver";
 // 👆️ DO NOT MODIFY ABOVE
 
 function RouterWithRoutes() {
   const { user, isLoading } = useAuth();
   const [location] = useLocation();
+
+  console.log("🧭 [디버그] 현재 location:", location);
+  console.log("🧭 [디버그] basePath:", basePath);
 
   if (isLoading) {
     return (
@@ -40,9 +42,7 @@ function RouterWithRoutes() {
       </Route>
 
       {/* 루트: 로그인 상태에 따라 분기 */}
-      <Route path="/">
-        {user ? <Dashboard /> : <Redirect to="/login" />}
-      </Route>
+      <Route path="/">{user ? <Dashboard /> : <Redirect to="/login" />}</Route>
 
       {/* 없는 경로 */}
       <Route component={NotFound} />
