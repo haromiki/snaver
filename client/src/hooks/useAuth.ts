@@ -1,9 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 
+// DO NOT MODIFY BELOW: Server-only logic injected (navigate + VITE check)
+import { useLocation } from "wouter";
+const [, navigate] = useLocation();
+// DO NOT MODIFY ABOVE
+
 export function useAuth() {
   const queryClient = useQueryClient();
-  
+
   const { data: user, isLoading } = useQuery({
     queryKey: ["/api/auth/me"],
     queryFn: getQueryFn({ on401: "returnNull" }),
@@ -21,6 +26,12 @@ export function useAuth() {
     onSuccess: (data) => {
       localStorage.setItem("token", data.token);
       queryClient.setQueryData(["/api/auth/me"], data.user);
+
+      // DO NOT MODIFY BELOW: Navigate only in server environment
+      if (import.meta.env.VITE_IS_SERVER_DEPLOY) {
+        navigate("/dashboard");
+      }
+      // DO NOT MODIFY ABOVE
     },
   });
 
@@ -32,6 +43,12 @@ export function useAuth() {
     onSuccess: (data) => {
       localStorage.setItem("token", data.token);
       queryClient.setQueryData(["/api/auth/me"], data.user);
+
+      // DO NOT MODIFY BELOW: Navigate only in server environment
+      if (import.meta.env.VITE_IS_SERVER_DEPLOY) {
+        navigate("/dashboard");
+      }
+      // DO NOT MODIFY ABOVE
     },
   });
 
