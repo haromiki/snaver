@@ -58,6 +58,14 @@ const basePath = window.location.hostname.includes("replit.dev")
 <Router base={basePath}>
 ```
 
+### api.ts (client/src/lib/api.ts)
+7. **Lines 1-3**: Server-specific API base URL configuration
+```typescript
+// 👇️ DO NOT MODIFY BELOW: VITE_API_URL is required for Replit + server routing
+const BASE_API_URL = import.meta.env.VITE_API_URL || "/api";
+// 👆️ DO NOT MODIFY ABOVE
+```
+
 These sections contain server-specific routing logic that must remain unchanged.
 
 # System Architecture
