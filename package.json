@@ -10,10 +10,7 @@
     "check": "tsc",
     "db:push": "drizzle-kit push",
     "deploy": "bash ./client/scripts/deploy_client.sh",
-    "deploy:all": "npm run build && npm run deploy",
-    "_note_production_deploy": "The following scripts are required for VPS server deployment. DO NOT DELETE.",
-    "build:server": "esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=server/dist",
-    "start:server": "NODE_ENV=production node server/dist/index.js"
+    "deploy:all": "npm run build && npm run deploy"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
