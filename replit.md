@@ -7,6 +7,37 @@ SNAVER is a production-ready web application designed to track store rankings on
 Preferred communication style: Simple, everyday language.
 Preferred language: Korean (한국어)
 
+## Critical Code Preservation Rules
+**NEVER MODIFY** the following server-only code sections in `client/src/hooks/useAuth.ts`:
+
+1. **Lines 4-7**: useLocation import and navigate declaration
+```typescript
+// DO NOT MODIFY BELOW: Server-only logic injected (navigate + VITE check)
+import { useLocation } from "wouter";
+const [, navigate] = useLocation();
+// DO NOT MODIFY ABOVE
+```
+
+2. **Lines 30-34**: Navigation in loginMutation.onSuccess
+```typescript
+// DO NOT MODIFY BELOW: Navigate only in server environment
+if (import.meta.env.VITE_IS_SERVER_DEPLOY) {
+  navigate("/dashboard");
+}
+// DO NOT MODIFY ABOVE
+```
+
+3. **Lines 47-51**: Navigation in registerMutation.onSuccess
+```typescript
+// DO NOT MODIFY BELOW: Navigate only in server environment
+if (import.meta.env.VITE_IS_SERVER_DEPLOY) {
+  navigate("/dashboard");
+}
+// DO NOT MODIFY ABOVE
+```
+
+These sections contain server-specific routing logic that must remain unchanged.
+
 # System Architecture
 
 ## Frontend Architecture
