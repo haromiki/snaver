@@ -9,15 +9,15 @@ import Dashboard from "@/pages/dashboard";
 import NotFound from "@/pages/not-found";
 
 // 👇️ DO NOT MODIFY BELOW: Server-specific routing fix (snaver base)
-const basePath = window.location.hostname.includes("replit.dev") ? "/" : "/snaver";
+const basePath =
+  import.meta.env.VITE_IS_SERVER_DEPLOY === "true"
+    ? "/snaver"
+    : "/";
 // 👆️ DO NOT MODIFY ABOVE
 
 function RouterWithRoutes() {
   const { user, isLoading } = useAuth();
   const [location] = useLocation();
-
-  console.log("🧭 [디버그] 현재 location:", location);
-  console.log("🧭 [디버그] basePath:", basePath);
 
   if (isLoading) {
     return (
