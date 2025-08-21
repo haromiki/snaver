@@ -8,8 +8,9 @@ Preferred communication style: Simple, everyday language.
 Preferred language: Korean (한국어)
 
 ## Critical Code Preservation Rules
-**NEVER MODIFY** the following server-only code sections in `client/src/hooks/useAuth.ts`:
+**NEVER MODIFY** the following server-only code sections:
 
+### useAuth.ts (client/src/hooks/useAuth.ts)
 1. **Lines 4-7**: useLocation import and navigate declaration
 ```typescript
 // DO NOT MODIFY BELOW: Server-only logic injected (navigate + VITE check)
@@ -34,6 +35,14 @@ if (import.meta.env.VITE_IS_SERVER_DEPLOY) {
   navigate("/dashboard");
 }
 // DO NOT MODIFY ABOVE
+```
+
+### App.tsx (client/src/App.tsx)
+4. **Lines 12-14**: Server-specific routing base configuration in Router function
+```typescript
+// 👇️ DO NOT MODIFY BELOW: Server-specific routing fix (snaver base)
+useLocation({ base: "/snaver" });
+// 👆️ DO NOT MODIFY ABOVE
 ```
 
 These sections contain server-specific routing logic that must remain unchanged.
