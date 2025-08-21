@@ -14,7 +14,7 @@ function Router() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">로딩 중....</div>
+        <div className="text-lg">로딩 중.....</div>
       </div>
     );
   }
