@@ -11,7 +11,7 @@ import { crawlProduct } from "./crawler/shoppingCrawler.js";
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Health check
+  // Health check.
   app.get("/api/_health", (req, res) => {
     res.json({ ok: true, service: "snaver-api" });
   });
