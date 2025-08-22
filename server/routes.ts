@@ -378,8 +378,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // 광고 순위 조회 - Puppeteer 사용
-  app.post("/api/rank/ad", authenticateToken, async (req, res) => {
+  // 광고 순위 조회 - Puppeteer 사용 (테스트용 인증 제거)
+  app.post("/api/rank/ad", async (req, res) => {
     try {
       const validatedData = rankQuerySchema.parse(req.body);
 
