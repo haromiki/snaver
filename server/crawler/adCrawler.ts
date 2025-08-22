@@ -81,10 +81,10 @@ export async function fetchAdRank({
         });
       });
 
-      // 현재 페이지 광고 스캔
+      // 현재 페이지 광고 스캔 (정확도 강화판)
       const pageResult = await page.evaluate((targetId: string, PAGE_SIZE_IN: number) => {
-        // 내부 헬퍼: 광고 라벨/텍스트 판정
-        function isAdCard(el: Element): boolean {
+        // 1) 광고 라벨 텍스트 확인
+        function isAdBadge(el: Element): boolean {
           const labelSel = [
             'span[class*="ad"]',
             'em[class*="ad"]',
@@ -93,17 +93,18 @@ export async function fetchAdRank({
             '[data-ad*="true"]',
           ];
           for (const s of labelSel) {
-            const label = el.querySelector(s);
-            if (label) {
-              const t = (label.textContent || "").trim();
+            const n = el.querySelector(s);
+            if (n) {
+              const t = (n.textContent || "").trim();
               if (/\bAD\b|광고|스폰서/i.test(t)) return true;
             }
           }
+          // 라벨이 따로 없으면 카드 전체 텍스트로 보조 판정
           const txt = (el.textContent || "").trim();
           return /\bAD\b|광고|스폰서/i.test(txt);
         }
 
-        // 내부 헬퍼: 숫자문자열 동등 비교
+        // 2) 숫자문자열 비교 유틸
         function eqNumStrInner(a?: string | number | null, b?: string | number | null): boolean {
           if (a == null || b == null) return false;
           const sa = String(a).replace(/^0+/, "");
@@ -111,7 +112,7 @@ export async function fetchAdRank({
           return sa === sb;
         }
 
-        // 내부 헬퍼: href에서 가능한 상품ID들 추출
+        // 3) href에서 가능한 상품ID들 추출
         function extractIds(href: string): string[] {
           const ids: string[] = [];
           const regs = [
@@ -131,74 +132,134 @@ export async function fetchAdRank({
           return ids;
         }
 
-        // 카드 후보 선택(레이아웃 변경 내성)
+        // 4) 상대링크 → 절대링크
+        function abs(href: string): string {
+          try { return new URL(href, location.origin).href; } catch { return href; }
+        }
+
+        // 5) "상품형 광고 카드" 판정: 광고 뱃지 + 상품ID 링크 보유
+        function isProductAdCard(el: Element): boolean {
+          if (!isAdBadge(el)) return false;
+          const aTags = Array.from(el.querySelectorAll<HTMLAnchorElement>("a[href]"));
+          return aTags.some(a => {
+            const href = abs(a.getAttribute("href") || "");
+            return /nvMid=|productId=|prodNo=|\/products\//i.test(href);
+          });
+        }
+
+        // 6) 후보 카드 수집 (레이아웃 내성)
         const cardSelectors = [
+          "div[class*='basicList_item__']",   // 리스트형
+          "div[class*='product_item__']",     // 카드형
           ".list_basis li",
           ".list_basis > div",
           ".basicList_list_basis__uNBZC li",
           ".basicList_list_basis__uNBZC > div",
-          "[class*='list__item']",
         ];
         let cards: Element[] = [];
-        for (const selector of cardSelectors) {
-          const found = Array.from(document.querySelectorAll(selector));
+        for (const sel of cardSelectors) {
+          const found = Array.from(document.querySelectorAll(sel));
           if (found.length) { cards = found; break; }
         }
         if (!cards.length) cards = Array.from(document.querySelectorAll("li, div"));
 
-        // 광고 카드만 필터링
-        const adCards = cards.filter(isAdCard);
+        // 7) "상품형 광고 카드"만 필터
+        const adCards = cards.filter(isProductAdCard);
 
+        // 8) 스토어명/링크 추출 로직
+        const storeLinkDomainRe = /(smartstore\.naver\.com|brand\.naver\.com|shopping\.naver\.com\/partner|shopping\.naver\.com\/stores)/i;
+        function extractStoreInfo(adEl: Element) {
+          // 우선 스토어 앵커 우선 탐색
+          const aTags = Array.from(adEl.querySelectorAll<HTMLAnchorElement>("a[href]"));
+          let storeName: string | undefined;
+          let storeLink: string | undefined;
+
+          // 8-1) 도메인 기반 스토어 앵커
+          for (const a of aTags) {
+            const href = abs(a.getAttribute("href") || "");
+            if (storeLinkDomainRe.test(href)) {
+              storeLink = href;
+              const txt = (a.textContent || "").trim();
+              if (txt) storeName = txt;
+              break;
+            }
+          }
+
+          // 8-2) 클래스/데이터 기반 후보 (UI 클래스 변화 대응)
+          if (!storeName) {
+            const nameEl =
+              adEl.querySelector("[class*='mall']") ||
+              adEl.querySelector("[class*='seller']") ||
+              adEl.querySelector("[data-nclick*='shop']") ||
+              adEl.querySelector("a[title]");
+            const txt = (nameEl?.textContent || "").trim();
+            if (txt) storeName = txt;
+            if (!storeLink && nameEl instanceof HTMLAnchorElement) {
+              storeLink = abs(nameEl.getAttribute("href") || "");
+            }
+          }
+
+          // 8-3) 둘 다 못 얻으면, 최후 폴백: 첫 상품 앵커 링크를 storeLink로
+          if (!storeLink) {
+            for (const a of aTags) {
+              const href = abs(a.getAttribute("href") || "");
+              if (/nvMid=|productId=|prodNo=|\/products\//i.test(href)) {
+                storeLink = href;
+                break;
+              }
+            }
+          }
+
+          return { storeName, storeLink };
+        }
+
+        // 9) 가격 추출 (내성 강화)
+        function extractPrice(adEl: Element): number | undefined {
+          const candidates = [
+            "[class*='price'] [class*='num']",
+            "[class*='price_num']",
+            "[class*='price']",
+            "strong",
+          ];
+          for (const sel of candidates) {
+            const el = adEl.querySelector(sel);
+            const txt = (el?.textContent || "").replace(/[^\d]/g, "");
+            if (txt) return Number(txt);
+          }
+          return undefined;
+        }
+
+        // 10) 페이지 내 랭킹 계산 및 타겟 매칭
         let adRankInPage = 0;
         let hit: AdSearchResult | null = null;
 
         for (const ad of adCards) {
           adRankInPage += 1;
 
+          // 이 카드가 가진 모든 상품ID 후보
+          const idsInCard: string[] = [];
           const anchors = Array.from(ad.querySelectorAll<HTMLAnchorElement>("a[href]"));
-          let matched = false;
-          let storeName: string | undefined;
-          let storeLink: string | undefined;
-          let price: number | undefined;
-
           for (const a of anchors) {
-            const rawHref = a.getAttribute("href") || "";
-            let absHref = rawHref;
-            try { absHref = new URL(rawHref, location.origin).href; } catch {}
-
-            const ids = extractIds(absHref);
-            if (ids.some((x) => eqNumStrInner(x, targetId))) {
-              matched = true;
-              storeLink = absHref;
-
-              const nameEl =
-                ad.querySelector("[class*='mall']") ||
-                ad.querySelector("[class*='seller']") ||
-                ad.querySelector("[data-nclick*='shop']") ||
-                ad.querySelector("a[title]");
-              storeName = (nameEl?.textContent || "").trim() || undefined;
-
-              const priceEl =
-                ad.querySelector("[class*='price'] [class*='num']") ||
-                ad.querySelector("[class*='price']") ||
-                ad.querySelector("strong");
-              const priceTxt = (priceEl?.textContent || "").replace(/[^\d]/g, "");
-              if (priceTxt) price = Number(priceTxt);
-
-              break;
-            }
+            const href = abs(a.getAttribute("href") || "");
+            const ids = extractIds(href);
+            if (ids.length) idsInCard.push(...ids);
           }
 
+          // 타겟 매칭
+          const matched = idsInCard.some((x) => eqNumStrInner(x, targetId));
           if (matched) {
+            const { storeName, storeLink } = extractStoreInfo(ad);
+            const price = extractPrice(ad);
             hit = { adRank: adRankInPage, storeName, storeLink, price };
             break;
           }
         }
 
+        // adCards.length 대신 "상품형 광고 카드 수"로 누적 (정확도 개선)
         return {
-          found: hit,                  // ★ 항상 동일 키로 반환
-          totalAdsInPage: adCards.length, // ★ 페이지 내 광고 총량
-          pageSize: PAGE_SIZE_IN,      // 디버깅용
+          found: hit,
+          totalAdsInPage: adCards.length,
+          pageSize: PAGE_SIZE_IN,
         };
       }, productId, PAGE_SIZE);
 
