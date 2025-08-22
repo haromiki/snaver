@@ -20,8 +20,8 @@ function RouterWithRoutes() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="text-lg text-black">로딩 중...</div>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', color: 'black', fontSize: '18px' }}>
+        로딩 중...
       </div>
     );
   }
@@ -51,9 +51,6 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <div style={{ position: 'fixed', top: 0, left: 0, zIndex: 9999, background: 'red', color: 'white', padding: '10px' }}>
-          REACT LOADED ✅
-        </div>
         <Toaster />
         {/* ✅ basePath를 Router에 직접 적용해야 경로가 올바르게 인식됩니다 */}
         <Router base={basePath}>

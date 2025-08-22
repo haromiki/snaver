@@ -26,9 +26,9 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
   ];
 
   return (
-    <div className="w-60 bg-surface shadow-lg border-r border-gray-200 flex flex-col">
+    <div className="w-60 bg-surface shadow-lg border-r border-gray-200 flex flex-col" style={{width: '240px', background: '#f8f9fa', borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'}}>
       {/* Header */}
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-gray-200" style={{padding: '24px', borderBottom: '1px solid #e5e7eb'}}>
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
             <i className="fas fa-chart-line text-white text-sm"></i>

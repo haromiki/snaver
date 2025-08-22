@@ -9,19 +9,19 @@ export default function Dashboard() {
   const [editingProduct, setEditingProduct] = useState<any>(null);
 
   return (
-    <div className="flex h-screen bg-white" style={{minHeight: '100vh', width: '100%'}}>
+    <div className="flex h-screen bg-white" style={{minHeight: '100vh', width: '100%', display: 'flex', background: 'white'}}>
       <Sidebar 
         activeSection={activeSection} 
         onSectionChange={setActiveSection}
       />
       
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden" style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
         {/* Top Bar */}
-        <header className="bg-surface shadow-sm border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-6">
+        <header className="bg-surface shadow-sm border-b border-gray-200 px-6 py-4" style={{background: '#f8f9fa', padding: '16px 24px', borderBottom: '1px solid #e5e7eb'}}>
+          <div className="flex items-center justify-between" style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+            <div className="flex items-center space-x-6" style={{display: 'flex', alignItems: 'center', gap: '24px'}}>
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">
+                <h2 className="text-2xl font-bold text-gray-900" style={{fontSize: '24px', fontWeight: 'bold', color: '#111827', margin: 0}}>
                   {activeSection === "ad-tracking" && "광고 순위 추적"}
                   {activeSection === "organic-tracking" && "일반 순위 추적"}
                   {activeSection === "ad-management" && "광고 제품 관리"}
