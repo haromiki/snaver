@@ -4,8 +4,9 @@ SNAVER is a production-ready web application designed to track store rankings on
 
 # User Preferences
 
-Preferred communication style: Simple, everyday language.
-Preferred language: Korean (한국어)
+**사용자는 한국인이며, 모든 설명은 반드시 한국어로 제공해야 합니다.**
+Preferred communication style: Simple, everyday language in Korean.
+Preferred language: Korean (한국어) - 모든 커뮤니케이션은 한국어로 진행
 
 ## Critical Code Preservation Rules
 **NEVER MODIFY** the following server-only code sections:

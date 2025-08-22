@@ -18,21 +18,13 @@ function RouterWithRoutes() {
   const { user, isLoading } = useAuth();
   const [location] = useLocation();
 
-  console.log("🧭 [디버그] 현재 location:", location);
-  console.log("🧭 [디버그] basePath:", basePath);
-  console.log("🧭 [디버그] user:", user);
-  console.log("🧭 [디버그] isLoading:", isLoading);
-
   if (isLoading) {
-    console.log("🧭 [디버그] Showing loading screen");
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-lg text-black">로딩 중...</div>
       </div>
     );
   }
-
-  console.log("🧭 [디버그] Past loading, rendering routes");
 
   return (
     <Switch>
@@ -56,12 +48,16 @@ function RouterWithRoutes() {
 }
 
 function App() {
+  console.log("🔥 App component rendering");
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
         {/* ✅ basePath를 Router에 직접 적용해야 경로가 올바르게 인식됩니다 */}
         <Router base={basePath}>
+          <div style={{position: 'fixed', top: 0, left: 0, background: 'red', color: 'white', padding: '10px', zIndex: 9999}}>
+            SNAVER 앱 테스트 - 이 메시지가 보이면 React가 작동 중입니다
+          </div>
           <RouterWithRoutes />
         </Router>
       </TooltipProvider>
