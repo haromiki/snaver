@@ -109,20 +109,104 @@ export async function fetchAdRank({
 
       console.log(`[AD][p${pageIndex}] 대기 완료`);
 
-      // 모든 page 메서드 제거 - 순수 로직 테스트
-      console.log(`[AD][p${pageIndex}] 모든 page 메서드 제거 후 테스트`);
+      // 실제 광고 스캔 로직 추가
+      const pageResult = await page.evaluate((targetId: string) => {
+        try {
+          // 기본 카드 찾기
+          const root = document.querySelector("#content") || document.body;
+          const cards = Array.from(root.querySelectorAll("li, div")).filter(el => {
+            const links = el.querySelectorAll("a[href]");
+            return links.length > 0;
+          });
 
-      // 임시로 페이지당 1개의 광고가 있다고 가정
-      const pageResult = {
-        found: null,
-        totalCards: 10,
-        totalAdsInPage: 1,
-        idsPreview: [],
-        webdriver: false,
-      };
+          // 광고 카드 찾기 (텍스트 기반)
+          const adCards = cards.filter(card => {
+            const text = card.textContent || '';
+            const hasAdText = /AD|광고|스폰서/i.test(text);
+            const hasProductLink = Array.from(card.querySelectorAll("a[href]")).some(a => {
+              const href = a.getAttribute("href") || '';
+              return /nvMid=|productId=|prodNo=|\/products\/|\/product\//i.test(href);
+            });
+            return hasAdText && hasProductLink;
+          });
+
+          // 제품 ID 매칭 확인
+          let found = null;
+          let adRank = 0;
+          
+          for (const card of adCards) {
+            adRank++;
+            const links = Array.from(card.querySelectorAll("a[href]"));
+            for (const link of links) {
+              const href = link.getAttribute("href") || '';
+              // ID 추출
+              const idMatch = href.match(/(?:nvMid=|productId=|prodNo=|\/products\/|\/product\/)(\d+)/i);
+              if (idMatch) {
+                const extractedId = idMatch[1];
+                if (extractedId === targetId) {
+                  // 스토어명 찾기
+                  const storeName = card.querySelector('[class*="mall"], [class*="seller"], [class*="store"]')?.textContent?.trim() || '';
+                  // 가격 찾기
+                  const priceElement = card.querySelector('[class*="price"]');
+                  const priceText = priceElement?.textContent?.replace(/[^\d]/g, '') || '';
+                  const price = priceText ? parseInt(priceText) : null;
+                  
+                  found = {
+                    adRank,
+                    storeName,
+                    storeLink: href,
+                    price
+                  };
+                  break;
+                }
+              }
+            }
+            if (found) break;
+          }
+
+          return {
+            found,
+            totalCards: cards.length,
+            totalAdsInPage: adCards.length,
+            anchorCount: document.querySelectorAll('a[href*="nvMid="],a[href*="productId="],a[href*="prodNo="]').length
+          };
+        } catch (e) {
+          return {
+            found: null,
+            totalCards: 0,
+            totalAdsInPage: 0,
+            anchorCount: 0,
+            error: e.message
+          };
+        }
+      }, productId);
+
+      console.log(`[AD][p${pageIndex}] cards=${pageResult.totalCards} adCards=${pageResult.totalAdsInPage} anchors=${pageResult.anchorCount}`);
+      
+      if (pageResult.error) {
+        console.log(`[AD][p${pageIndex}] 스캔 에러: ${pageResult.error}`);
+      }
+
+      if (pageResult.found) {
+        const r = pageResult.found;
+        const globalRank = cumulativeAdCount + r.adRank;
+        
+        console.log(`[AD] 🎯 제품 발견! 페이지=${pageIndex} 순위=${r.adRank} 전체순위=${globalRank}`);
+        
+        return {
+          productId,
+          storeName: r.storeName,
+          storeLink: r.storeLink,
+          price: r.price,
+          globalRank,
+          page: pageIndex,
+          rankInPage: r.adRank,
+          found: true,
+        };
+      }
 
       // 누적
-      cumulativeAdCount += 1;
+      cumulativeAdCount += pageResult.totalAdsInPage;
 
       // 페이지 간 지연
       await new Promise(resolve => setTimeout(resolve, 1000 + Math.floor(Math.random() * 700)));
