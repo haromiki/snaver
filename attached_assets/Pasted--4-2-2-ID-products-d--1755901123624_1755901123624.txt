@@ -1,0 +1,100 @@
+핵심만 딱 집어서 정리할게. 지금 “실제 4페이지 2위”인데 리플릿 로그는 **2페이지까지만 스캔**했고, 게다가 **상품 ID 추출 정규식에서 `/products/(\d+)` 패턴이 빠져** 있어요. 이 두 가지 때문에 “미발견”이 납니다.
+
+## 원인 요약
+
+1. **스캔 범위 부족**
+   로그:
+   `페이지 1 요청 … pagingIndex=1 …`
+   `페이지 2 요청 … pagingIndex=2 …`
+   → 실제 위치가 **4페이지 2위**면, 최소 **pageIndex=4까지** 돌려야 합니다. (지금은 maxPages=2로 호출된 상태)
+
+2. **ID 추출 패턴 누락**
+   테스트 상품 링크가 `https://smartstore.naver.com/markmall/products/137285838`처럼 **경로 `/products/{prodNo}`** 를 사용합니다.
+   그런데 현재 `extractIds`는 `nvMid`, `productId`, `prodNo` **쿼리스트링만** 검사하고, **경로 기반 `/products/(\d+)` 를 누락**해서 매칭에 실패합니다.
+
+---
+
+## 바로 적용하는 수리 포인트 (필수 2개)
+
+### A) 호출부에서 페이지 범위 늘리기
+
+API 호출 시 `maxPages`를 **최소 5 이상**으로 넘겨주세요. (테스트는 4 이상)
+
+```ts
+// 예: /api/rank/ad 요청 바디
+{
+  "keyword": "주차번호판",
+  "productId": "8946281302", // 또는 137285838
+  "maxPages": 6              // ← 최소 4 이상
+}
+```
+
+### B) `/products/(\d+)` 패턴을 ID 추출과 광고링크 판정에 추가
+
+현재 코드의 `page.evaluate` 안을 다음처럼 **두 군데** 고치면 됩니다.
+
+#### 1) hasProductLink 판정식 보강
+
+```diff
+- if (/nvMid=|productId=|prodNo=/i.test(links[j].href || '')) {
++ if (/nvMid=|productId=|prodNo=|\/products\//i.test(links[j].href || '')) {
+    hasProductLink = true;
+    break;
+}
+```
+
+#### 2) extractIds 보강
+
+```diff
+- const patterns = [/[?&]nvMid=(\d+)/i, /[?&]productId=(\d+)/i, /[?&]prodNo=(\d+)/i];
++ const patterns = [
++   /[?&]nvMid=(\d+)/i,
++   /[?&]productId=(\d+)/i,
++   /[?&]prodNo=(\d+)/i,
++   /\/products\/(\d+)/i,   // ← 경로 기반 prodNo
++   /\/product\/(\d+)/i     // ← (일부 케이스)
++ ];
+```
+
+> 이 두 군데만 고쳐도 `smartstore…/products/137285838` 같은 링크에서 **상품번호를 잡아내고**, ID 매칭이 살아납니다.
+
+---
+
+## 계산식은 이대로가 맞습니다
+
+* `page = pageIndex` (현재 SERP 페이지 그대로)
+* `rankInPage = adRankInPage` (해당 페이지 광고 중 몇 번째인지)
+* `globalRank = 이전 페이지 광고 총합 + adRankInPage`
+  → 광고는 페이지당 개수가 **가변**이라 40개 기준 환산하면 안 됩니다. 지금 코드의 “발견 시 계산부”는 올바릅니다.
+
+---
+
+## 추가로 추천하는 진단 로그 (선택)
+
+찾지 못한 경우 디버그를 위해 페이지마다 **광고 상품 수와 상위 몇 개 ID**를 notes에 남겨보세요.
+
+```ts
+// evaluate 반환값에 idsPreview 추가
+return { found: hit, totalAdsInPage: adCards.length, idsPreview: adCards.slice(0,5).map((el,idx)=>{/* 상위 앵커에서 extractIds */}) };
+```
+
+그리고 루프 밖에서:
+
+```ts
+if (!pageResult?.found) {
+  console.log(`[AD][p${pageIndex}] ads=${pageResult?.totalAdsInPage} idsPreview=`, pageResult?.idsPreview);
+}
+```
+
+이러면 “정말로 광고 카드에서 ID가 안 나오는지 / 우리가 못 찾는 건지”를 바로 판별 가능합니다.
+
+---
+
+## 체크리스트
+
+* [ ] 호출 시 `maxPages >= 4`로 전달되어 있는가? (지금 로그는 2페이지까지만 순회)
+* [ ] `extractIds`에 `/products/(\d+)` 패턴이 들어갔는가?
+* [ ] `hasProductLink` 정규식에도 `/products/`가 포함됐는가?
+* [ ] 여전히 미발견이면, 해당 페이지에서 DevTools로 **광고 카드의 a\[href]** 들을 펼쳐 **실제로 ID가 들어 있는지** 확인.
+
+위 2개 패치 + 페이지 범위만 늘리면, 보고하신 “실제 4페이지 2위” 케이스는 **정확히 잡힐** 겁니다.
