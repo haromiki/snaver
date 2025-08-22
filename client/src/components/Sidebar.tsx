@@ -26,7 +26,7 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
   ];
 
   return (
-    <div className="w-60 bg-surface shadow-lg border-r border-gray-200 flex flex-col">
+    <div className="w-60 bg-white shadow-lg border-r border-gray-200 flex flex-col" style={{ minHeight: '100vh' }}>
       {/* Header */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center space-x-3">

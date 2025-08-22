@@ -47,10 +47,18 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
 
   const editProductMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
+      // 👇️ DO NOT DELETE BELOW: Debug logging for edit request
+      console.log("🔄 제품 수정 요청 데이터:", {
+        productId: product.id,
+        data
+      });
+      // 👆️ DO NOT DELETE ABOVE
+      
       const response = await apiRequest("PATCH", `/products/${product.id}`, data);
       return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("✅ 제품 수정 성공:", data);
       queryClient.invalidateQueries({ queryKey: ["/products"] });
       toast({
         title: "제품 수정 완료",
@@ -59,6 +67,7 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
       onClose();
     },
     onError: (error: any) => {
+      console.error("❌ 제품 수정 실패:", error);
       toast({
         title: "제품 수정 실패",
         description: error.message,

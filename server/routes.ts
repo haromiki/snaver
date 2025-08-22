@@ -158,6 +158,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const productId = parseInt(req.params.id);
       
+      // 👇️ DO NOT DELETE BELOW: Debug logging for update payload
+      console.log("🔄 제품 업데이트 요청:", {
+        productId,
+        userId: req.userId,
+        body: req.body
+      });
+      // 👆️ DO NOT DELETE ABOVE
+      
       // Extract all possible update fields
       const { active, productNo, keyword, type, intervalMin } = req.body;
       const updates: any = {};
@@ -169,10 +177,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (type !== undefined) updates.type = type;
       if (intervalMin !== undefined) updates.intervalMin = intervalMin;
       
+      console.log("🔄 업데이트할 필드들:", updates);
+      
       const updatedProduct = await storage.updateProduct(productId, req.userId!, updates);
+      
+      console.log("✅ 업데이트 완료:", updatedProduct);
+      
       res.json(updatedProduct);
     } catch (error: any) {
-      console.error("제품 업데이트 오류:", error);
+      console.error("❌ 제품 업데이트 오류:", error);
       res.status(400).json({ message: "제품 업데이트에 실패했습니다" });
     }
   });

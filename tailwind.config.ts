@@ -61,6 +61,7 @@ export default {
           border: "var(--sidebar-border)",
           ring: "var(--sidebar-ring)",
         },
+        surface: "var(--surface)",
       },
       fontFamily: {
         sans: ["var(--font-sans)"],
