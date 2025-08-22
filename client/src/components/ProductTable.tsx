@@ -91,36 +91,56 @@ export default function ProductTable({ section, onAddProduct }: ProductTableProp
   // Initialize Sortable when products change
   useEffect(() => {
     const loadSortable = async () => {
-      if (products.length > 0 && !sortableList) {
-        // Dynamically import Sortable
-        const Sortable = (await import("sortablejs")).default;
-        
-        const element = document.getElementById("sortable-products");
-        if (element) {
-          const sortableInstance = Sortable.create(element, {
-            handle: ".drag-handle",
-            animation: 150,
-            onEnd: (evt: any) => {
-              if (evt.oldIndex !== evt.newIndex) {
-                const newOrder = [...products];
-                const [removed] = newOrder.splice(evt.oldIndex!, 1);
-                newOrder.splice(evt.newIndex!, 0, removed);
-                
-                const productIds = newOrder.map(p => p.id);
-                updateSortMutation.mutate(productIds);
+      // Cleanup existing sortable first
+      if (sortableList) {
+        try {
+          sortableList.destroy();
+        } catch (error) {
+          console.warn("Sortable cleanup failed:", error);
+        }
+        setSortableList(null);
+      }
+
+      if (products.length > 0) {
+        try {
+          // Dynamically import Sortable
+          const Sortable = (await import("sortablejs")).default;
+          
+          const element = document.getElementById("sortable-products");
+          if (element) {
+            const sortableInstance = Sortable.create(element, {
+              handle: ".drag-handle",
+              animation: 150,
+              onEnd: (evt: any) => {
+                if (evt.oldIndex !== evt.newIndex) {
+                  const newOrder = [...products];
+                  const [removed] = newOrder.splice(evt.oldIndex!, 1);
+                  newOrder.splice(evt.newIndex!, 0, removed);
+                  
+                  const productIds = newOrder.map(p => p.id);
+                  updateSortMutation.mutate(productIds);
+                }
               }
-            }
-          });
-          setSortableList(sortableInstance);
+            });
+            setSortableList(sortableInstance);
+          }
+        } catch (error) {
+          console.error("Sortable 초기화 실패:", error);
         }
       }
     };
 
-    loadSortable();
+    // Use setTimeout to ensure DOM is ready
+    const timeoutId = setTimeout(loadSortable, 100);
 
     return () => {
+      clearTimeout(timeoutId);
       if (sortableList) {
-        sortableList.destroy();
+        try {
+          sortableList.destroy();
+        } catch (error) {
+          console.warn("Sortable cleanup failed:", error);
+        }
         setSortableList(null);
       }
     };
