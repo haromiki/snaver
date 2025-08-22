@@ -7,6 +7,7 @@ console.log(
   "✅ VITE_IS_SERVER_DEPLOY (raw):",
   process.env.VITE_IS_SERVER_DEPLOY,
 );
+console.log("✅ VITE_IS_SERVER_DEPLOY (raw):", process.env.VITE_IS_SERVER_DEPLOY);
 console.log("✅ TYPEOF:", typeof process.env.VITE_IS_SERVER_DEPLOY);
 
 if (process.env.VITE_IS_SERVER_DEPLOY === "true") {
