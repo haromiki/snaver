@@ -7,7 +7,6 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { authenticateToken } from "./middleware/auth.ts";
 import { fetchOrganicRank } from "./crawler/naverOrganic.js";
-import { fetchOrganicRankPuppeteer } from "./crawler/naverOrganicPuppeteer.js";
 import { fetchAdRank } from "./crawler/adCrawler.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
@@ -309,7 +308,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // 특정 제품 검색 및 전체 응답 분석
-      const targetProductId = "5449369324";
+      const targetProductId = "5797852571";
       const matchingItems = data.items?.filter((item: any) => 
         String(item.productId).includes(targetProductId) || 
         targetProductId.includes(String(item.productId))
@@ -356,11 +355,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // 실제 네이버 쇼핑과 동일한 결과를 위해 Puppeteer 사용
-      const result = await fetchOrganicRankPuppeteer({
+      // 200위 이내 제한으로 OpenAPI 사용 (사용자 요구사항)
+      const result = await fetchOrganicRank({
         productId: validatedData.productId,
         keyword: validatedData.keyword,
-        maxPages: 5, // 5페이지 = 200위까지
+        clientId,
+        clientSecret,
       });
 
       res.json(result);
