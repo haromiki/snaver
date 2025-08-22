@@ -18,10 +18,31 @@ function RouterWithRoutes() {
   const { user, isLoading } = useAuth();
   const [location] = useLocation();
 
+  console.log('[DEBUG] RouterWithRoutes - user:', user, 'isLoading:', isLoading, 'location:', location);
+
   if (isLoading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', color: 'black', fontSize: '18px', fontFamily: 'Arial, sans-serif' }}>
-        🌐 SNAVER 로딩 중...
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        background: 'white', 
+        color: 'black', 
+        fontSize: '18px', 
+        fontFamily: 'Arial, sans-serif',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 9999
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ color: '#1976d2', fontSize: '32px', fontWeight: 'bold', marginBottom: '10px' }}>🌐 SNAVER</div>
+          <div style={{ color: '#666', fontSize: '18px', marginBottom: '20px' }}>인증 확인 중...</div>
+          <div style={{ color: '#999', fontSize: '14px' }}>로딩: {isLoading ? 'true' : 'false'} | 사용자: {user ? '로그인됨' : '미로그인'}</div>
+        </div>
       </div>
     );
   }
