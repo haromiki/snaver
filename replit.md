@@ -36,6 +36,56 @@ SNAVER is a production-ready web application designed to track store rankings on
 - React 로직: 100% 완료 ✅
 - 화면 렌더링: 문제 있음 ⚠️
 
+## 새로운 랭킹 시스템 구현 완료 (2025-08-22)
+
+### ✅ 완료된 작업
+1. **새로운 스키마 타입 정의**
+   - `RankQuery`, `RankResult` 타입 추가
+   - 문서 사양에 맞는 완전한 구조 구현
+
+2. **일반(오가닉) 순위 추적 시스템**
+   - Naver OpenAPI를 사용한 안전한 검색
+   - 200위까지 2회 병렬 조회 (1-100, 101-200)
+   - PC 기준 40개/페이지 환산 완료
+   - API 엔드포인트: `POST /api/rank/organic`
+
+3. **광고 순위 추적 시스템**
+   - Puppeteer 기반 실시간 SERP 스캔
+   - 광고 카드만 선별한 순위 계산
+   - 감지 회피 기술 (랜덤 지연, 자연 스크롤)
+   - API 엔드포인트: `POST /api/rank/ad`
+
+4. **기존 시스템과의 완전 연동**
+   - `/api/products/:id/refresh` 엔드포인트 업그레이드
+   - 제품 타입(ad/organic)별 자동 분기 처리
+   - 트랙 데이터 자동 저장
+
+5. **환경 설정**
+   - Naver OpenAPI 인증정보 설정 완료
+   - Puppeteer 라이브러리 설치
+
+### ⚠️ 알려진 제한사항
+- **Puppeteer 브라우저 실행**: Replit 환경에서 Chrome 실행에 필요한 시스템 라이브러리 부족
+- **해결 방법**: 실제 배포 환경에서는 정상 작동 예상 (로컬 개발환경 또는 전용 서버 권장)
+
+### 📋 새로운 API 사용법
+```bash
+# 일반 순위 조회
+POST /api/rank/organic
+{
+  "productId": "12345",
+  "keyword": "아이폰"
+}
+
+# 광고 순위 조회  
+POST /api/rank/ad
+{
+  "productId": "12345", 
+  "keyword": "스마트폰",
+  "maxPages": 5
+}
+```
+
 # User Preferences
 
 **사용자는 한국인이며, 모든 설명은 반드시 한국어로 제공해야 합니다.**

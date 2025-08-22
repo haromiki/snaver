@@ -2,11 +2,12 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertProductSchema, loginSchema } from "@shared/schema";
+import { insertUserSchema, insertProductSchema, loginSchema, rankQuerySchema, type RankQuery, type RankResult } from "@shared/schema";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { authenticateToken } from "./middleware/auth.ts";
-import { crawlProduct } from "./crawler/shoppingCrawler.js";
+import { fetchOrganicRank } from "./crawler/naverOrganic.js";
+import { fetchAdRank } from "./crawler/adCrawler.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
@@ -37,7 +38,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.createUser({
         ...userDataForStorage,
         passwordHash,
-      });
+      } as any);
 
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "7d" });
 
@@ -177,8 +178,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/products/:id/refresh", authenticateToken, async (req, res) => {
     try {
       const productId = parseInt(req.params.id);
-      // 크롤링 로직은 나중에 구현
-      res.json({ success: true, message: "순위 업데이트가 완료되었습니다" });
+      
+      // 제품 정보 조회
+      const product = await storage.getProduct(productId, req.userId!);
+      if (!product) {
+        return res.status(404).json({ message: "제품을 찾을 수 없습니다" });
+      }
+
+      let rankResult: RankResult;
+
+      if (product.type === "organic") {
+        // 일반(오가닉) 순위 조회
+        const clientId = process.env.NAVER_OPENAPI_CLIENT_ID;
+        const clientSecret = process.env.NAVER_OPENAPI_CLIENT_SECRET;
+        
+        if (!clientId || !clientSecret) {
+          return res.status(500).json({ 
+            message: "Naver OpenAPI 인증정보가 설정되지 않았습니다" 
+          });
+        }
+
+        rankResult = await fetchOrganicRank({
+          productId: product.productNo,
+          keyword: product.keyword,
+          clientId,
+          clientSecret,
+        });
+      } else {
+        // 광고 순위 조회
+        rankResult = await fetchAdRank({
+          productId: product.productNo,
+          keyword: product.keyword,
+          maxPages: 10,
+        });
+      }
+
+      // 트랙 데이터 저장
+      if (rankResult.found) {
+        await storage.createTrack({
+          productId: product.id,
+          isAd: product.type === "ad",
+          page: rankResult.page || null,
+          rankOnPage: rankResult.rankInPage || null,
+          globalRank: rankResult.globalRank || null,
+          priceKrw: rankResult.price || null,
+          mallName: rankResult.storeName || null,
+          productLink: rankResult.storeLink || null,
+        });
+      }
+
+      res.json({ 
+        success: true, 
+        message: "순위 업데이트가 완료되었습니다",
+        result: rankResult 
+      });
     } catch (error: any) {
       console.error("제품 새로고침 오류:", error);
       res.status(400).json({ message: "제품 새로고침에 실패했습니다" });
@@ -204,6 +257,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("제품 삭제 오류:", error);
       res.status(400).json({ message: "제품 삭제에 실패했습니다" });
+    }
+  });
+
+  // 새로운 랭킹 시스템 API
+  // 일반(오가닉) 순위 조회 - Naver OpenAPI 사용
+  app.post("/api/rank/organic", authenticateToken, async (req, res) => {
+    try {
+      const validatedData = rankQuerySchema.parse(req.body);
+      
+      const clientId = process.env.NAVER_OPENAPI_CLIENT_ID;
+      const clientSecret = process.env.NAVER_OPENAPI_CLIENT_SECRET;
+      
+      if (!clientId || !clientSecret) {
+        return res.status(500).json({ 
+          message: "Naver OpenAPI 인증정보가 설정되지 않았습니다" 
+        });
+      }
+
+      const result = await fetchOrganicRank({
+        productId: validatedData.productId,
+        keyword: validatedData.keyword,
+        clientId,
+        clientSecret,
+      });
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("일반 순위 조회 오류:", error);
+      let message = "일반 순위 조회에 실패했습니다";
+
+      if (error.issues && Array.isArray(error.issues)) {
+        message = error.issues.map((issue: any) => `${issue.path.join('.')}: ${issue.message}`).join(', ');
+      } else if (error.message) {
+        message = error.message;
+      }
+
+      res.status(500).json({ message });
+    }
+  });
+
+  // 광고 순위 조회 - Puppeteer 사용
+  app.post("/api/rank/ad", authenticateToken, async (req, res) => {
+    try {
+      const validatedData = rankQuerySchema.parse(req.body);
+
+      const result = await fetchAdRank({
+        productId: validatedData.productId,
+        keyword: validatedData.keyword,
+        maxPages: validatedData.maxPages || 10,
+      });
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("광고 순위 조회 오류:", error);
+      let message = "광고 순위 조회에 실패했습니다";
+
+      if (error.issues && Array.isArray(error.issues)) {
+        message = error.issues.map((issue: any) => `${issue.path.join('.')}: ${issue.message}`).join(', ');
+      } else if (error.message) {
+        message = error.message;
+      }
+
+      res.status(500).json({ message });
     }
   });
 

@@ -101,9 +101,32 @@ export const loginSchema = z.object({
   password: z.string().min(1, "비밀번호를 입력하세요"),
 });
 
+// 새로운 랭킹 시스템 DTO 타입들
+export const rankQuerySchema = z.object({
+  productId: z.string().min(1, "상품번호를 입력하세요"),
+  keyword: z.string().min(1, "키워드를 입력하세요"),
+  maxPages: z.number().optional().default(10), // 광고 검색용
+});
+
+export const rankResultSchema = z.object({
+  productId: z.string(),
+  storeName: z.string().optional(),
+  storeLink: z.string().optional(),
+  price: z.number().optional(),
+  globalRank: z.number().optional(),
+  page: z.number().optional(),
+  rankInPage: z.number().optional(),
+  found: z.boolean(),
+  notes: z.array(z.string()).optional(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Product = typeof products.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Track = typeof tracks.$inferSelect;
 export type LoginRequest = z.infer<typeof loginSchema>;
+
+// 새로운 랭킹 시스템 타입들
+export type RankQuery = z.infer<typeof rankQuerySchema>;
+export type RankResult = z.infer<typeof rankResultSchema>;
