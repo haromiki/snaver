@@ -1,7 +1,7 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 // 👇️ DO NOT MODIFY BELOW: VITE_API_URL is required for Replit + server routing
-const BASE_API_URL = import.meta.env.VITE_API_URL || "/api";
+const BASE_API_URL = (import.meta as any).env?.VITE_API_URL || "/api";
 // 👆️ DO NOT MODIFY ABOVE
 
 async function throwIfResNotOk(res: Response) {

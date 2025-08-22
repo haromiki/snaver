@@ -107,3 +107,33 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+@layer components {
+  .bg-surface {
+    @apply bg-gray-50;
+  }
+  
+  .text-success {
+    @apply text-green-600;
+  }
+  
+  .text-warning {
+    @apply text-yellow-600;
+  }
+  
+  .text-error {
+    @apply text-red-600;
+  }
+  
+  .bg-success {
+    @apply bg-green-600;
+  }
+  
+  .bg-warning {
+    @apply bg-yellow-600;
+  }
+  
+  .bg-error {
+    @apply bg-red-600;
+  }
+}

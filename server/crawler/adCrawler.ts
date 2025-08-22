@@ -48,7 +48,7 @@ export async function fetchAdRank({
     ];
 
     browser = await puppeteer.launch({
-      headless: "new",
+      headless: true,
       args: launchArgs,
     });
 
@@ -176,7 +176,7 @@ export async function fetchAdRank({
             totalCards: 0,
             totalAdsInPage: 0,
             anchorCount: 0,
-            error: e.message
+            error: e instanceof Error ? e.message : String(e)
           };
         }
       }, productId);
@@ -197,7 +197,7 @@ export async function fetchAdRank({
           productId,
           storeName: r.storeName,
           storeLink: r.storeLink,
-          price: r.price,
+          price: r.price ?? undefined,
           globalRank,
           page: pageIndex,
           rankInPage: r.adRank,
