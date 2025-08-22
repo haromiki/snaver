@@ -54,6 +54,25 @@ export async function fetchOrganicRank({
 
     // 모든 아이템 합치기 (최대 200개)
     const allItems = [...(batch1.items ?? []), ...(batch2.items ?? [])];
+    
+    // 🔍 디버깅: API 응답 구조 확인 (파일로 저장)
+    const debugInfo = {
+      keyword,
+      totalItems: allItems.length,
+      searchingFor: productId,
+      first5Items: allItems.slice(0, 5).map(item => ({
+        productId: item.productId,
+        mallName: item.mallName,
+        keys: Object.keys(item)
+      })),
+      matchingTest: allItems.slice(0, 50).map((item, index) => ({
+        rank: index + 1,
+        productId: item.productId,
+        matches: String(item.productId) === String(productId)
+      }))
+    };
+    
+    console.log("🔍 DEBUG INFO:", JSON.stringify(debugInfo, null, 2));
 
     // 타겟 상품 찾기
     const targetIndex = allItems.findIndex(

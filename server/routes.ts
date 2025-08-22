@@ -262,6 +262,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // 새로운 랭킹 시스템 API
   // 일반(오가닉) 순위 조회 - Naver OpenAPI 사용
+  // 🔍 임시 디버깅 엔드포인트 - API 응답 구조 확인
+  app.post("/api/debug/naver-api", async (req, res) => {
+    try {
+      const { keyword = "주차번호판" } = req.body;
+      
+      const clientId = process.env.NAVER_OPENAPI_CLIENT_ID;
+      const clientSecret = process.env.NAVER_OPENAPI_CLIENT_SECRET;
+      
+      console.log("🔑 API 키 확인:", !!clientId, !!clientSecret);
+      
+      if (!clientId || !clientSecret) {
+        return res.status(500).json({ error: "API 인증정보 없음", clientId: !!clientId, clientSecret: !!clientSecret });
+      }
+
+      const { start = 1 } = req.body;
+      const url = `https://openapi.naver.com/v1/search/shop.json?query=${encodeURIComponent(keyword)}&display=50&start=${start}`;
+      
+      console.log("🌐 요청 URL:", url);
+      
+      // Node.js built-in fetch 명시적 사용  
+      const response = await globalThis.fetch(url, {
+        headers: {
+          "X-Naver-Client-Id": clientId,
+          "X-Naver-Client-Secret": clientSecret,
+          "User-Agent": "SNAVER/1.0",
+        },
+      });
+
+      console.log("📡 응답 상태:", response.status, response.ok);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log("❌ API 에러 응답:", errorText);
+        return res.status(500).json({ error: `API 오류: ${response.status}`, details: errorText });
+      }
+
+      const data = await response.json();
+      
+      console.log("✅ API 응답 수신:", {
+        total: data.total,
+        itemsCount: data.items?.length,
+        firstItemKeys: data.items?.[0] ? Object.keys(data.items[0]) : []
+      });
+      
+      // 응답 구조와 첫 10개 아이템 반환
+      return res.json({
+        keyword,
+        totalCount: data.total || 0,
+        itemsLength: data.items?.length || 0,
+        firstItems: data.items?.slice(0, 10).map((item: any) => ({
+          productId: item.productId,
+          mallName: item.mallName,
+          title: item.title,
+          lprice: item.lprice,
+          allKeys: Object.keys(item)
+        })) || [],
+        success: true
+      });
+      
+    } catch (error: any) {
+      console.error("🚨 디버깅 API 오류:", error);
+      res.status(500).json({ error: error.message, stack: error.stack });
+    }
+  });
+
   app.post("/api/rank/organic", async (req, res) => {
     try {
       const validatedData = rankQuerySchema.parse(req.body);
