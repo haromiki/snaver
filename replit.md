@@ -98,6 +98,23 @@ export default defineConfig({
 // 👆️ DO NOT MODIFY ABOVE
 ```
 
+### db.ts (server/db.ts)
+9. **Lines 6-17**: Server-specific database driver for PostgreSQL
+```typescript
+// 👇️ DO NOT MODIFY BELOW: Server-specific database driver for PostgreSQL (pg + drizzle)
+import("pg").then(({ Pool }) => {
+  import("drizzle-orm/node-postgres").then(({ drizzle }) => {
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+    });
+
+    db = drizzle(pool, { schema });
+    console.log("✅ Using pg + drizzle on server");
+  });
+});
+// 👆️ DO NOT MODIFY ABOVE
+```
+
 These sections contain server-specific routing logic that must remain unchanged.
 
 # System Architecture
