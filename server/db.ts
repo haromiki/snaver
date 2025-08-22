@@ -1,15 +1,36 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
 import * as schema from "@shared/schema";
 
-neonConfig.webSocketConstructor = ws;
+let db: any;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+if (process.env.VITE_IS_SERVER_DEPLOY === "true") {
+  // 👇️ DO NOT MODIFY BELOW: Server-specific database driver for PostgreSQL (pg + drizzle)
+  import("pg").then(({ Pool }) => {
+    import("drizzle-orm/node-postgres").then(({ drizzle }) => {
+      const pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+      });
+
+      db = drizzle(pool, { schema });
+      console.log("✅ Using pg + drizzle on server");
+    });
+  });
+  // 👆️ DO NOT MODIFY ABOVE
+} else {
+  // ✅ Replit / Dev environment (Neon serverless)
+  import("@neondatabase/serverless").then(({ Pool, neonConfig }) => {
+    import("drizzle-orm/neon-serverless").then(({ drizzle }) => {
+      import("ws").then((ws) => {
+        neonConfig.webSocketConstructor = ws.default;
+
+        const pool = new Pool({
+          connectionString: process.env.DATABASE_URL,
+        });
+
+        db = drizzle({ client: pool, schema });
+        console.log("✅ Using Neon + drizzle on Replit");
+      });
+    });
+  });
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle({ client: pool, schema });
+export { db };
