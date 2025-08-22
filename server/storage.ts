@@ -60,13 +60,13 @@ export class DatabaseStorage implements IStorage {
   // Product operations
   async getProducts(userId: number, filters?: { type?: string; active?: boolean }): Promise<Product[]> {
     let query = db.select().from(products).where(eq(products.userId, userId));
-    
+
     const conditions = [eq(products.userId, userId)];
-    
+
     if (filters?.type) {
       conditions.push(eq(products.type, filters.type as any));
     }
-    
+
     if (filters?.active !== undefined) {
       conditions.push(eq(products.active, filters.active));
     }
@@ -118,11 +118,11 @@ export class DatabaseStorage implements IStorage {
   // Track operations
   async getTracks(productId: number, from?: Date, to?: Date): Promise<Track[]> {
     const conditions = [eq(tracks.productId, productId)];
-    
+
     if (from) {
       conditions.push(gte(tracks.checkedAt, from));
     }
-    
+
     if (to) {
       conditions.push(lte(tracks.checkedAt, to));
     }

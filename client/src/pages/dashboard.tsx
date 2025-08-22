@@ -6,6 +6,7 @@ import AddProductModal from "@/components/AddProductModal";
 export default function Dashboard() {
   const [activeSection, setActiveSection] = useState("ad-tracking");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
 
   return (
     <div className="flex h-screen bg-background">
@@ -76,12 +77,23 @@ export default function Dashboard() {
           <ProductTable 
             section={activeSection}
             onAddProduct={() => setShowAddModal(true)}
+            onEditProduct={(product) => {
+              setEditingProduct(product);
+              setShowAddModal(true);
+            }}
           />
         </main>
       </div>
 
       {showAddModal && (
-        <AddProductModal 
+        <AddProductModal
+          product={editingProduct}
+          onClose={() => {
+            setShowAddModal(false);
+            setEditingProduct(null);
+          }}
+        />
+      )}tModal 
           onClose={() => setShowAddModal(false)}
           defaultType={activeSection.includes("ad") ? "ad" : "organic"}
         />

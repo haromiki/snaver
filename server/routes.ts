@@ -189,6 +189,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/products/:id", authenticateToken, async (req, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+      await storage.deleteProduct(productId, req.userId!);
+      res.json({ success: true, message: "제품이 삭제되었습니다" });
+    } catch (error: any) {
+      console.error("제품 삭제 오류:", error);
+      res.status(400).json({ message: "제품 삭제에 실패했습니다" });
+    }
+  });
+
   // Tracks routes
   app.get("/api/tracks", authenticateToken, async (req, res) => {
     try {

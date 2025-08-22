@@ -7,9 +7,10 @@ import { useToast } from "@/hooks/use-toast";
 interface ProductTableProps {
   section: string;
   onAddProduct: () => void;
+  onEditProduct?: (product: any) => void;
 }
 
-export default function ProductTable({ section, onAddProduct }: ProductTableProps) {
+export default function ProductTable({ section, onAddProduct, onEditProduct }: ProductTableProps) {
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [sortableList, setSortableList] = useState<any>(null);
   
@@ -85,6 +86,27 @@ export default function ProductTable({ section, onAddProduct }: ProductTableProp
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/products"] });
+    },
+  });
+
+  const deleteProductMutation = useMutation({
+    mutationFn: async (productId: number) => {
+      const response = await apiRequest("DELETE", `/products/${productId}`);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/products"] });
+      toast({
+        title: "삭제 완료",
+        description: "제품이 성공적으로 삭제되었습니다.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "삭제 실패",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -177,6 +199,12 @@ export default function ProductTable({ section, onAddProduct }: ProductTableProp
     else color = "text-error";
 
     return { rank, page: `${page}페이지`, change, color };
+  };
+
+  const handleDeleteProduct = (product: any) => {
+    if (window.confirm(`"${product.keyword}" 제품을 정말 삭제하시겠습니까?`)) {
+      deleteProductMutation.mutate(product.id);
+    }
   };
 
   if (isLoading) {
@@ -311,35 +339,73 @@ export default function ProductTable({ section, onAddProduct }: ProductTableProp
                     )}
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-2">
-                        <button 
-                          onClick={() => refreshProductMutation.mutate(product.id)}
-                          disabled={refreshProductMutation.isPending}
-                          className="p-2 text-gray-400 hover:text-primary rounded-md hover:bg-gray-100" 
-                          title="수동 검색"
-                          data-testid={`button-refresh-${product.id}`}
-                        >
-                          <i className="fas fa-sync text-sm"></i>
-                        </button>
-                        <button 
-                          onClick={() => setSelectedProductId(product.id)}
-                          className="p-2 text-gray-400 hover:text-primary rounded-md hover:bg-gray-100" 
-                          title="통계 보기"
-                          data-testid={`button-stats-${product.id}`}
-                        >
-                          <i className="fas fa-chart-line text-sm"></i>
-                        </button>
-                        <button 
-                          onClick={() => toggleActiveMutation.mutate({ 
-                            productId: product.id, 
-                            active: !product.active 
-                          })}
-                          disabled={toggleActiveMutation.isPending}
-                          className="p-2 text-gray-400 hover:text-error rounded-md hover:bg-gray-100" 
-                          title={product.active ? "비활성화" : "활성화"}
-                          data-testid={`button-toggle-${product.id}`}
-                        >
-                          <i className={`fas ${product.active ? "fa-pause" : "fa-play"} text-sm`}></i>
-                        </button>
+                        {section.includes("tracking") ? (
+                          <>
+                            <button 
+                              onClick={() => refreshProductMutation.mutate(product.id)}
+                              disabled={refreshProductMutation.isPending}
+                              className="p-2 text-gray-400 hover:text-primary rounded-md hover:bg-gray-100" 
+                              title="수동 검색"
+                              data-testid={`button-refresh-${product.id}`}
+                            >
+                              <i className="fas fa-sync text-sm"></i>
+                            </button>
+                            <button 
+                              onClick={() => setSelectedProductId(product.id)}
+                              className="p-2 text-gray-400 hover:text-primary rounded-md hover:bg-gray-100" 
+                              title="통계 보기"
+                              data-testid={`button-stats-${product.id}`}
+                            >
+                              <i className="fas fa-chart-line text-sm"></i>
+                            </button>
+                            <button 
+                              onClick={() => toggleActiveMutation.mutate({ 
+                                productId: product.id, 
+                                active: !product.active 
+                              })}
+                              disabled={toggleActiveMutation.isPending}
+                              className="p-2 text-gray-400 hover:text-error rounded-md hover:bg-gray-100" 
+                              title={product.active ? "비활성화" : "활성화"}
+                              data-testid={`button-toggle-${product.id}`}
+                            >
+                              <i className={`fas ${product.active ? "fa-pause" : "fa-play"} text-sm`}></i>
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            {onEditProduct && (
+                              <button 
+                                onClick={() => onEditProduct(product)}
+                                className="p-2 text-gray-400 hover:text-primary rounded-md hover:bg-gray-100" 
+                                title="수정"
+                                data-testid={`button-edit-${product.id}`}
+                              >
+                                <i className="fas fa-edit text-sm"></i>
+                              </button>
+                            )}
+                            <button 
+                              onClick={() => handleDeleteProduct(product)}
+                              disabled={deleteProductMutation.isPending}
+                              className="p-2 text-gray-400 hover:text-error rounded-md hover:bg-gray-100" 
+                              title="삭제"
+                              data-testid={`button-delete-${product.id}`}
+                            >
+                              <i className="fas fa-trash text-sm"></i>
+                            </button>
+                            <button 
+                              onClick={() => toggleActiveMutation.mutate({ 
+                                productId: product.id, 
+                                active: !product.active 
+                              })}
+                              disabled={toggleActiveMutation.isPending}
+                              className="p-2 text-gray-400 hover:text-warning rounded-md hover:bg-gray-100" 
+                              title={product.active ? "비활성화" : "활성화"}
+                              data-testid={`button-toggle-${product.id}`}
+                            >
+                              <i className={`fas ${product.active ? "fa-pause" : "fa-play"} text-sm`}></i>
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

@@ -8,15 +8,16 @@ import { useToast } from "@/hooks/use-toast";
 
 interface AddProductModalProps {
   onClose: () => void;
-  defaultType?: "ad" | "organic";
+  product?: any;
 }
 
-export default function AddProductModal({ onClose, defaultType = "ad" }: AddProductModalProps) {
+export default function AddProductModal({ onClose, product }: AddProductModalProps) {
+  const isEditing = !!product;
   const [formData, setFormData] = useState({
-    productNo: "",
-    keyword: "",
-    type: defaultType,
-    intervalMin: 15,
+    productNo: product?.productNo || "",
+    keyword: product?.keyword || "",
+    type: product?.type || "ad",
+    intervalMin: product?.intervalMin || 15,
   });
 
   const { toast } = useToast();
@@ -53,9 +54,9 @@ export default function AddProductModal({ onClose, defaultType = "ad" }: AddProd
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" data-testid="add-product-modal">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">제품 추가</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{isEditing ? "제품 수정" : "제품 추가"}</h3>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <Label htmlFor="productNo">제품번호</Label>
@@ -69,7 +70,7 @@ export default function AddProductModal({ onClose, defaultType = "ad" }: AddProd
               data-testid="input-product-no"
             />
           </div>
-          
+
           <div>
             <Label htmlFor="keyword">검색 키워드</Label>
             <Input
@@ -82,7 +83,7 @@ export default function AddProductModal({ onClose, defaultType = "ad" }: AddProd
               data-testid="input-keyword"
             />
           </div>
-          
+
           <div>
             <Label htmlFor="type">유형</Label>
             <select 
@@ -96,7 +97,7 @@ export default function AddProductModal({ onClose, defaultType = "ad" }: AddProd
               <option value="organic">일반</option>
             </select>
           </div>
-          
+
           <div>
             <Label htmlFor="intervalMin">추적 주기</Label>
             <select 
@@ -113,7 +114,7 @@ export default function AddProductModal({ onClose, defaultType = "ad" }: AddProd
               <option value={60}>60분</option>
             </select>
           </div>
-          
+
           <div className="flex items-center space-x-3 pt-4">
             <Button 
               type="submit" 
@@ -121,7 +122,7 @@ export default function AddProductModal({ onClose, defaultType = "ad" }: AddProd
               disabled={addProductMutation.isPending}
               data-testid="button-submit-product"
             >
-              {addProductMutation.isPending ? "추가 중..." : "추가"}
+              {isEditing ? (addProductMutation.isPending ? "수정 중..." : "수정") : (addProductMutation.isPending ? "추가 중..." : "추가")}
             </Button>
             <Button 
               type="button" 
