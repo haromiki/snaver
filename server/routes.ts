@@ -115,7 +115,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // 이하 제품, 트래킹 API 생략 없이 유지 (기존 그대로)
+  // Products routes
+  app.get("/api/products", authenticateToken, async (req, res) => {
+    try {
+      const { type, active } = req.query;
+      const filters: any = {};
+      
+      if (type) filters.type = type;
+      if (active !== undefined) filters.active = active === 'true';
+      
+      const products = await storage.getProducts(req.userId!, filters);
+      res.json(products);
+    } catch (error) {
+      console.error("제품 목록 조회 오류:", error);
+      res.status(500).json({ message: "제품 목록을 가져오는데 실패했습니다" });
+    }
+  });
+
+  app.post("/api/products", authenticateToken, async (req, res) => {
+    try {
+      const validatedData = insertProductSchema.parse(req.body);
+      const product = await storage.createProduct({
+        ...validatedData,
+        userId: req.userId!,
+      });
+      res.json(product);
+    } catch (error: any) {
+      console.error("제품 추가 오류:", error);
+      let message = "제품 추가에 실패했습니다";
+
+      if (error.issues && Array.isArray(error.issues)) {
+        message = error.issues.map((issue: any) => `${issue.path.join('.')}: ${issue.message}`).join(', ');
+      } else if (error.message) {
+        message = error.message;
+      }
+
+      res.status(400).json({ message });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
