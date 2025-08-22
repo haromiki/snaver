@@ -209,7 +209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         rankResult = await fetchAdRank({
           productId: product.productNo,
           keyword: product.keyword,
-          maxPages: 10,
+          maxPages: 5,
         });
       }
 
@@ -386,7 +386,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await fetchAdRank({
         productId: validatedData.productId,
         keyword: validatedData.keyword,
-        maxPages: validatedData.maxPages || 10,
+        maxPages: validatedData.maxPages || 5,
       });
 
       res.json(result);

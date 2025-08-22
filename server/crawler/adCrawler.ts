@@ -21,7 +21,7 @@ function eqNumStr(a?: string | number | null, b?: string | number | null): boole
 export async function fetchAdRank({
   keyword,
   productId,
-  maxPages = 10,
+  maxPages = 5,
 }: {
   keyword: string;
   productId: string;
