@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
 import StatisticsModal from "./StatisticsModal";
 import { useToast } from "@/hooks/use-toast";
+import { Progress } from "@/components/ui/progress";
 
 interface ProductTableProps {
   section: string;
@@ -13,6 +14,7 @@ interface ProductTableProps {
 export default function ProductTable({ section, onAddProduct, onEditProduct }: ProductTableProps) {
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [sortableList, setSortableList] = useState<any>(null);
+  const [refreshingProducts, setRefreshingProducts] = useState<Map<number, number>>(new Map()); // productId -> progress percentage
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -39,17 +41,43 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
 
   const refreshProductMutation = useMutation({
     mutationFn: async (productId: number) => {
+      // Start progress simulation
+      startProgressSimulation(productId);
+      
       const response = await apiRequest("POST", `/products/${productId}/refresh`);
       return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, productId) => {
+      // Complete progress immediately
+      setRefreshingProducts(prev => {
+        const newMap = new Map(prev);
+        newMap.set(productId, 100);
+        return newMap;
+      });
+      
+      // Remove progress after a short delay
+      setTimeout(() => {
+        setRefreshingProducts(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(productId);
+          return newMap;
+        });
+      }, 1000);
+      
       queryClient.invalidateQueries({ queryKey: ["/products"] });
       toast({
         title: "수동 검색 완료",
         description: "제품 순위가 업데이트되었습니다.",
       });
     },
-    onError: (error: any) => {
+    onError: (error: any, productId) => {
+      // Remove progress on error
+      setRefreshingProducts(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(productId);
+        return newMap;
+      });
+      
       toast({
         title: "수동 검색 실패",
         description: error.message,
@@ -109,6 +137,29 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
       });
     },
   });
+
+  // Progress simulation function
+  const startProgressSimulation = (productId: number) => {
+    let progress = 0;
+    const increment = Math.random() * 15 + 5; // Random increment between 5-20
+    
+    const updateProgress = () => {
+      progress += increment;
+      if (progress > 90) progress = 90; // Cap at 90% until real completion
+      
+      setRefreshingProducts(prev => {
+        const newMap = new Map(prev);
+        newMap.set(productId, progress);
+        return newMap;
+      });
+      
+      if (progress < 90) {
+        setTimeout(updateProgress, Math.random() * 500 + 300); // Random delay 300-800ms
+      }
+    };
+    
+    updateProgress();
+  };
 
   // Initialize Sortable when products change
   useEffect(() => {
@@ -190,15 +241,31 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
     const rank = latestTrack.globalRank;
     const page = Math.ceil(rank / 40);
     
-    // For demo purposes, showing rank change (in real app, compare with previous track)
+    // Determine color based on rank
     let color = "text-gray-900";
     let change = "변동없음";
     
-    if (rank <= 10) color = "text-success";
-    else if (rank <= 30) color = "text-warning";
-    else color = "text-error";
+    if (rank <= 10) {
+      color = "text-success";
+      change = "순위 상승";
+    } else if (rank <= 30) {
+      color = "text-warning";
+      change = "순위 유지";
+    } else {
+      color = "text-error";
+      change = "순위 하락";
+    }
 
     return { rank, page: `${page}페이지`, change, color };
+  };
+
+  const formatPrice = (priceKrw: number | null) => {
+    if (!priceKrw) return "-";
+    return new Intl.NumberFormat('ko-KR', {
+      style: 'currency',
+      currency: 'KRW',
+      minimumFractionDigits: 0,
+    }).format(priceKrw);
   };
 
   const handleDeleteProduct = (product: any) => {
@@ -250,7 +317,10 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">유형</th>
                 {section.includes("tracking") && (
                   <>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">스토어명</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">제품 가격</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">현재 순위</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">순위 변동</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">마지막 확인</th>
                   </>
                 )}
@@ -312,17 +382,39 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
                     {section.includes("tracking") && (
                       <>
                         <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900" data-testid={`text-store-name-${product.id}`}>
+                            {product.latestTrack?.mallName || "-"}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900" data-testid={`text-price-${product.id}`}>
+                            {formatPrice(product.latestTrack?.priceKrw)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
                           <div className="flex items-center space-x-2">
                             <span className={`text-2xl font-bold ${rankDisplay.color}`} data-testid={`text-rank-${product.id}`}>
                               {rankDisplay.rank}
                             </span>
                             <div className="text-xs text-gray-500">
                               <div>{rankDisplay.page}</div>
-                              <div className="flex items-center mt-1">
-                                <i className="fas fa-minus text-gray-400 mr-1"></i>
-                                <span>{rankDisplay.change}</span>
-                              </div>
                             </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-1">
+                            <i className={`fas ${
+                              rankDisplay.change === "순위 상승" ? "fa-arrow-up text-success" :
+                              rankDisplay.change === "순위 하락" ? "fa-arrow-down text-error" :
+                              "fa-minus text-gray-400"
+                            } text-sm`}></i>
+                            <span className={`text-sm ${
+                              rankDisplay.change === "순위 상승" ? "text-success" :
+                              rankDisplay.change === "순위 하락" ? "text-error" :
+                              "text-gray-500"
+                            }`} data-testid={`text-rank-change-${product.id}`}>
+                              {rankDisplay.change}
+                            </span>
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -341,15 +433,30 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
                       <div className="flex items-center space-x-2">
                         {section.includes("tracking") ? (
                           <>
-                            <button 
-                              onClick={() => refreshProductMutation.mutate(product.id)}
-                              disabled={refreshProductMutation.isPending}
-                              className="p-2 text-gray-400 hover:text-primary rounded-md hover:bg-gray-100" 
-                              title="수동 검색"
-                              data-testid={`button-refresh-${product.id}`}
-                            >
-                              <i className="fas fa-sync text-sm"></i>
-                            </button>
+                            <div className="relative">
+                              <button 
+                                onClick={() => refreshProductMutation.mutate(product.id)}
+                                disabled={refreshProductMutation.isPending || refreshingProducts.has(product.id)}
+                                className="p-2 text-gray-400 hover:text-primary rounded-md hover:bg-gray-100" 
+                                title="수동 검색"
+                                data-testid={`button-refresh-${product.id}`}
+                              >
+                                <i className={`fas fa-sync text-sm ${refreshingProducts.has(product.id) ? 'animate-spin' : ''}`}></i>
+                              </button>
+                              {refreshingProducts.has(product.id) && (
+                                <div className="absolute top-full left-0 mt-2 bg-white border border-gray-200 rounded-md p-3 shadow-lg z-10 min-w-[200px]">
+                                  <div className="text-xs text-gray-600 mb-2">검색 진행 중...</div>
+                                  <Progress 
+                                    value={refreshingProducts.get(product.id) || 0} 
+                                    className="h-2"
+                                    data-testid={`progress-refresh-${product.id}`}
+                                  />
+                                  <div className="text-xs text-gray-500 mt-1 text-center">
+                                    {Math.round(refreshingProducts.get(product.id) || 0)}%
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                             <button 
                               onClick={() => setSelectedProductId(product.id)}
                               className="p-2 text-gray-400 hover:text-primary rounded-md hover:bg-gray-100" 
