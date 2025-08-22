@@ -51,6 +51,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <div style={{ position: 'fixed', top: 0, left: 0, zIndex: 9999, background: 'red', color: 'white', padding: '10px' }}>
+          REACT LOADED ✅
+        </div>
         <Toaster />
         {/* ✅ basePath를 Router에 직접 적용해야 경로가 올바르게 인식됩니다 */}
         <Router base={basePath}>
