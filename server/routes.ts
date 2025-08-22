@@ -309,7 +309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // 특정 제품 검색 및 전체 응답 분석
-      const targetProductId = "9317647822";
+      const targetProductId = "5449369324";
       const matchingItems = data.items?.filter((item: any) => 
         String(item.productId).includes(targetProductId) || 
         targetProductId.includes(String(item.productId))
