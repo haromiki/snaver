@@ -20,8 +20,8 @@ function RouterWithRoutes() {
 
   if (isLoading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', color: 'black', fontSize: '18px' }}>
-        로딩 중...
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', color: 'black', fontSize: '18px', fontFamily: 'Arial, sans-serif' }}>
+        🌐 SNAVER 로딩 중...
       </div>
     );
   }
