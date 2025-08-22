@@ -1,5 +1,9 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+// 👇️ DO NOT MODIFY BELOW: VITE_API_URL is required for Replit + server routing
+const BASE_API_URL = import.meta.env.VITE_API_URL || "/api";
+// 👆️ DO NOT MODIFY ABOVE
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -22,7 +26,9 @@ export const getQueryFn: <T>(options: {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const res = await fetch(queryKey.join("/") as string, {
+    // ✅ BASE_API_URL을 사용하여 올바른 API 엔드포인트 호출
+    const url = `${BASE_API_URL}${queryKey.join("/")}`;
+    const res = await fetch(url, {
       headers,
     });
 
