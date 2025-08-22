@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest, getQueryFn } from "@/lib/queryClient";
+import { getQueryFn } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/api";
 
 // DO NOT MODIFY BELOW: Server-only logic injected (navigate + VITE check)
 import { useLocation } from "wouter";
@@ -30,11 +31,8 @@ export function useAuth() {
       localStorage.setItem("token", data.token);
       queryClient.setQueryData(["/api/auth/me"], data.user);
 
-      // DO NOT MODIFY BELOW: Navigate only in server environment
-      if (import.meta.env.VITE_IS_SERVER_DEPLOY) {
-        navigate("/dashboard");
-      }
-      // DO NOT MODIFY ABOVE
+      // Navigate to dashboard after successful authentication
+      navigate("/dashboard");
     },
   });
 
@@ -47,11 +45,8 @@ export function useAuth() {
       localStorage.setItem("token", data.token);
       queryClient.setQueryData(["/api/auth/me"], data.user);
 
-      // DO NOT MODIFY BELOW: Navigate only in server environment
-      if (import.meta.env.VITE_IS_SERVER_DEPLOY) {
-        navigate("/dashboard");
-      }
-      // DO NOT MODIFY ABOVE
+      // Navigate to dashboard after successful authentication
+      navigate("/dashboard");
     },
   });
 

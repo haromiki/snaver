@@ -4,9 +4,12 @@ import ProductTable from "@/components/ProductTable";
 import AddProductModal from "@/components/AddProductModal";
 
 export default function Dashboard() {
+  console.log("🎯 [디버그] Dashboard component rendering");
   const [activeSection, setActiveSection] = useState("ad-tracking");
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
+  
+  console.log("🎯 [디버그] Dashboard state:", { activeSection, showAddModal, editingProduct });
 
   return (
     <div className="flex h-screen bg-background">
@@ -92,10 +95,6 @@ export default function Dashboard() {
             setShowAddModal(false);
             setEditingProduct(null);
           }}
-        />
-      )}tModal 
-          onClose={() => setShowAddModal(false)}
-          defaultType={activeSection.includes("ad") ? "ad" : "organic"}
         />
       )}
     </div>
