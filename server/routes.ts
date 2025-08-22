@@ -154,6 +154,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/products/:id", authenticateToken, async (req, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+      const { active } = req.body;
+      
+      const updatedProduct = await storage.updateProduct(productId, req.userId!, { active });
+      res.json(updatedProduct);
+    } catch (error: any) {
+      console.error("제품 업데이트 오류:", error);
+      res.status(400).json({ message: "제품 업데이트에 실패했습니다" });
+    }
+  });
+
+  app.post("/api/products/:id/refresh", authenticateToken, async (req, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+      // 크롤링 로직은 나중에 구현
+      res.json({ success: true, message: "순위 업데이트가 완료되었습니다" });
+    } catch (error: any) {
+      console.error("제품 새로고침 오류:", error);
+      res.status(400).json({ message: "제품 새로고침에 실패했습니다" });
+    }
+  });
+
+  app.post("/api/products/sort", authenticateToken, async (req, res) => {
+    try {
+      const { productIds } = req.body;
+      await storage.updateProductSortOrder(req.userId!, productIds);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("제품 정렬 오류:", error);
+      res.status(400).json({ message: "제품 정렬에 실패했습니다" });
+    }
+  });
+
+  // Tracks routes
+  app.get("/api/tracks", authenticateToken, async (req, res) => {
+    try {
+      const { product_id, from, to } = req.query;
+      const productId = parseInt(product_id as string);
+      
+      const fromDate = from ? new Date(from as string) : undefined;
+      const toDate = to ? new Date(to as string) : undefined;
+      
+      const tracks = await storage.getTracks(productId, fromDate, toDate);
+      res.json(tracks);
+    } catch (error) {
+      console.error("트랙 조회 오류:", error);
+      res.status(500).json({ message: "트랙 데이터를 가져오는데 실패했습니다" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

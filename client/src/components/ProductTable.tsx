@@ -24,25 +24,25 @@ export default function ProductTable({ section, onAddProduct }: ProductTableProp
   };
 
   const { data: products = [], isLoading } = useQuery({
-    queryKey: ["/api/products", getFilters()],
+    queryKey: ["/products", getFilters()],
     queryFn: async () => {
       const filters = getFilters();
       const params = new URLSearchParams();
       if (filters.type) params.append("type", filters.type);
       if (filters.active !== undefined) params.append("active", filters.active.toString());
       
-      const response = await apiRequest("GET", `/api/products?${params}`);
+      const response = await apiRequest("GET", `/products?${params}`);
       return await response.json();
     },
   });
 
   const refreshProductMutation = useMutation({
     mutationFn: async (productId: number) => {
-      const response = await apiRequest("POST", `/api/products/${productId}/refresh`);
+      const response = await apiRequest("POST", `/products/${productId}/refresh`);
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/products"] });
       toast({
         title: "수동 검색 완료",
         description: "제품 순위가 업데이트되었습니다.",
@@ -59,11 +59,11 @@ export default function ProductTable({ section, onAddProduct }: ProductTableProp
 
   const toggleActiveMutation = useMutation({
     mutationFn: async ({ productId, active }: { productId: number; active: boolean }) => {
-      const response = await apiRequest("PATCH", `/api/products/${productId}`, { active });
+      const response = await apiRequest("PATCH", `/products/${productId}`, { active });
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/products"] });
       toast({
         title: "상태 변경 완료",
         description: "제품 상태가 업데이트되었습니다.",
@@ -80,11 +80,11 @@ export default function ProductTable({ section, onAddProduct }: ProductTableProp
 
   const updateSortMutation = useMutation({
     mutationFn: async (productIds: number[]) => {
-      const response = await apiRequest("POST", "/api/products/sort", { productIds });
+      const response = await apiRequest("POST", "/products/sort", { productIds });
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/products"] });
     },
   });
 

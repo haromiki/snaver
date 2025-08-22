@@ -16,7 +16,7 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
   const [chart, setChart] = useState<any>(null);
 
   const { data: tracks = [] } = useQuery({
-    queryKey: ["/api/tracks", productId, dateRange.from, dateRange.to],
+    queryKey: ["/tracks", productId, dateRange.from, dateRange.to],
     queryFn: async () => {
       const params = new URLSearchParams({
         product_id: productId.toString(),
@@ -24,7 +24,7 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
         to: dateRange.to,
       });
       
-      const response = await apiRequest("GET", `/api/tracks?${params}`);
+      const response = await apiRequest("GET", `/tracks?${params}`);
       return await response.json();
     },
   });

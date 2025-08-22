@@ -24,11 +24,11 @@ export default function AddProductModal({ onClose, defaultType = "ad" }: AddProd
 
   const addProductMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const response = await apiRequest("POST", "/api/products", data);
+      const response = await apiRequest("POST", "/products", data);
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/products"] });
       toast({
         title: "제품 추가 완료",
         description: "새 제품이 추가되었습니다.",
