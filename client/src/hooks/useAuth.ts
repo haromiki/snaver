@@ -31,8 +31,11 @@ export function useAuth() {
       localStorage.setItem("token", data.token);
       queryClient.setQueryData(["/api/auth/me"], data.user);
 
-      // Navigate to dashboard after successful authentication
-      navigate("/dashboard");
+      // DO NOT MODIFY BELOW: Navigate only in server environment
+      if ((import.meta as any).env.VITE_IS_SERVER_DEPLOY) {
+        navigate("/dashboard");
+      }
+      // DO NOT MODIFY ABOVE
     },
   });
 
@@ -45,8 +48,11 @@ export function useAuth() {
       localStorage.setItem("token", data.token);
       queryClient.setQueryData(["/api/auth/me"], data.user);
 
-      // Navigate to dashboard after successful authentication
-      navigate("/dashboard");
+      // DO NOT MODIFY BELOW: Navigate only in server environment
+      if ((import.meta as any).env.VITE_IS_SERVER_DEPLOY) {
+        navigate("/dashboard");
+      }
+      // DO NOT MODIFY ABOVE
     },
   });
 
