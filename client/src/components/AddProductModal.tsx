@@ -45,9 +45,35 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
     },
   });
 
+  const editProductMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      const response = await apiRequest("PATCH", `/products/${product.id}`, data);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/products"] });
+      toast({
+        title: "제품 수정 완료",
+        description: "제품 정보가 업데이트되었습니다.",
+      });
+      onClose();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "제품 수정 실패",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    addProductMutation.mutate(formData);
+    if (isEditing) {
+      editProductMutation.mutate(formData);
+    } else {
+      addProductMutation.mutate(formData);
+    }
   };
 
   return (
@@ -119,10 +145,10 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
             <Button 
               type="submit" 
               className="flex-1" 
-              disabled={addProductMutation.isPending}
+              disabled={isEditing ? editProductMutation.isPending : addProductMutation.isPending}
               data-testid="button-submit-product"
             >
-              {isEditing ? (addProductMutation.isPending ? "수정 중..." : "수정") : (addProductMutation.isPending ? "추가 중..." : "추가")}
+              {isEditing ? (editProductMutation.isPending ? "수정 중..." : "수정") : (addProductMutation.isPending ? "추가 중..." : "추가")}
             </Button>
             <Button 
               type="button" 

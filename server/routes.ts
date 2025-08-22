@@ -157,9 +157,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/products/:id", authenticateToken, async (req, res) => {
     try {
       const productId = parseInt(req.params.id);
-      const { active } = req.body;
       
-      const updatedProduct = await storage.updateProduct(productId, req.userId!, { active });
+      // Extract all possible update fields
+      const { active, productNo, keyword, type, intervalMin } = req.body;
+      const updates: any = {};
+      
+      // Only include fields that are provided
+      if (active !== undefined) updates.active = active;
+      if (productNo !== undefined) updates.productNo = productNo;
+      if (keyword !== undefined) updates.keyword = keyword;
+      if (type !== undefined) updates.type = type;
+      if (intervalMin !== undefined) updates.intervalMin = intervalMin;
+      
+      const updatedProduct = await storage.updateProduct(productId, req.userId!, updates);
       res.json(updatedProduct);
     } catch (error: any) {
       console.error("제품 업데이트 오류:", error);
