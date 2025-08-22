@@ -14,7 +14,7 @@ export function useAuth() {
   // DO NOT MODIFY ABOVE
 
   const { data: user, isLoading } = useQuery({
-    queryKey: ["/api/auth/me"],
+    queryKey: ["/auth/me"],
     queryFn: getQueryFn({ on401: "returnNull" }),
     retry: false,
     retryOnMount: false,
@@ -24,12 +24,12 @@ export function useAuth() {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: { usernameOrEmail: string; password: string }) => {
-      const response = await apiRequest("POST", "/api/auth/login", credentials);
+      const response = await apiRequest("POST", "/auth/login", credentials);
       return await response.json();
     },
     onSuccess: (data) => {
       localStorage.setItem("token", data.token);
-      queryClient.setQueryData(["/api/auth/me"], data.user);
+      queryClient.setQueryData(["/auth/me"], data.user);
 
       // DO NOT MODIFY BELOW: Navigate only in server environment
       if ((import.meta as any).env.VITE_IS_SERVER_DEPLOY) {
@@ -41,12 +41,12 @@ export function useAuth() {
 
   const registerMutation = useMutation({
     mutationFn: async (userData: { username: string; email: string; password: string }) => {
-      const response = await apiRequest("POST", "/api/auth/register", userData);
+      const response = await apiRequest("POST", "/auth/register", userData);
       return await response.json();
     },
     onSuccess: (data) => {
       localStorage.setItem("token", data.token);
-      queryClient.setQueryData(["/api/auth/me"], data.user);
+      queryClient.setQueryData(["/auth/me"], data.user);
 
       // DO NOT MODIFY BELOW: Navigate only in server environment
       if ((import.meta as any).env.VITE_IS_SERVER_DEPLOY) {
@@ -58,7 +58,7 @@ export function useAuth() {
 
   const logout = () => {
     localStorage.removeItem("token");
-    queryClient.setQueryData(["/api/auth/me"], null);
+    queryClient.setQueryData(["/auth/me"], null);
     queryClient.clear();
   };
 
