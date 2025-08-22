@@ -25,20 +25,27 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
 
   const addProductMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const response = await apiRequest("POST", "/products", data);
-      return await response.json();
+      if (isEditing) {
+        // 수정 모드: PATCH 요청으로 기존 제품 업데이트
+        const response = await apiRequest("PATCH", `/products/${product.id}`, data);
+        return await response.json();
+      } else {
+        // 추가 모드: POST 요청으로 새 제품 생성
+        const response = await apiRequest("POST", "/products", data);
+        return await response.json();
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/products"] });
       toast({
-        title: "제품 추가 완료",
-        description: "새 제품이 추가되었습니다.",
+        title: isEditing ? "제품 수정 완료" : "제품 추가 완료",
+        description: isEditing ? "제품 정보가 업데이트되었습니다." : "새 제품이 추가되었습니다.",
       });
       onClose();
     },
     onError: (error: any) => {
       toast({
-        title: "제품 추가 실패",
+        title: isEditing ? "제품 수정 실패" : "제품 추가 실패",
         description: error.message,
         variant: "destructive",
       });
