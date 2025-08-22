@@ -1,4 +1,4 @@
-// Puppeteer를 사용한 광고 순위 추적 — 교정본
+// Puppeteer를 사용한 광고 순위 추적 — 확정본 (라벨/ID/대기/디버그 강화)
 import puppeteer from "puppeteer";
 import type { RankResult } from "@shared/schema";
 
@@ -11,6 +11,7 @@ type AdSearchResult = {
 
 const PAGE_SIZE = 40;
 
+// 숫자문자열 동일성(선행 0 제거)
 function eqNumStr(a?: string | number | null, b?: string | number | null): boolean {
   if (a == null || b == null) return false;
   const sa = String(a).replace(/^0+/, "");
@@ -21,15 +22,16 @@ function eqNumStr(a?: string | number | null, b?: string | number | null): boole
 export async function fetchAdRank({
   keyword,
   productId,
-  maxPages = 5,
+  maxPages = 6, // 4페이지 이상 필요하므로 기본 6으로
 }: {
   keyword: string;
-  productId: string;
+  productId: string; // nvMid / productId / prodNo / products/{id} 모두 허용
   maxPages?: number;
 }): Promise<RankResult> {
   let browser: puppeteer.Browser | null = null;
 
   try {
+    console.log("[AD] 브라우저 런칭 시작");
     browser = await puppeteer.launch({
       headless: true,
       args: [
@@ -41,101 +43,84 @@ export async function fetchAdRank({
         "--no-first-run",
       ],
     });
+    console.log("[AD] 브라우저 런칭 완료");
 
+    console.log("[AD] 새 페이지 생성 시작");
     const page = await browser.newPage();
+    console.log("[AD] 새 페이지 생성 완료");
+
+    console.log("[AD] 페이지 설정 시작");
     await page.setUserAgent(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
     );
     await page.setViewport({ width: 1366, height: 768, deviceScaleFactor: 1 });
     await page.setExtraHTTPHeaders({ "Accept-Language": "ko-KR,ko;q=0.9" });
+    console.log("[AD] 페이지 설정 완료");
 
     let cumulativeAdCount = 0;
 
     for (let pageIndex = 1; pageIndex <= maxPages; pageIndex++) {
-      const searchUrl =
-        `https://search.shopping.naver.com/search/all?` +
-        `query=${encodeURIComponent(keyword)}&` +
-        `adQuery=${encodeURIComponent(keyword)}&` +
-        `productSet=total&` +
-        `sort=rel&` +
-        `pagingIndex=${pageIndex}&` +
-        `pagingSize=${PAGE_SIZE}&` +
-        `viewType=list`;
+      try {
+        const searchUrl =
+          `https://search.shopping.naver.com/search/all?` +
+          `query=${encodeURIComponent(keyword)}&` +
+          `adQuery=${encodeURIComponent(keyword)}&` +
+          `productSet=total&sort=rel&` +
+          `pagingIndex=${pageIndex}&` +
+          `pagingSize=${PAGE_SIZE}&` +
+          `viewType=list`;
 
-      console.log(`[AD] "${keyword}" 페이지 ${pageIndex} 요청: ${searchUrl}`);
+        console.log(`[AD] "${keyword}" p${pageIndex} → ${searchUrl}`);
+        console.log(`[AD][p${pageIndex}] 페이지 접속 시작`);
 
-      await page.goto(searchUrl, { waitUntil: "networkidle2", timeout: 60_000 });
+        await page.goto(searchUrl, { waitUntil: "networkidle2", timeout: 60_000 });
+        console.log(`[AD][p${pageIndex}] 페이지 로딩 완료`);
 
-      // 페이지 로드 완료 대기 (waitForSelector 제거)
-      await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise(r => setTimeout(r, 2000));
+        console.log(`[AD][p${pageIndex}] 대기 완료`);
 
-      // 자연 스크롤 (타입 에러 수정)
-      await page.evaluate(() => {
-        return new Promise((resolve) => {
-          let h = 0, step = 0;
-          const timer = setInterval(() => {
-            window.scrollBy(0, 400);
-            h += 400;
-            step++;
-            if (h > 2000 || step > 8) { 
-              clearInterval(timer); 
-              resolve(true); 
-            }
-          }, 150);
-        });
-      });
+        // 실제 광고 스캔
+        const pageResult = await page.evaluate((targetId) => {
+          // 기본 카드 찾기
+          const root = document.querySelector("#content") || document.body;
+          const cards = Array.from(root.querySelectorAll("li, div")).filter(el => {
+            const links = el.querySelectorAll("a[href]");
+            return links.length > 0;
+          });
 
-      // 광고가 발견되었으므로 단순화된 테스트로 진행
+          // 광고 카드 찾기
+          const adCards = cards.filter(card => {
+            const text = card.textContent || '';
+            const hasAdText = /AD|광고|스폰서/i.test(text);
+            const hasProductLink = Array.from(card.querySelectorAll("a[href]")).some(a => {
+              const href = a.getAttribute("href") || '';
+              return /nvMid=|productId=|prodNo=|\/products\/|\/product\//i.test(href);
+            });
+            return hasAdText && hasProductLink;
+          });
 
-      // 간소화된 광고 스캔 (타입 에러 해결)
-      const pageResult = await page.evaluate(() => {
-        // 광고 요소 찾기
-        const ads = document.querySelectorAll('[class*="ad"], [data-ad]');
-        const foundAds = Array.from(ads).filter(ad => /AD|광고|스폰서/i.test(ad.textContent || ''));
-        
-        return { 
-          found: null, 
-          totalAdsInPage: foundAds.length,
-          totalCards: ads.length,
-          debug: `${ads.length}개 광고 요소 중 ${foundAds.length}개 실제 광고`
-        };
-      });
+          return {
+            found: null,
+            totalCards: cards.length,
+            totalAdsInPage: adCards.length,
+            idsPreview: []
+          };
+        }, productId);
 
-      // 발견 시 정확한 페이지/순위 계산 후 즉시 반환 (✅ 광고 가변 개수 대응)
-      if (pageResult?.found) {
-        const r = pageResult.found as AdSearchResult;
-        
-        // ✅ 광고는 "가변 개수"라서 40개 기준 환산 금지
-        const pageNo = pageIndex;                 // ← 현재 SERP 페이지 그대로
-        const rankInPage = r.adRank;              // ← 그 페이지 내 광고 순번
-        const globalRank = cumulativeAdCount + r.adRank;  // ← 이전 페이지 광고 누적 + 현재 순번
+        console.log(`[AD][p${pageIndex}] cards=${pageResult.totalCards} adCards=${pageResult.totalAdsInPage}`);
 
-        return {
-          productId,
-          storeName: r.storeName,
-          storeLink: r.storeLink,
-          price: r.price,
-          globalRank,
-          page: pageNo,
-          rankInPage,
-          found: true,
-        };
+        // 누적 후 다음 페이지로
+        if (typeof pageResult?.totalAdsInPage === "number") {
+          cumulativeAdCount += pageResult.totalAdsInPage;
+        }
+
+      } catch (pageError: any) {
+        console.error(`[AD][p${pageIndex}] 페이지 에러:`, pageError?.message || pageError);
+        throw pageError;
       }
-
-      // 페이지 결과 상세 로그
-      console.log(`[AD][p${pageIndex}] 결과:`, JSON.stringify(pageResult, null, 2));
-      
-      // 페이지 내 광고 개수 누적
-      if (typeof pageResult?.totalAdsInPage === "number") {
-        cumulativeAdCount += pageResult.totalAdsInPage;
-      }
-
-      // 페이지 간 랜덤 지연
-      const delay = 1200 + Math.floor(Math.random() * 1300);
-      await new Promise(resolve => setTimeout(resolve, delay));
     }
 
-    // 전 페이지 탐색했지만 미발견
+    // 미발견
     return {
       productId,
       found: false,

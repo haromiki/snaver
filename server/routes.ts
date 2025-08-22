@@ -381,13 +381,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 광고 순위 조회 - Puppeteer 사용 (테스트용 인증 제거)
   app.post("/api/rank/ad", async (req, res) => {
     try {
+      console.log("[API] /api/rank/ad 호출됨");
       const validatedData = rankQuerySchema.parse(req.body);
+      console.log("[API] 요청 데이터 검증 완료:", validatedData);
 
+      console.log("[API] fetchAdRank 호출 시작");
       const result = await fetchAdRank({
         productId: validatedData.productId,
         keyword: validatedData.keyword,
         maxPages: validatedData.maxPages || 5,
       });
+      console.log("[API] fetchAdRank 호출 완료:", result);
 
       res.json(result);
     } catch (error: any) {
