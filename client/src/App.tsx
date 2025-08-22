@@ -18,12 +18,10 @@ function RouterWithRoutes() {
   const { user, isLoading } = useAuth();
   const [location] = useLocation();
 
-  // 🧭 DO NOT DELETE BELOW: Debug logging for auth state
   console.log("🧭 [디버그] 현재 location:", location);
   console.log("🧭 [디버그] basePath:", basePath);
   console.log("🧭 [디버그] user:", user);
   console.log("🧭 [디버그] isLoading:", isLoading);
-  // 🧭 DO NOT DELETE ABOVE
 
   if (isLoading) {
     console.log("🧭 [디버그] Showing loading screen");
