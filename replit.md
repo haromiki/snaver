@@ -89,8 +89,11 @@ POST /api/rank/ad
 # User Preferences
 
 **사용자는 한국인이며, 모든 설명은 반드시 한국어로 제공해야 합니다.**
-Preferred communication style: Simple, everyday language in Korean.
-Preferred language: Korean (한국어) - 모든 커뮤니케이션은 한국어로 진행
+**CRITICAL: 사용자 요구사항 - 한국어 전용 설명 (2025-08-22 재확인)**
+- Preferred communication style: Simple, everyday language in Korean.  
+- Preferred language: Korean (한국어) - 모든 커뮤니케이션은 한국어로 진행
+- 모든 응답, 설명, 안내사항은 반드시 한국어로 작성
+- 기술적 용어도 한국어로 번역하여 설명
 
 ## Critical Code Preservation Rules
 **NEVER MODIFY** the following server-only code sections:

@@ -262,7 +262,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // 새로운 랭킹 시스템 API
   // 일반(오가닉) 순위 조회 - Naver OpenAPI 사용
-  app.post("/api/rank/organic", authenticateToken, async (req, res) => {
+  app.post("/api/rank/organic", async (req, res) => {
     try {
       const validatedData = rankQuerySchema.parse(req.body);
       
