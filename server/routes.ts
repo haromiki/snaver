@@ -7,6 +7,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { authenticateToken } from "./middleware/auth.ts";
 import { fetchOrganicRank } from "./crawler/naverOrganic.js";
+import { fetchOrganicRankPuppeteer } from "./crawler/naverOrganicPuppeteer.js";
 import { fetchAdRank } from "./crawler/adCrawler.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
@@ -277,7 +278,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { start = 1 } = req.body;
-      const url = `https://openapi.naver.com/v1/search/shop.json?query=${encodeURIComponent(keyword)}&display=50&start=${start}`;
+      // 네이버 쇼핑 검색 파라미터 최적화
+      const url = `https://openapi.naver.com/v1/search/shop.json?query=${encodeURIComponent(keyword)}&display=100&start=${start}&sort=sim`;
       
       console.log("🌐 요청 URL:", url);
       
@@ -306,18 +308,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstItemKeys: data.items?.[0] ? Object.keys(data.items[0]) : []
       });
       
+      // 특정 제품 검색 및 전체 응답 분석
+      const targetProductId = "9317647822";
+      const matchingItems = data.items?.filter((item: any) => 
+        String(item.productId).includes(targetProductId) || 
+        targetProductId.includes(String(item.productId))
+      ) || [];
+      
       // 응답 구조와 첫 10개 아이템 반환
       return res.json({
         keyword,
+        searchingFor: targetProductId,
         totalCount: data.total || 0,
         itemsLength: data.items?.length || 0,
+        startPosition: start,
+        matchingItems: matchingItems.length > 0 ? matchingItems : "미발견",
         firstItems: data.items?.slice(0, 10).map((item: any) => ({
           productId: item.productId,
           mallName: item.mallName,
           title: item.title,
           lprice: item.lprice,
+          link: item.link,
+          productType: item.productType,
           allKeys: Object.keys(item)
         })) || [],
+        // 모든 productId 목록도 포함
+        allProductIds: data.items?.map((item: any) => item.productId) || [],
         success: true
       });
       
@@ -340,11 +356,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const result = await fetchOrganicRank({
+      // 실제 네이버 쇼핑과 동일한 결과를 위해 Puppeteer 사용
+      const result = await fetchOrganicRankPuppeteer({
         productId: validatedData.productId,
         keyword: validatedData.keyword,
-        clientId,
-        clientSecret,
+        maxPages: 5, // 5페이지 = 200위까지
       });
 
       res.json(result);

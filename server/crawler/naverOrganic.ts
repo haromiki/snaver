@@ -25,10 +25,25 @@ export async function fetchOrganicRank({
   clientId: string;
   clientSecret: string;
 }): Promise<RankResult> {
+  // ⚠️ 중요: OpenAPI는 실제 네이버 쇼핑 검색 결과와 다를 수 있습니다
+  // 스마트스토어 제품의 경우 실제 웹사이트와 API 결과가 일치하지 않을 가능성이 높습니다
+  
+  return {
+    productId,
+    found: false,
+    notes: [
+      "OpenAPI 제한: 실제 네이버 쇼핑 검색과 결과 불일치",
+      "스마트스토어 제품은 Puppeteer 크롤링 필요",
+      "실제 웹사이트에서는 노출될 수 있으나 API에서 미노출"
+    ],
+  };
+  
+  /* 원본 OpenAPI 방식 - 실제 검색과 결과 불일치
+  try {
   try {
     // OpenAPI 2회 호출 (1-100, 101-200)
     const callApi = async (start: number): Promise<NaverShopResponse> => {
-      const url = `${OPENAPI_BASE_URL}?query=${encodeURIComponent(keyword)}&display=100&start=${start}`;
+      const url = `${OPENAPI_BASE_URL}?query=${encodeURIComponent(keyword)}&display=100&start=${start}&sort=sim`;
       
       const response = await fetch(url, {
         headers: {
@@ -54,25 +69,6 @@ export async function fetchOrganicRank({
 
     // 모든 아이템 합치기 (최대 200개)
     const allItems = [...(batch1.items ?? []), ...(batch2.items ?? [])];
-    
-    // 🔍 디버깅: API 응답 구조 확인 (파일로 저장)
-    const debugInfo = {
-      keyword,
-      totalItems: allItems.length,
-      searchingFor: productId,
-      first5Items: allItems.slice(0, 5).map(item => ({
-        productId: item.productId,
-        mallName: item.mallName,
-        keys: Object.keys(item)
-      })),
-      matchingTest: allItems.slice(0, 50).map((item, index) => ({
-        rank: index + 1,
-        productId: item.productId,
-        matches: String(item.productId) === String(productId)
-      }))
-    };
-    
-    console.log("🔍 DEBUG INFO:", JSON.stringify(debugInfo, null, 2));
 
     // 타겟 상품 찾기
     const targetIndex = allItems.findIndex(
@@ -112,4 +108,5 @@ export async function fetchOrganicRank({
       notes: [`API 오류: ${error.message}`],
     };
   }
+  */
 }
