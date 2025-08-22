@@ -66,6 +66,38 @@ const BASE_API_URL = import.meta.env.VITE_API_URL || "/api";
 // 👆️ DO NOT MODIFY ABOVE
 ```
 
+### vite.config.ts (vite.config.ts)
+8. **Lines 12-38**: Server-specific Vite configuration for Replit + server environment
+```typescript
+// 👇️ DO NOT MODIFY BELOW: 리플릿 + 서버에서 공통 사용하는 alias 및 기본 경로
+export default defineConfig({
+  plugins: [
+    react(),
+    runtimeErrorOverlay(),
+    ...replPlugins,
+  ],
+  resolve: {
+    alias: {
+      "@": path.resolve(import.meta.dirname, "client", "src"),
+      "@shared": path.resolve(import.meta.dirname, "shared"),
+      "@assets": path.resolve(import.meta.dirname, "attached_assets"),
+    },
+  },
+  root: path.resolve(import.meta.dirname, "client"),
+  build: {
+    outDir: path.resolve(import.meta.dirname, "dist/public"),
+    emptyOutDir: true,
+  },
+  server: {
+    fs: {
+      strict: true,
+      deny: ["**/.*"],
+    },
+  },
+});
+// 👆️ DO NOT MODIFY ABOVE
+```
+
 These sections contain server-specific routing logic that must remain unchanged.
 
 # System Architecture
