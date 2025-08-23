@@ -59,8 +59,6 @@ export class DatabaseStorage implements IStorage {
 
   // Product operations
   async getProducts(userId: number, filters?: { type?: string; active?: boolean }): Promise<Product[]> {
-    let query = db.select().from(products).where(eq(products.userId, userId));
-
     const conditions = [eq(products.userId, userId)];
 
     if (filters?.type) {
@@ -71,9 +69,23 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(products.active, filters.active));
     }
 
-    return await db.select().from(products)
+    // 제품 목록 가져오기
+    const productList = await db.select().from(products)
       .where(and(...conditions))
       .orderBy(asc(products.sortOrder), desc(products.createdAt));
+
+    // 각 제품별로 최신 트랙 정보 가져오기
+    const productsWithLatestTrack = await Promise.all(
+      productList.map(async (product) => {
+        const latestTrack = await this.getLatestTrack(product.id);
+        return {
+          ...product,
+          latestTrack
+        };
+      })
+    );
+
+    return productsWithLatestTrack;
   }
 
   async getProduct(id: number, userId: number): Promise<Product | undefined> {

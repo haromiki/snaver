@@ -94,29 +94,30 @@ export async function fetchOrganicRank({
     const allItems: NaverShopItem[] = [...(batch1.items ?? []), ...(batch2.items ?? [])];
     console.log(`[organic] OpenAPI 수집 완료: ${allItems.length}개`);
 
-    // 1차: OpenAPI productId 직접 매칭
-    let idx = allItems.findIndex((it) => eqNumStr(it.productId, inputId));
-    if (idx !== -1) {
-      const hit = allItems[idx];
-      const globalRank = idx + 1;
-      const pageNumber = Math.ceil(globalRank / 40);
-      const rankInPage = ((globalRank - 1) % 40) + 1;
-      console.log(`[organic] 1차 매칭 성공: globalRank=${globalRank}, page=${pageNumber}, rankInPage=${rankInPage}`);
-      return {
-        productId: hit.productId,
-        storeName: hit.mallName,
-        storeLink: hit.link,
-        price: parseInt(hit.lprice || "0", 10) || 0,
-        globalRank,
-        page: pageNumber,
-        rankInPage,
-        found: true,
-      };
-    }
+    // 1차: OpenAPI productId 직접 매칭 (주석처리 - 사용자 요청)
+    // let idx = allItems.findIndex((it) => eqNumStr(it.productId, inputId));
+    // if (idx !== -1) {
+    //   const hit = allItems[idx];
+    //   const globalRank = idx + 1;
+    //   const pageNumber = Math.ceil(globalRank / 40);
+    //   const rankInPage = ((globalRank - 1) % 40) + 1;
+    //   console.log(`[organic] 1차 매칭 성공: globalRank=${globalRank}, page=${pageNumber}, rankInPage=${rankInPage}`);
+    //   return {
+    //     productId: hit.productId,
+    //     storeName: hit.mallName,
+    //     storeLink: hit.link,
+    //     price: parseInt(hit.lprice || "0", 10) || 0,
+    //     globalRank,
+    //     page: pageNumber,
+    //     rankInPage,
+    //     found: true,
+    //   };
+    // }
 
-    // 2차: 최종 URL 추출 기반 매칭 (prodNo/nvMid/productId 후보)
-    console.log(`[organic] 1차 매칭 실패 → 최종 URL 추출 기반 2차 매칭 시도`);
-    const MAX_PARALLEL = 8;
+    // 2차: 최종 URL 추출 기반 매칭 (prodNo/nvMid/productId 후보) - 최적화됨
+    console.log(`[organic] 2차 매칭 시도 (1차 건너뜀)`);
+    const MAX_PARALLEL = 16; // 병렬 처리 수 증가
+    let idx = -1; // idx 변수 선언
     for (let base = 0; base < allItems.length; base += MAX_PARALLEL) {
       const slice = allItems.slice(base, base + MAX_PARALLEL);
 
@@ -125,7 +126,10 @@ export async function fetchOrganicRank({
         slice.map(async (it) => {
           try {
             // openapi 링크는 최종 상품 URL로 리다이렉트됨
-            const resp = await fetch(it.link, { redirect: "follow" });
+            const resp = await fetch(it.link, { 
+              redirect: "follow", 
+              signal: AbortSignal.timeout(5000) // 5초 타임아웃
+            });
             const finalUrl = resp.url || it.link;
 
             const ids = extractIdsFromUrl(finalUrl);
