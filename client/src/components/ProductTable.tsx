@@ -47,32 +47,30 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
       return await response.json();
     },
     onSuccess: (data, productId) => {
-      // VPS 실서버: 실제 완료 시에만 100%로 설정
+      // Complete progress immediately
       setRefreshingProducts(prev => {
         const newMap = new Map(prev);
         newMap.set(productId, 100);
         return newMap;
       });
       
-      // 즉시 데이터 갱신
-      const currentFilters = getFilters();
-      queryClient.invalidateQueries({ queryKey: ["/products", currentFilters] });
-      queryClient.refetchQueries({ queryKey: ["/products", currentFilters] });
-      
-      // VPS 환경: progress 제거 전에 충분한 시간 대기
+      // Remove progress after a short delay
       setTimeout(() => {
         setRefreshingProducts(prev => {
           const newMap = new Map(prev);
           newMap.delete(productId);
           return newMap;
         });
-        
-        // 데이터 갱신 완료 후 토스트 표시 (VPS 안정성)
-        toast({
-          title: "수동 검색 완료",
-          description: "제품 순위가 업데이트되었습니다.",
-        });
-      }, 2000); // VPS 환경에 맞게 더 긴 대기
+      }, 1000);
+      
+      // 현재 필터에 해당하는 쿼리만 정확히 무효화
+      const currentFilters = getFilters();
+      queryClient.invalidateQueries({ queryKey: ["/products", currentFilters] });
+      queryClient.refetchQueries({ queryKey: ["/products", currentFilters] });
+      toast({
+        title: "수동 검색 완료",
+        description: "제품 순위가 업데이트되었습니다.",
+      });
     },
     onError: (error: any, productId) => {
       // Remove progress on error
@@ -155,7 +153,7 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
     },
   });
 
-  // Progress simulation for visual feedback - VPS 실서버 환경 최적화
+  // Progress simulation for visual feedback
   const startProgressSimulation = (productId: number) => {
     setRefreshingProducts(prev => {
       const newMap = new Map(prev);
@@ -167,24 +165,17 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
       setRefreshingProducts(prev => {
         const newMap = new Map(prev);
         const current = newMap.get(productId) || 0;
-        // VPS 환경: 85%까지만 자동 증가, 나머지는 실제 응답 대기
-        if (current < 85) {
-          newMap.set(productId, current + Math.random() * 8);
+        if (current < 90) {
+          newMap.set(productId, current + Math.random() * 10);
         }
         return newMap;
       });
-    }, 800); // VPS 환경에 맞게 더 느리게
+    }, 500);
 
-    // VPS 실서버: 더 긴 타임아웃 (30초) 후 강제 정리
+    // Clear interval after max time (15 seconds)
     setTimeout(() => {
       clearInterval(interval);
-      // 타임아웃 시 progress 완전 제거 (실서버 안정성)
-      setRefreshingProducts(prev => {
-        const newMap = new Map(prev);
-        newMap.delete(productId);
-        return newMap;
-      });
-    }, 30000);
+    }, 15000);
   };
 
   // Initialize sortable functionality for drag & drop
@@ -321,128 +312,157 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
           등록된 제품이 없습니다.
         </div>
       ) : (
-        <div className="space-y-4" id="sortable-products">
-          {products.map((product: any) => {
-            const refreshProgress = refreshingProducts.get(product.id);
-            const isRefreshing = refreshProgress !== undefined;
-            
-            return (
-              <div key={product.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
-                <div className="flex items-center justify-between">
-                  {/* 왼쪽: 제품 정보 */}
-                  <div className="flex items-center gap-4">
-                    <div className="drag-handle cursor-move text-gray-400 hover:text-gray-600">
-                      ≡
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
-                        product.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {product.active ? '추적' : '대기'}
-                      </span>
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{product.productName}</h3>
-                        <div className="text-sm text-gray-600">
-                          키워드: {product.keyword} | 제품번호: {product.productNo}
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse border border-gray-300">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="border border-gray-300 px-4 py-2 text-left">순위</th>
+                <th className="border border-gray-300 px-4 py-2 text-left">제품 정보</th>
+                <th className="border border-gray-300 px-4 py-2 text-left">추적 주기</th>
+                <th className="border border-gray-300 px-4 py-2 text-left">진행상태</th>
+                <th className="border border-gray-300 px-4 py-2 text-left">순위</th>
+                <th className="border border-gray-300 px-4 py-2 text-left">제품 가격</th>
+                <th className="border border-gray-300 px-4 py-2 text-left">현재 순위</th>
+                <th className="border border-gray-300 px-4 py-2 text-left">순위 변동</th>
+                <th className="border border-gray-300 px-4 py-2 text-left">마지막 확인</th>
+                <th className="border border-gray-300 px-4 py-2 text-left">작업</th>
+              </tr>
+            </thead>
+            <tbody id="sortable-products">
+              {products.map((product: any) => {
+                const refreshProgress = refreshingProducts.get(product.id);
+                const isRefreshing = refreshProgress !== undefined;
+                
+                return (
+                  <tr key={product.id} className="hover:bg-gray-50">
+                    <td className="border border-gray-300 px-4 py-2">
+                      <div className="flex items-center gap-2">
+                        <div className="drag-handle cursor-move text-gray-400 hover:text-gray-600">
+                          ≡
                         </div>
-                        <div className="text-xs text-gray-500">
-                          추적 주기: {product.intervalMin}분
-                        </div>
+                        <div className={`w-3 h-3 rounded-full ${product.active ? 'bg-green-500' : 'bg-gray-300'}`}></div>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* 가운데: 순위 및 가격 정보 */}
-                  <div className="text-center">
-                    {isRefreshing ? (
-                      <div className="space-y-2">
-                        <div className="w-32 bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${refreshProgress}%` }}
-                          ></div>
-                        </div>
-                        <div className="text-xs text-blue-600 font-medium">
-                          검색 중 {Math.round(refreshProgress)}%
-                        </div>
-                      </div>
-                    ) : (
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2">
                       <div className="space-y-1">
-                        {product.latestTrack?.globalRank ? (
-                          <>
-                            <div className="text-2xl font-bold text-blue-600">
-                              {product.latestTrack.globalRank}위
-                            </div>
-                            {product.latestTrack?.priceKrw && (
-                              <div className="text-lg font-semibold text-green-600">
-                                ₩{formatPrice(product.latestTrack.priceKrw)}
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          <div className="text-lg font-medium text-gray-400">미발견</div>
-                        )}
-                        {product.latestTrack?.checkedAt && (
-                          <div className="text-xs text-gray-500">
-                            {formatDateTime(product.latestTrack.checkedAt)}
-                          </div>
-                        )}
+                        <div className="font-medium">{product.productName}</div>
+                        <div className="text-sm text-gray-600">
+                          키워드: {product.keyword}<br />
+                          제품번호: {product.productNo}
+                        </div>
                       </div>
-                    )}
-                  </div>
-
-                  {/* 오른쪽: 액션 버튼들 */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleRefresh(product.id)}
-                      disabled={isRefreshing}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-50 transition-colors"
-                      title="수동 검색"
-                      data-testid={`button-refresh-${product.id}`}
-                    >
-                      🔄
-                    </button>
-                    <button
-                      onClick={() => handleStatistics(product.id)}
-                      className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                      title="통계"
-                      data-testid={`button-statistics-${product.id}`}
-                    >
-                      📊
-                    </button>
-                    <button
-                      onClick={() => handleEdit(product)}
-                      className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
-                      title="수정"
-                      data-testid={`button-edit-${product.id}`}
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      onClick={() => handleToggleActive(product.id, product.active)}
-                      className={`p-2 rounded-lg transition-colors ${
-                        product.active 
-                          ? 'text-red-600 hover:bg-red-50' 
-                          : 'text-green-600 hover:bg-green-50'
-                      }`}
-                      title={product.active ? "추적 중지" : "추적 시작"}
-                      data-testid={`button-toggle-${product.id}`}
-                    >
-                      {product.active ? '⏸️' : '▶️'}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(product.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="삭제"
-                      data-testid={`button-delete-${product.id}`}
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2">
+                      {product.intervalMin}분
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2">
+                      {isRefreshing ? (
+                        <div className="space-y-1">
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${refreshProgress}%` }}
+                            ></div>
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            검색 중... {Math.round(refreshProgress)}%
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-500">-</span>
+                      )}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2">
+                      {product.latestTrack?.globalRank ? (
+                        <span className="font-medium">
+                          {product.latestTrack.globalRank}위
+                        </span>
+                      ) : (
+                        <span className="text-gray-500">-</span>
+                      )}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2">
+                      {product.latestTrack?.priceKrw ? (
+                        <span>{formatPrice(product.latestTrack.priceKrw)}원</span>
+                      ) : (
+                        <span className="text-gray-500">-</span>
+                      )}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2">
+                      {product.latestTrack?.globalRank ? (
+                        <span className="font-medium">
+                          {product.latestTrack.globalRank}위
+                        </span>
+                      ) : (
+                        <span className="text-gray-500">미발견</span>
+                      )}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2">
+                      <span className="text-gray-500">-</span>
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2">
+                      {product.latestTrack?.checkedAt ? (
+                        <span className="text-sm">
+                          {formatDateTime(product.latestTrack.checkedAt)}
+                        </span>
+                      ) : (
+                        <span className="text-gray-500">-</span>
+                      )}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2">
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handleRefresh(product.id)}
+                          disabled={isRefreshing}
+                          className="p-1 text-blue-600 hover:bg-blue-50 rounded disabled:opacity-50"
+                          title="수동 검색"
+                          data-testid={`button-refresh-${product.id}`}
+                        >
+                          🔄
+                        </button>
+                        <button
+                          onClick={() => handleStatistics(product.id)}
+                          className="p-1 text-green-600 hover:bg-green-50 rounded"
+                          title="통계"
+                          data-testid={`button-statistics-${product.id}`}
+                        >
+                          📊
+                        </button>
+                        <button
+                          onClick={() => handleEdit(product)}
+                          className="p-1 text-gray-600 hover:bg-gray-50 rounded"
+                          title="수정"
+                          data-testid={`button-edit-${product.id}`}
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => handleToggleActive(product.id, product.active)}
+                          className={`p-1 rounded ${
+                            product.active 
+                              ? 'text-red-600 hover:bg-red-50' 
+                              : 'text-green-600 hover:bg-green-50'
+                          }`}
+                          title={product.active ? "추적 중지" : "추적 시작"}
+                          data-testid={`button-toggle-${product.id}`}
+                        >
+                          {product.active ? '⏸️' : '▶️'}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(product.id)}
+                          className="p-1 text-red-600 hover:bg-red-50 rounded"
+                          title="삭제"
+                          data-testid={`button-delete-${product.id}`}
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
