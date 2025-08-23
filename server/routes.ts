@@ -136,9 +136,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/products", authenticateToken, async (req, res) => {
     try {
-      console.log("받은 제품 데이터:", req.body);
       const validatedData = insertProductSchema.parse(req.body);
-      console.log("검증된 데이터:", validatedData);
       const product = await storage.createProduct({
         ...validatedData,
         userId: req.userId!,
@@ -208,8 +206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // 검색 결과 로그 출력
-      console.log("🔍 검색 결과:", JSON.stringify(rankResult, null, 2));
+      // 검색 결과 (프로덕션에서는 로그 제거)
 
       // 트랙 데이터 저장 - found 여부와 관계없이 항상 저장
       await storage.createTrack({
