@@ -137,8 +137,8 @@ export async function fetchAdRank({
         `pagingSize=${PAGE_SIZE}&` +
         `viewType=list`;
 
-      console.log(`[AD] "${keyword}" p${pageIndex} → ${url}`);
-      console.log(`[AD][p${pageIndex}] 페이지 접속 시작`);
+      console.log(`[AD] 📄 "${keyword}" 페이지 ${pageIndex}/${maxPages} 시작`);
+      console.log(`[AD][p${pageIndex}] 🌐 네이버 검색 페이지 접속 중...`);
       
       // PDF 개선: networkidle2로 네트워크 안정까지 대기
       await page.goto(url, { waitUntil: "networkidle2", timeout: 90_000 });
@@ -186,6 +186,7 @@ export async function fetchAdRank({
       console.log(`[AD][p${pageIndex}] 동적 콘텐츠 로드 및 사용자 시뮬레이션 완료`);
 
       // 실제 광고 스캔 로직 추가
+      console.log(`[AD][p${pageIndex}] 🔍 광고 제품 스캔 시작 (대상: ${productId})`);
       const pageResult = await page.evaluate((targetId: string) => {
         try {
           // 기본 카드 찾기
@@ -307,10 +308,15 @@ export async function fetchAdRank({
         }
       }, productId);
 
-      console.log(`[AD][p${pageIndex}] cards=${pageResult.totalCards} adCards=${pageResult.totalAdsInPage} anchors=${pageResult.anchorCount}`);
+      console.log(`[AD][p${pageIndex}] 📊 스캔 결과:`, {
+        총카드: pageResult.totalCards,
+        광고카드: pageResult.totalAdsInPage, 
+        링크앵커: pageResult.anchorCount,
+        에러: pageResult.error || "없음"
+      });
       
       if (pageResult.error) {
-        console.log(`[AD][p${pageIndex}] 스캔 에러: ${pageResult.error}`);
+        console.log(`[AD][p${pageIndex}] ❌ 스캔 에러: ${pageResult.error}`);
       }
 
       if (pageResult.found) {
