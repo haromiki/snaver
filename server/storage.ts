@@ -76,7 +76,7 @@ export class DatabaseStorage implements IStorage {
 
     // 각 제품별로 최신 트랙 정보 가져오기
     const productsWithLatestTrack = await Promise.all(
-      productList.map(async (product) => {
+      productList.map(async (product: Product) => {
         const latestTrack = await this.getLatestTrack(product.id);
         return {
           ...product,

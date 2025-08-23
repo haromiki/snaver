@@ -38,20 +38,21 @@ export async function fetchOrganicRankPuppeteer({
     await browserPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
     await browserPage.setViewport({ width: 1920, height: 1080 });
     
-    // 모든 제품 수집
+    // 모든 제품 수집 (조기 종료 지원)
     const allProducts: any[] = [];
+    let found = false;
     
-    for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
+    for (let pageNum = 1; pageNum <= maxPages && !found; pageNum++) {
       console.log(`📄 ${pageNum}페이지 크롤링 중...`);
       
       const url = `${NAVER_SHOPPING_SEARCH_URL}?query=${encodeURIComponent(keyword)}&pagingIndex=${pageNum}`;
       await browserPage.goto(url, { waitUntil: 'networkidle0', timeout: 30000 });
       
-      // 페이지 로딩 대기
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // 페이지 로딩 대기 (속도 최적화)
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // 일반 제품 목록 추출 (광고 제외)
-      const pageProducts = await browserPage.evaluate(() => {
+      const pageProducts = await browserPage.evaluate((targetProductId) => {
         // 일반 제품 카드 선택자 (광고 아닌 것들)
         const productCards = document.querySelectorAll('.product_list_item:not(.ad)');
         const products: any[] = [];
@@ -86,7 +87,8 @@ export async function fetchOrganicRankPuppeteer({
               storeName,
               price,
               title,
-              link: href.startsWith('http') ? href : `https://search.shopping.naver.com${href}`
+              link: href.startsWith('http') ? href : `https://search.shopping.naver.com${href}`,
+              isTarget: String(productId) === String(targetProductId) // 타겟 여부 체크
             });
           } catch (error) {
             console.error('제품 정보 추출 실패:', error);
@@ -94,14 +96,24 @@ export async function fetchOrganicRankPuppeteer({
         });
         
         return products;
-      });
+      }, productId);
       
       allProducts.push(...pageProducts);
       
       console.log(`📄 ${pageNum}페이지: ${pageProducts.length}개 제품 수집`);
       
-      // 페이지간 간격
-      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+      // 타겟 제품이 이 페이지에 있는지 확인
+      const targetInThisPage = pageProducts.find(p => p.isTarget);
+      if (targetInThisPage) {
+        console.log(`🎯 타겟 제품 발견! ${pageNum}페이지에서 조기 종료`);
+        found = true;
+        break;
+      }
+      
+      // 페이지간 간격 (조기 종료가 없을 때만 대기)
+      if (pageNum < maxPages) {
+        await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000)); // 대기 시간 단축
+      }
     }
     
     console.log(`🎯 총 ${allProducts.length}개 제품 수집 완료`);
