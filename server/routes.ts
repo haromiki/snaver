@@ -208,19 +208,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // 트랙 데이터 저장
-      if (rankResult.found) {
-        await storage.createTrack({
-          productId: product.id,
-          isAd: product.type === "ad",
-          page: rankResult.page || null,
-          rankOnPage: rankResult.rankInPage || null,
-          globalRank: rankResult.globalRank || null,
-          priceKrw: rankResult.price || null,
-          mallName: rankResult.storeName || null,
-          productLink: rankResult.storeLink || null,
-        });
-      }
+      // 검색 결과 로그 출력
+      console.log("🔍 검색 결과:", JSON.stringify(rankResult, null, 2));
+
+      // 트랙 데이터 저장 - found 여부와 관계없이 항상 저장
+      await storage.createTrack({
+        productId: product.id,
+        isAd: product.type === "ad",
+        page: rankResult.found ? (rankResult.page || null) : null,
+        rankOnPage: rankResult.found ? (rankResult.rankInPage || null) : null,
+        globalRank: rankResult.found ? (rankResult.globalRank || null) : null,
+        priceKrw: rankResult.found ? (rankResult.price || null) : null,
+        mallName: rankResult.found ? (rankResult.storeName || null) : null,
+        productLink: rankResult.found ? (rankResult.storeLink || null) : null,
+      });
 
       res.json({ 
         success: true, 
