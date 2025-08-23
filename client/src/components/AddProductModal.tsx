@@ -18,7 +18,7 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
     productNo: product?.productNo || "",
     keyword: product?.keyword || "",
     type: product?.type || "ad",
-    intervalMin: product?.intervalMin || 15,
+    intervalMin: product?.intervalMin || 60,  // 기본값 1시간(60분)으로 수정
   });
 
   const { toast } = useToast();
