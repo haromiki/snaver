@@ -11,7 +11,10 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState("all");
 
   return (
-    <div className="flex h-screen bg-white" style={{minHeight: '100vh', width: '100%', display: 'flex', background: 'white'}}>
+    <div className="flex h-screen bg-white dark:bg-gray-900" style={{minHeight: '100vh', width: '100%', display: 'flex', backgroundColor: 'red', color: 'white', padding: '20px'}}>
+      <div style={{position: 'absolute', top: '10px', left: '10px', zIndex: 9999, backgroundColor: 'red', color: 'white', padding: '10px'}}>
+        🔴 DASHBOARD RENDERING TEST
+      </div>
       <Sidebar 
         activeSection={activeSection} 
         onSectionChange={setActiveSection}
@@ -19,17 +22,17 @@ export default function Dashboard() {
       
       <div className="flex-1 flex flex-col overflow-hidden" style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
         {/* Top Bar */}
-        <header className="bg-surface shadow-sm border-b border-gray-200 px-6 py-4" style={{background: '#f8f9fa', padding: '16px 24px', borderBottom: '1px solid #e5e7eb'}}>
+        <header className="bg-gray-50 dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-6 py-4" style={{padding: '16px 24px'}}>
           <div className="flex items-center justify-between" style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
             <div className="flex items-center space-x-6" style={{display: 'flex', alignItems: 'center', gap: '24px'}}>
               <div>
-                <h2 className="text-2xl font-bold text-gray-900" style={{fontSize: '24px', fontWeight: 'bold', color: '#111827', margin: 0}}>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100" style={{fontSize: '24px', fontWeight: 'bold', margin: 0}}>
                   {activeSection === "ad-tracking" && "광고 순위 추적"}
                   {activeSection === "organic-tracking" && "일반 순위 추적"}
                   {activeSection === "ad-management" && "광고 제품 관리"}
                   {activeSection === "organic-management" && "일반 제품 관리"}
                 </h2>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   {activeSection.includes("tracking") 
                     ? "실시간으로 네이버 쇼핑 순위를 추적합니다"
                     : "제품을 관리하고 설정을 변경할 수 있습니다"
@@ -42,7 +45,7 @@ export default function Dashboard() {
               <div className="flex items-center space-x-3">
                 <div className="relative">
                   <select 
-                    className="appearance-none bg-white border border-gray-300 rounded-md px-4 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="appearance-none bg-white dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-md px-4 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
                     data-testid="filter-status"
@@ -60,7 +63,7 @@ export default function Dashboard() {
                     placeholder="제품명 또는 키워드 검색" 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent w-64"
+                    className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent w-64 bg-white dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400"
                     data-testid="input-search"
                   />
                   <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
@@ -79,7 +82,7 @@ export default function Dashboard() {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 overflow-auto p-6 bg-white dark:bg-gray-900">
           <ProductTable 
             section={activeSection}
             searchQuery={searchQuery}

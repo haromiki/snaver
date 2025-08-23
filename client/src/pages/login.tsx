@@ -52,15 +52,15 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
         {/* Header */}
         <div className="text-center">
           <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4">
             <i className="fas fa-chart-line text-white text-xl"></i>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">SNAVER</h1>
-          <p className="text-gray-500 mt-2">네이버 쇼핑 순위 추적 시스템</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">SNAVER</h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-2">네이버 쇼핑 순위 추적 시스템</p>
         </div>
 
         {/* Login Form */}
