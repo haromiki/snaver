@@ -19,8 +19,8 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
     {
       category: "제품 관리",
       items: [
-        { id: "ad-management", label: "광고 제품 관리", icon: "fas fa-ad" },
-        // { id: "organic-management", label: "일반 제품 관리", icon: "fas fa-cogs" },
+        // { id: "ad-management", label: "광고 제품 관리", icon: "fas fa-ad" },
+        { id: "organic-management", label: "일반 제품 관리", icon: "fas fa-cogs" },
       ]
     }
   ];
