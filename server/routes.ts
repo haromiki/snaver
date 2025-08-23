@@ -6,7 +6,7 @@ import { insertUserSchema, insertProductSchema, loginSchema, rankQuerySchema, ty
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { authenticateToken } from "./middleware/auth.ts";
-import { fetchOrganicRank } from "./crawler/naverOrganic.js";
+import { fetchOrganicRankPuppeteer } from "./crawler/naverOrganicPuppeteer.js";
 import { fetchAdRank } from "./crawler/adCrawler.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
@@ -188,21 +188,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let rankResult: RankResult;
 
       if (product.type === "organic") {
-        // 일반(오가닉) 순위 조회
-        const clientId = process.env.NAVER_OPENAPI_CLIENT_ID;
-        const clientSecret = process.env.NAVER_OPENAPI_CLIENT_SECRET;
-        
-        if (!clientId || !clientSecret) {
-          return res.status(500).json({ 
-            message: "Naver OpenAPI 인증정보가 설정되지 않았습니다" 
-          });
-        }
-
-        rankResult = await fetchOrganicRank({
+        // 일반(오가닉) 순위 조회 - Puppeteer 직접 사용
+        rankResult = await fetchOrganicRankPuppeteer({
           productId: product.productNo,
           keyword: product.keyword,
-          clientId,
-          clientSecret,
+          maxPages: 5,
         });
       } else {
         // 광고 순위 조회
@@ -346,21 +336,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = rankQuerySchema.parse(req.body);
       
-      const clientId = process.env.NAVER_OPENAPI_CLIENT_ID;
-      const clientSecret = process.env.NAVER_OPENAPI_CLIENT_SECRET;
-      
-      if (!clientId || !clientSecret) {
-        return res.status(500).json({ 
-          message: "Naver OpenAPI 인증정보가 설정되지 않았습니다" 
-        });
-      }
-
-      // 200위 이내 제한으로 OpenAPI 사용 (사용자 요구사항)
-      const result = await fetchOrganicRank({
+      // Puppeteer 방식으로 일반 순위 조회
+      const result = await fetchOrganicRankPuppeteer({
         productId: validatedData.productId,
         keyword: validatedData.keyword,
-        clientId,
-        clientSecret,
+        maxPages: 5,
       });
 
       res.json(result);
