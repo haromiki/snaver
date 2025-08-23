@@ -136,7 +136,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/products", authenticateToken, async (req, res) => {
     try {
+      console.log("받은 제품 데이터:", req.body);
       const validatedData = insertProductSchema.parse(req.body);
+      console.log("검증된 데이터:", validatedData);
       const product = await storage.createProduct({
         ...validatedData,
         userId: req.userId!,
