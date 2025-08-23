@@ -6,14 +6,18 @@ import { useToast } from "@/hooks/use-toast";
 
 interface ProductTableProps {
   section: string;
+  searchQuery?: string;
+  statusFilter?: string;
   onAddProduct: () => void;
   onEditProduct?: (product: any) => void;
 }
 
-export default function ProductTable({ section, onAddProduct, onEditProduct }: ProductTableProps) {
+export default function ProductTable({ section, searchQuery = "", statusFilter = "all", onAddProduct, onEditProduct }: ProductTableProps) {
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [sortableList, setSortableList] = useState<any>(null);
   const [refreshingProducts, setRefreshingProducts] = useState<Map<number, number>>(new Map()); // productId -> progress percentage
+  const [bulkRefreshInProgress, setBulkRefreshInProgress] = useState(false);
+  const [bulkRefreshProgress, setBulkRefreshProgress] = useState(0);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -25,7 +29,7 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
     return { type, active: isTracking };
   };
 
-  const { data: products = [], isLoading } = useQuery({
+  const { data: allProducts = [], isLoading } = useQuery({
     queryKey: ["/products", getFilters()],
     queryFn: async () => {
       const filters = getFilters();
@@ -36,6 +40,30 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
       const response = await apiRequest("GET", `/products?${params}`);
       return await response.json();
     },
+  });
+
+  // 검색 및 상태 필터링
+  const products = allProducts.filter((product: any) => {
+    // 검색 필터링
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const productName = product.productName.toLowerCase();
+      const keyword = product.keyword.toLowerCase();
+      const productNo = product.productNo.toLowerCase();
+      
+      const matchesSearch = productName.includes(query) || 
+                          keyword.includes(query) || 
+                          productNo.includes(query);
+      if (!matchesSearch) return false;
+    }
+
+    // 상태 필터링
+    if (statusFilter !== "all") {
+      if (statusFilter === "active" && !product.active) return false;
+      if (statusFilter === "inactive" && product.active) return false;
+    }
+
+    return true;
   });
 
   const refreshProductMutation = useMutation({
@@ -415,6 +443,52 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
     }
   };
 
+  // 전체 새로고침 순차 실행 기능
+  const handleBulkRefresh = async () => {
+    if (products.length === 0 || bulkRefreshInProgress) return;
+    
+    setBulkRefreshInProgress(true);
+    setBulkRefreshProgress(0);
+    
+    try {
+      for (let i = 0; i < products.length; i++) {
+        const product = products[i];
+        setBulkRefreshProgress(i + 1);
+        
+        try {
+          await new Promise((resolve, reject) => {
+            const mutation = refreshProductMutation.mutate(product.id, {
+              onSuccess: resolve,
+              onError: reject,
+            });
+          });
+        } catch (error) {
+          console.error(`제품 ${product.productName} 새로고침 실패:`, error);
+          // 에러가 발생해도 계속 진행
+        }
+        
+        // 각 제품 간 1초 대기 (서버 부하 방지)
+        if (i < products.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      
+      toast({
+        title: "전체 새로고침 완료",
+        description: `${products.length}개 제품의 순위 업데이트가 완료되었습니다.`,
+      });
+    } catch (error) {
+      toast({
+        title: "전체 새로고침 실패",
+        description: "일부 제품 업데이트 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setBulkRefreshInProgress(false);
+      setBulkRefreshProgress(0);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="bg-surface rounded-lg shadow-sm border border-gray-200 p-8">
@@ -437,11 +511,17 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
             </span>
           </div>
           <div className="flex items-center space-x-3">
-            <button className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">
+            {/* <button className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">
               <i className="fas fa-download mr-2"></i>내보내기
-            </button>
-            <button className="text-sm text-primary hover:text-blue-700 px-3 py-1 rounded border border-primary hover:bg-blue-50">
-              <i className="fas fa-sync mr-2"></i>전체 새로고침
+            </button> */}
+            <button 
+              className="text-sm text-primary hover:text-blue-700 px-3 py-1 rounded border border-primary hover:bg-blue-50"
+              onClick={handleBulkRefresh}
+              disabled={bulkRefreshInProgress}
+              data-testid="button-bulk-refresh"
+            >
+              <i className="fas fa-sync mr-2"></i>
+              {bulkRefreshInProgress ? `새로고침 중... (${bulkRefreshProgress}/${products.length})` : "전체 새로고침"}
             </button>
           </div>
         </div>

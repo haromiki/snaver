@@ -7,6 +7,8 @@ export default function Dashboard() {
   const [activeSection, setActiveSection] = useState("ad-tracking");
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   return (
     <div className="flex h-screen bg-white" style={{minHeight: '100vh', width: '100%', display: 'flex', background: 'white'}}>
@@ -41,11 +43,13 @@ export default function Dashboard() {
                 <div className="relative">
                   <select 
                     className="appearance-none bg-white border border-gray-300 rounded-md px-4 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
                     data-testid="filter-status"
                   >
-                    <option>전체 상태</option>
-                    <option>활성</option>
-                    <option>비활성</option>
+                    <option value="all">전체 상태</option>
+                    <option value="active">활성</option>
+                    <option value="inactive">비활성</option>
                   </select>
                   <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs"></i>
                 </div>
@@ -54,6 +58,8 @@ export default function Dashboard() {
                   <input 
                     type="text" 
                     placeholder="제품명 또는 키워드 검색" 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent w-64"
                     data-testid="input-search"
                   />
@@ -76,6 +82,8 @@ export default function Dashboard() {
         <main className="flex-1 overflow-auto p-6">
           <ProductTable 
             section={activeSection}
+            searchQuery={searchQuery}
+            statusFilter={statusFilter}
             onAddProduct={() => setShowAddModal(true)}
             onEditProduct={(product) => {
               setEditingProduct(product);
