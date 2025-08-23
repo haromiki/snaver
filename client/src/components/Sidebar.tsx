@@ -12,7 +12,7 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
     {
       category: "순위 추적",
       items: [
-        { id: "ad-tracking", label: "광고 순위 추적", icon: "fas fa-bullhorn" },
+        // { id: "ad-tracking", label: "광고 순위 추적", icon: "fas fa-bullhorn" },
         { id: "organic-tracking", label: "일반 순위 추적", icon: "fas fa-search" },
       ]
     },
@@ -20,7 +20,7 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
       category: "제품 관리",
       items: [
         { id: "ad-management", label: "광고 제품 관리", icon: "fas fa-ad" },
-        { id: "organic-management", label: "일반 제품 관리", icon: "fas fa-cogs" },
+        // { id: "organic-management", label: "일반 제품 관리", icon: "fas fa-cogs" },
       ]
     }
   ];

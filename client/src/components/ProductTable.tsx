@@ -44,6 +44,11 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
 
   // 검색 및 상태 필터링
   const products = allProducts.filter((product: any) => {
+    // 광고 타입 제품 완전히 제외
+    if (product.type === "ad") {
+      return false;
+    }
+
     // 검색 필터링
     if (searchQuery) {
       const query = searchQuery.toLowerCase();

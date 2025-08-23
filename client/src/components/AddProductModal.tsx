@@ -17,7 +17,7 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
     productName: product?.productName || "",
     productNo: product?.productNo || "",
     keyword: product?.keyword || "",
-    type: product?.type || "ad",
+    type: product?.type || "organic",
     intervalMin: product?.intervalMin || 60,  // 기본값 1시간(60분)으로 수정
   });
 
@@ -114,7 +114,7 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
               onChange={(e) => setFormData({ ...formData, type: e.target.value as "ad" | "organic" })}
               data-testid="select-type"
             >
-              <option value="ad">광고</option>
+              {/* <option value="ad">광고</option> */}
               <option value="organic">일반</option>
             </select>
           </div>
