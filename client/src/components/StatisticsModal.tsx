@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 interface StatisticsModalProps {
   productId: number;
@@ -14,6 +15,13 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
   });
   
   const [chart, setChart] = useState<any>(null);
+  const { toast } = useToast();
+
+  // 날짜 범위 제한 (1년)
+  const today = new Date();
+  const oneYearAgo = new Date(today.getTime() - 365 * 24 * 60 * 60 * 1000);
+  const maxDate = today.toISOString().split('T')[0];
+  const minDate = oneYearAgo.toISOString().split('T')[0];
 
   const { data: tracks = [] } = useQuery({
     queryKey: ["/tracks", productId, dateRange.from, dateRange.to],
@@ -115,6 +123,29 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
   };
 
   const handleDateUpdate = () => {
+    // 1년 초과 기간 검사
+    const fromDate = new Date(dateRange.from);
+    const toDate = new Date(dateRange.to);
+    const diffInDays = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffInDays > 365) {
+      toast({
+        title: "기간 설정 오류",
+        description: "검색 기간은 최대 1년(365일)까지 설정 가능합니다. 다시 설정해 주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (fromDate > toDate) {
+      toast({
+        title: "날짜 설정 오류", 
+        description: "시작일이 종료일보다 늦을 수 없습니다.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Query will automatically refetch due to dependency change
   };
 
@@ -137,32 +168,41 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
         
         <div className="p-6">
           {/* Date Range Picker */}
-          <div className="flex items-center space-x-4 mb-6">
-            <div className="flex items-center space-x-2">
-              <label className="text-sm font-medium text-gray-700">기간:</label>
-              <input 
-                type="date" 
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" 
-                value={dateRange.from}
-                onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
-                data-testid="input-date-from"
-              />
-              <span className="text-gray-500">~</span>
-              <input 
-                type="date" 
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" 
-                value={dateRange.to}
-                onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
-                data-testid="input-date-to"
-              />
+          <div className="flex flex-col space-y-3 mb-6">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <label className="text-sm font-medium text-gray-700">기간:</label>
+                <input 
+                  type="date" 
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" 
+                  value={dateRange.from}
+                  min={minDate}
+                  max={maxDate}
+                  onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
+                  data-testid="input-date-from"
+                />
+                <span className="text-gray-500">~</span>
+                <input 
+                  type="date" 
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" 
+                  value={dateRange.to}
+                  min={minDate}
+                  max={maxDate}
+                  onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
+                  data-testid="input-date-to"
+                />
+              </div>
+              <button 
+                onClick={handleDateUpdate}
+                className="px-4 py-2 bg-primary text-white rounded-md text-sm font-medium hover:bg-blue-700"
+                data-testid="button-update-chart"
+              >
+                조회
+              </button>
             </div>
-            <button 
-              onClick={handleDateUpdate}
-              className="px-4 py-2 bg-primary text-white rounded-md text-sm font-medium hover:bg-blue-700"
-              data-testid="button-update-chart"
-            >
-              조회
-            </button>
+            <div className="text-xs text-gray-500 ml-12">
+              💡 통계 검색 기간은 최대 1년(365일)까지 설정 가능합니다.
+            </div>
           </div>
 
           {/* Chart */}
