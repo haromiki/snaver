@@ -128,11 +128,10 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
               onChange={(e) => setFormData({ ...formData, intervalMin: parseInt(e.target.value) })}
               data-testid="select-interval"
             >
-              <option value={5}>5분</option>
-              <option value={10}>10분</option>
-              <option value={15}>15분</option>
-              <option value={30}>30분</option>
-              <option value={60}>60분</option>
+              <option value={60}>1시간</option>
+              <option value={360}>6시간</option>
+              <option value={720}>12시간</option>
+              <option value={1440}>24시간</option>
             </select>
           </div>
 
