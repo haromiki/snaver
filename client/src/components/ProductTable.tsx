@@ -2,7 +2,44 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
 import StatisticsModal from "./StatisticsModal";
+import WeeklyTrendChart from "./WeeklyTrendChart";
 import { useToast } from "@/hooks/use-toast";
+
+// 1주일 트렌드 차트를 위한 래퍼 컴포넌트
+function WeeklyTrendChartWrapper({ productId }: { productId: number }) {
+  const { data: weeklyData, isLoading } = useQuery({
+    queryKey: [`/products/${productId}/weekly-ranks`],
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/products/${productId}/weekly-ranks`);
+      return await response.json();
+    },
+    staleTime: 1000 * 60 * 10, // 10분간 캐시
+    refetchOnWindowFocus: false,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="w-20 h-8 flex items-center justify-center bg-gray-100 rounded animate-pulse">
+        <div className="w-16 h-4 bg-gray-300 rounded"></div>
+      </div>
+    );
+  }
+
+  if (!weeklyData?.dailyRanks) {
+    return (
+      <div className="w-20 h-8 flex items-center justify-center bg-gray-100 rounded">
+        <span className="text-xs text-gray-400">-</span>
+      </div>
+    );
+  }
+
+  return (
+    <WeeklyTrendChart 
+      productId={productId} 
+      dailyRanks={weeklyData.dailyRanks} 
+    />
+  );
+}
 
 interface ProductTableProps {
   section: string;
@@ -547,6 +584,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">제품 가격</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">현재 순위</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">순위 변동</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">1주일 트렌드</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">마지막 확인</th>
                   </>
                 )}
@@ -664,6 +702,9 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                               {rankDisplay.change}
                             </span>
                           </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <WeeklyTrendChartWrapper productId={product.id} />
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-900" data-testid={`text-last-checked-${product.id}`}>

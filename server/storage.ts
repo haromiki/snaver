@@ -30,6 +30,7 @@ export interface IStorage {
   getTracks(productId: number, from?: Date, to?: Date): Promise<Track[]>;
   createTrack(track: Omit<Track, 'id' | 'checkedAt'>): Promise<Track>;
   getLatestTrack(productId: number): Promise<Track | undefined>;
+  getProductTracksInRange(productId: number, userId: number, fromDate: string, toDate: string): Promise<Track[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -158,6 +159,33 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(tracks.checkedAt))
       .limit(1);
     return track;
+  }
+
+  async getProductTracksInRange(productId: number, userId: number, fromDate: string, toDate: string): Promise<Track[]> {
+    // 제품 소유권 확인을 위해 product와 join
+    const result = await db.select({
+      id: tracks.id,
+      productId: tracks.productId,
+      checkedAt: tracks.checkedAt,
+      isAd: tracks.isAd,
+      page: tracks.page,
+      rankOnPage: tracks.rankOnPage,
+      globalRank: tracks.globalRank,
+      priceKrw: tracks.priceKrw,
+      mallName: tracks.mallName,
+      productLink: tracks.productLink
+    })
+    .from(tracks)
+    .innerJoin(products, eq(tracks.productId, products.id))
+    .where(and(
+      eq(tracks.productId, productId),
+      eq(products.userId, userId),
+      gte(tracks.checkedAt, new Date(fromDate)),
+      lte(tracks.checkedAt, new Date(toDate))
+    ))
+    .orderBy(asc(tracks.checkedAt));
+    
+    return result;
   }
 }
 

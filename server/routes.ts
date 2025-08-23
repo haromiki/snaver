@@ -461,6 +461,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 1주일 순위 트렌드 데이터 API
+  app.get("/api/products/:id/weekly-ranks", authenticateToken, async (req, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+      
+      // 월요일 기준으로 이번 주 시작일 계산
+      const now = new Date();
+      const dayOfWeek = now.getDay(); // 0=일요일, 1=월요일, ..., 6=토요일
+      const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 일요일이면 6일 전, 아니면 현재요일-1
+      
+      const thisWeekMonday = new Date(now);
+      thisWeekMonday.setDate(now.getDate() - daysFromMonday);
+      thisWeekMonday.setHours(0, 0, 0, 0);
+      
+      const nextWeekMonday = new Date(thisWeekMonday);
+      nextWeekMonday.setDate(thisWeekMonday.getDate() + 7);
+      
+      // 이번 주 데이터 조회 (월요일 00:00 ~ 다음주 월요일 00:00 전까지)
+      const weeklyRanks = await storage.getProductTracksInRange(
+        productId, 
+        req.userId!,
+        thisWeekMonday.toISOString(),
+        nextWeekMonday.toISOString()
+      );
+      
+      // 요일별 최신 순위 데이터로 정리 (7일간)
+      const dailyRanks = [];
+      for (let i = 0; i < 7; i++) {
+        const targetDate = new Date(thisWeekMonday);
+        targetDate.setDate(thisWeekMonday.getDate() + i);
+        
+        const dayName = ['월', '화', '수', '목', '금', '토', '일'][i];
+        
+        // 해당 날짜의 트랙 데이터 중 가장 최근 것
+        const dayTracks = weeklyRanks.filter((track: any) => {
+          const trackDate = new Date(track.checkedAt);
+          return trackDate.toDateString() === targetDate.toDateString();
+        });
+        
+        const latestTrack = dayTracks.length > 0 ? 
+          dayTracks.sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime())[0] : null;
+        
+        dailyRanks.push({
+          day: dayName,
+          date: targetDate.toISOString().split('T')[0],
+          rank: latestTrack?.globalRank || null,
+          hasData: !!latestTrack
+        });
+      }
+      
+      res.json({
+        productId,
+        weekStart: thisWeekMonday.toISOString().split('T')[0],
+        dailyRanks
+      });
+      
+    } catch (error) {
+      console.error("1주일 순위 데이터 조회 오류:", error);
+      res.status(500).json({ message: "1주일 순위 데이터를 가져오는데 실패했습니다" });
+    }
+  });
+
   // 광고 순위 조회 - Puppeteer 사용 (테스트용 인증 제거)
   app.post("/api/rank/ad", async (req, res) => {
     try {
