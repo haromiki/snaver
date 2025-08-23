@@ -48,8 +48,8 @@ export async function fetchOrganicRankPuppeteer({
       const url = `${NAVER_SHOPPING_SEARCH_URL}?query=${encodeURIComponent(keyword)}&pagingIndex=${pageNum}`;
       await browserPage.goto(url, { waitUntil: 'networkidle0', timeout: 30000 });
       
-      // 페이지 로딩 대기 (속도 최적화)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 페이지 로딩 대기 (봇 감지 방지)
+      await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 1000)); // 2-3초
       
       // 일반 제품 목록 추출 (광고 제외)
       const pageProducts = await browserPage.evaluate((targetProductId) => {
@@ -110,9 +110,9 @@ export async function fetchOrganicRankPuppeteer({
         break;
       }
       
-      // 페이지간 간격 (조기 종료가 없을 때만 대기)
+      // 페이지간 간격 (봇 감지 방지)
       if (pageNum < maxPages) {
-        await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000)); // 대기 시간 단축
+        await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 2000)); // 1.5-3.5초
       }
     }
     
