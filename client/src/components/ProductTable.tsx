@@ -19,16 +19,16 @@ function WeeklyTrendChartWrapper({ productId }: { productId: number }) {
 
   if (isLoading) {
     return (
-      <div className="w-20 h-8 flex items-center justify-center bg-gray-100 rounded animate-pulse">
-        <div className="w-16 h-4 bg-gray-300 rounded"></div>
+      <div className="w-20 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded animate-pulse">
+        <div className="w-16 h-4 bg-gray-300 dark:bg-gray-600 rounded"></div>
       </div>
     );
   }
 
   if (!weeklyData?.dailyRanks) {
     return (
-      <div className="w-20 h-8 flex items-center justify-center bg-gray-100 rounded">
-        <span className="text-xs text-gray-400">-</span>
+      <div className="w-20 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
+        <span className="text-xs text-gray-400 dark:text-gray-500">-</span>
       </div>
     );
   }
@@ -446,14 +446,14 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
 
   const getRankDisplay = (latestTrack: any) => {
     if (!latestTrack || !latestTrack.globalRank) {
-      return { rank: "-", page: "미발견", change: "변동없음", color: "text-gray-400" };
+      return { rank: "-", page: "미발견", change: "변동없음", color: "text-gray-400 dark:text-gray-500" };
     }
 
     const rank = latestTrack.globalRank;
     const page = Math.ceil(rank / 40);
     
     // Determine color based on rank
-    let color = "text-gray-900";
+    let color = "text-gray-900 dark:text-gray-100";
     let change = "변동없음";
     
     if (rank <= 10) {
@@ -533,27 +533,27 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
 
   if (isLoading) {
     return (
-      <div className="bg-surface rounded-lg shadow-sm border border-gray-200 p-8">
-        <div className="text-center">로딩 중...</div>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8">
+        <div className="text-center text-gray-900 dark:text-gray-100">로딩 중...</div>
       </div>
     );
   }
 
   return (
     <>
-      <div className="bg-surface rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               {section.includes("tracking") ? "추적 중인 제품" : "관리 제품"}
             </h3>
-            <span className="text-sm text-gray-500" data-testid="text-product-count">
+            <span className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-400 dark:text-gray-500" data-testid="text-product-count">
               {products.length}개 제품
             </span>
           </div>
           <div className="flex items-center space-x-3">
-            {/* <button className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">
+            {/* <button className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-100 px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">
               <i className="fas fa-download mr-2"></i>내보내기
             </button> */}
             <button 
@@ -571,49 +571,49 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <i className="fas fa-grip-vertical mr-2 text-gray-400"></i>제품 정보
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <i className="fas fa-grip-vertical mr-2 text-gray-400 dark:text-gray-500"></i>제품 정보
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">추적 주기</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">진행상태</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">추적 주기</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">진행상태</th>
                 {section.includes("tracking") && (
                   <>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">스토어명</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">제품 가격</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">현재 순위</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">순위 변동</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">1주일 트렌드</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">마지막 확인</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">스토어명</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">제품 가격</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">현재 순위</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">순위 변동</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">1주일 트렌드</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">마지막 확인</th>
                   </>
                 )}
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">작업</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">작업</th>
               </tr>
             </thead>
-            <tbody id="sortable-products" className="bg-white divide-y divide-gray-200">
+            <tbody id="sortable-products" className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
               {products.map((product: any) => {
                 const rankDisplay = getRankDisplay(product.latestTrack);
                 
                 return (
-                  <tr key={product.id} className="hover:bg-gray-50 transition-colors sortable-item" data-testid={`row-product-${product.id}`}>
+                  <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors sortable-item" data-testid={`row-product-${product.id}`}>
                     <td className="px-6 py-4">
                       <div className="flex items-start space-x-4">
-                        <div className="drag-handle cursor-move text-gray-400 hover:text-gray-600 mt-1">
+                        <div className="drag-handle cursor-move text-gray-400 dark:text-gray-500 dark:text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 dark:text-gray-500 mt-1">
                           <i className="fas fa-grip-vertical"></i>
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center space-x-3">
-                            <h4 className="text-sm font-medium text-gray-900" data-testid={`text-product-name-${product.id}`}>
+                            <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100" data-testid={`text-product-name-${product.id}`}>
                               {product.productName}
                             </h4>
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              product.active ? "bg-success text-white" : "bg-gray-300 text-gray-700"
+                              product.active ? "bg-success text-white" : "bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300"
                             }`}>
                               {product.active ? "활성" : "비활성"}
                             </span>
                           </div>
-                          <p className="text-sm text-gray-500 mt-1">
+                          <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">
                             키워드: <span data-testid={`text-keyword-${product.id}`}>{product.keyword}</span> | 
                             제품번호: <span data-testid={`text-product-no-${product.id}`}>{product.productNo}</span>
                           </p>
@@ -632,7 +632,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-800">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
                         {product.intervalMin}분
                       </span>
                     </td>
@@ -641,7 +641,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                         {refreshingProducts.has(product.id) ? (
                           <div className="relative w-16 h-16">
                             {/* 정사각형 라운드 배경 */}
-                            <div className="absolute inset-0 bg-gray-200 rounded-lg"></div>
+                            <div className="absolute inset-0 bg-gray-200 dark:bg-gray-600 rounded-lg"></div>
                             {/* 파란색 채우기 효과 - 아래에서 위로 차오름 */}
                             <div className="absolute inset-0 overflow-hidden rounded-lg">
                               <div 
@@ -660,7 +660,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                           </div>
                         ) : (
                           <div className="w-16 h-16 flex items-center justify-center">
-                            <span className="text-gray-400 text-sm">-</span>
+                            <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>
                           </div>
                         )}
                       </div>
@@ -668,12 +668,12 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                     {section.includes("tracking") && (
                       <>
                         <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900" data-testid={`text-store-name-${product.id}`}>
+                          <div className="text-sm text-gray-900 dark:text-gray-100" data-testid={`text-store-name-${product.id}`}>
                             {product.latestTrack?.mallName || "-"}
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900" data-testid={`text-price-${product.id}`}>
+                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100" data-testid={`text-price-${product.id}`}>
                             {formatPrice(product.latestTrack?.priceKrw)}
                           </div>
                         </td>
@@ -682,7 +682,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                             <span className={`text-2xl font-bold ${rankDisplay.color}`} data-testid={`text-rank-${product.id}`}>
                               {rankDisplay.rank}
                             </span>
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
                               <div>{rankDisplay.page}</div>
                             </div>
                           </div>
@@ -692,12 +692,12 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                             <i className={`fas ${
                               rankDisplay.change === "순위 상승" ? "fa-arrow-up text-success" :
                               rankDisplay.change === "순위 하락" ? "fa-arrow-down text-error" :
-                              "fa-minus text-gray-400"
+                              "fa-minus text-gray-400 dark:text-gray-500"
                             } text-sm`}></i>
                             <span className={`text-sm ${
                               rankDisplay.change === "순위 상승" ? "text-success" :
                               rankDisplay.change === "순위 하락" ? "text-error" :
-                              "text-gray-500"
+                              "text-gray-500 dark:text-gray-400 dark:text-gray-500"
                             }`} data-testid={`text-rank-change-${product.id}`}>
                               {rankDisplay.change}
                             </span>
@@ -707,11 +707,11 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                           <WeeklyTrendChartWrapper productId={product.id} />
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900" data-testid={`text-last-checked-${product.id}`}>
+                          <div className="text-sm text-gray-900 dark:text-gray-100" data-testid={`text-last-checked-${product.id}`}>
                             {formatLastChecked(product.latestTrack)}
                           </div>
                           {product.latestTrack && (
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
                               {new Date(product.latestTrack.checkedAt).toLocaleString()}
                             </div>
                           )}
@@ -725,7 +725,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                             <button 
                               onClick={() => refreshProductMutation.mutate(product.id)}
                               disabled={refreshProductMutation.isPending || refreshingProducts.has(product.id)}
-                              className="p-2 text-gray-400 hover:text-primary rounded-md hover:bg-gray-100" 
+                              className="p-2 text-gray-400 dark:text-gray-500 hover:text-primary rounded-md hover:bg-gray-100" 
                               title="수동 검색"
                               data-testid={`button-refresh-${product.id}`}
                             >
@@ -733,7 +733,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                             </button>
                             <button 
                               onClick={() => setSelectedProductId(product.id)}
-                              className="p-2 text-gray-400 hover:text-primary rounded-md hover:bg-gray-100" 
+                              className="p-2 text-gray-400 dark:text-gray-500 hover:text-primary rounded-md hover:bg-gray-100" 
                               title="통계 보기"
                               data-testid={`button-stats-${product.id}`}
                             >
@@ -745,7 +745,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                                 active: !product.active 
                               })}
                               disabled={toggleActiveMutation.isPending}
-                              className="p-2 text-gray-400 hover:text-error rounded-md hover:bg-gray-100" 
+                              className="p-2 text-gray-400 dark:text-gray-500 hover:text-error rounded-md hover:bg-gray-100" 
                               title={product.active ? "비활성화" : "활성화"}
                               data-testid={`button-toggle-${product.id}`}
                             >
@@ -757,7 +757,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                             {onEditProduct && (
                               <button 
                                 onClick={() => onEditProduct(product)}
-                                className="p-2 text-gray-400 hover:text-primary rounded-md hover:bg-gray-100" 
+                                className="p-2 text-gray-400 dark:text-gray-500 hover:text-primary rounded-md hover:bg-gray-100" 
                                 title="수정"
                                 data-testid={`button-edit-${product.id}`}
                               >
@@ -767,7 +767,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                             <button 
                               onClick={() => handleDeleteProduct(product)}
                               disabled={deleteProductMutation.isPending}
-                              className="p-2 text-gray-400 hover:text-error rounded-md hover:bg-gray-100" 
+                              className="p-2 text-gray-400 dark:text-gray-500 hover:text-error rounded-md hover:bg-gray-100" 
                               title="삭제"
                               data-testid={`button-delete-${product.id}`}
                             >
@@ -779,7 +779,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                                 active: !product.active 
                               })}
                               disabled={toggleActiveMutation.isPending}
-                              className="p-2 text-gray-400 hover:text-warning rounded-md hover:bg-gray-100" 
+                              className="p-2 text-gray-400 dark:text-gray-500 hover:text-warning rounded-md hover:bg-gray-100" 
                               title={product.active ? "비활성화" : "활성화"}
                               data-testid={`button-toggle-${product.id}`}
                             >
@@ -797,7 +797,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         </div>
 
         {products.length === 0 && (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center text-gray-500 dark:text-gray-400 dark:text-gray-500">
             <i className="fas fa-inbox text-4xl mb-4 text-gray-300"></i>
             <p className="text-lg font-medium mb-2">등록된 제품이 없습니다</p>
             <p className="mb-4">첫 번째 제품을 추가해보세요</p>
@@ -819,7 +819,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
               <span className="font-medium"> 1-{products.length}</span>개 표시
             </div>
             <div className="flex items-center space-x-2">
-              <button className="px-3 py-2 text-sm border border-gray-300 rounded-md text-gray-500 hover:bg-gray-50 disabled:opacity-50" disabled>
+              <button className="px-3 py-2 text-sm border border-gray-300 rounded-md text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:bg-gray-50 disabled:opacity-50" disabled>
                 이전
               </button>
               <button className="px-3 py-2 text-sm bg-primary text-white rounded-md">1</button>
