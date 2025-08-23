@@ -6,6 +6,7 @@ import { insertUserSchema, insertProductSchema, loginSchema, rankQuerySchema, ty
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { authenticateToken } from "./middleware/auth.ts";
+import { fetchOrganicRank } from "./crawler/naverOrganic.js";
 import { fetchOrganicRankPuppeteer } from "./crawler/naverOrganicPuppeteer.js";
 import { fetchAdRank } from "./crawler/adCrawler.js";
 
@@ -188,11 +189,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let rankResult: RankResult;
 
       if (product.type === "organic") {
-        // 일반(오가닉) 순위 조회 - Puppeteer 직접 사용
-        rankResult = await fetchOrganicRankPuppeteer({
-          productId: product.productNo,
+        // 일반(오가닉) 순위 조회 - 개선된 OpenAPI 방식
+        rankResult = await fetchOrganicRank({
           keyword: product.keyword,
-          maxPages: 5,
+          productId: product.productNo,
+          clientId: process.env.NAVER_CLIENT_ID!,
+          clientSecret: process.env.NAVER_CLIENT_SECRET!,
         });
       } else {
         // 광고 순위 조회

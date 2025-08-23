@@ -1,0 +1,286 @@
+좋아, “끝없이 안 끝나는 느낌”의 핵심 원인을 정리하면 이거예요.
+
+## 왜 멈춘 것처럼 보일까? (원인)
+
+1. **리다이렉트 최종 URL 추적이 느림/행**
+   OpenAPI의 `item.link`는 `openapi.naver.com/l?...` → 외부/스마트스토어로 **리다이렉트**됩니다.
+   지금 코드는 `fetch(..., redirect:"follow")`로 **실제 최종 페이지까지 GET**을 때리는데,
+
+   * 광고/트래킹 차단, 느린 서버, 쿠키·동의 페이지 등으로 **응답이 오래 걸리거나 무한 대기**
+   * `AbortSignal.timeout(5000)`이 **런타임/버전 환경에서 제대로 안 먹는 경우** → **타임아웃이 실제로 안 걸림**
+     → 슬라이스마다 16개 병렬 × 최대 13슬라이스 ≈ **최대 수 분** 체감 대기 가능
+
+2. **1차 매칭(빠른 경로) 비활성화**
+   OpenAPI의 `items[].productId` 직접 매칭을 꺼놨죠. 이건 0ms에 가까운 매칭인데, 이걸 꺼두면 **느린 2차 루트만** 타게 됩니다.
+
+3. **Promise.all + follow 리다이렉트 조합**
+   `Promise.all`은 하나라도 오래 걸리면 **슬라이스 전체가 발목** 잡힙니다.
+
+---
+
+## 해결 전략 (핵심만)
+
+* **1차 매칭 복구**: `items[].productId`로 바로 매칭 (가장 빠르고 실패해도 부작용 없음)
+* **HEAD + manual redirect**: 최종 페이지까지 GET하지 말고, **Location 헤더만 뽑아** ID를 추출
+  → `redirect: "manual"` + `method: "HEAD"` (필요 시 Fallback GET + manual)
+* **진짜 타임아웃 보장**: `AbortController`로 **확실한 타임아웃 유틸**(환경 무관) 적용
+* **allSettled 사용**: 한두 개가 행이어도 **나머지 먼저 처리**
+* **강한 전체 데드라인**: 함수 전체에 **하드 타임박스**(예: 25\~30초)
+* **브라우저 UA/리퍼러 부여**: 링크 요청에도 **UA/Referer** 헤더를 같이 줘서 필터링/지연을 줄임
+
+---
+
+## 드롭인 교정본 (교체해서 사용)
+
+아래는 **당신 코드와 동일 시그니처**로, 상단 유틸 + 1차 복구 + 2차 리다이렉트 HEAD 방식으로 바꾼 버전입니다.
+복사-붙여넣기만 하면 됩니다.
+
+```ts
+// Naver OpenAPI 일반(오가닉) 순위 추적 — 속도/안정성 교정본
+import type { RankResult } from "@shared/schema";
+
+const OPENAPI_BASE_URL = "https://openapi.naver.com/v1/search/shop.json";
+
+// ----- 타입 -----
+interface NaverShopItem {
+  productId: string;
+  mallName: string;
+  link: string;
+  lprice: string;
+}
+interface NaverShopResponse { items: NaverShopItem[]; }
+type IdParts = { productId?: string; prodNo?: string; nvMid?: string; };
+
+// ----- 유틸: 숫자 문자열 비교 -----
+function eqNumStr(a?: string | number | null, b?: string | number | null) {
+  if (a == null || b == null) return false;
+  const sa = String(a).replace(/^0+/, "");
+  const sb = String(b).replace(/^0+/, "");
+  return sa === sb;
+}
+
+// ----- 유틸: URL에서 ID 후보 추출 -----
+function extractIdsFromUrl(u: string): IdParts {
+  const out: IdParts = {};
+  try {
+    const mProd = u.match(/\/products\/(\d+)/i);
+    if (mProd) out.prodNo = mProd[1];
+
+    const mNvMid = u.match(/[?&]nvMid=(\d+)/i);
+    if (mNvMid) out.nvMid = mNvMid[1];
+
+    const mPid = u.match(/[?&]productId=(\d+)/i);
+    if (mPid) out.productId = mPid[1];
+
+    const mProdNoQ = u.match(/[?&]prodNo=(\d+)/i);
+    if (mProdNoQ) out.prodNo = mProdNoQ[1] || out.prodNo;
+  } catch {}
+  return out;
+}
+
+// ----- 유틸: 확실한 fetch 타임아웃 -----
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}, ms = 5000): Promise<Response> {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(new Error("timeout")), ms);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+// ----- 유틸: HEAD + manual redirect로 Location 뽑기 (빠르고 안전) -----
+async function resolveLocationHead(url: string, headers: Record<string, string>, perHopTimeout = 4000, maxHops = 3): Promise<string> {
+  let current = url;
+  for (let hop = 0; hop < maxHops; hop++) {
+    const res = await fetchWithTimeout(current, {
+      method: "HEAD",
+      redirect: "manual",
+      headers,
+    }, perHopTimeout);
+
+    // 3xx면 Location 추출
+    if (res.status >= 300 && res.status < 400) {
+      const loc = res.headers.get("location");
+      if (loc) {
+        // 절대/상대 처리
+        try { current = new URL(loc, current).href; } catch { current = loc; }
+        continue; // 다음 hop
+      }
+      break; // 3xx인데 Location 없으면 중단
+    }
+
+    // 2xx면 current가 최종
+    if (res.ok) return current;
+
+    // 4xx/5xx면 중단
+    break;
+  }
+  return current;
+}
+
+// ----- 메인 함수 -----
+export async function fetchOrganicRank({
+  keyword,
+  productId: inputId,
+  clientId,
+  clientSecret,
+}: {
+  keyword: string;
+  productId: string; // productId/prodNo/nvMid 아무거나 들어올 수 있음
+  clientId: string;
+  clientSecret: string;
+}): Promise<RankResult> {
+  const HARD_DEADLINE_MS = 30000; // 함수 전체 하드 타임박스
+  const started = Date.now();
+  const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+  const commonHeaders = {
+    "User-Agent": ua,
+    "Accept": "*/*",
+    "Referer": "https://search.shopping.naver.com/",
+  };
+
+  try {
+    console.log(`[organic] 시작: "${keyword}", inputId=${inputId}`);
+
+    // 1) OpenAPI 호출
+    const callApi = async (start: number): Promise<NaverShopResponse> => {
+      const url = `${OPENAPI_BASE_URL}?query=${encodeURIComponent(keyword)}&display=100&start=${start}&sort=sim`;
+      const res = await fetchWithTimeout(url, {
+        headers: {
+          ...commonHeaders,
+          "X-Naver-Client-Id": clientId,
+          "X-Naver-Client-Secret": clientSecret,
+        },
+      }, 7000);
+      if (!res.ok) throw new Error(`OpenAPI ${res.status}: ${await res.text()}`);
+      return res.json();
+    };
+
+    const [batch1, batch2] = await Promise.all([callApi(1), callApi(101)]);
+    const allItems: NaverShopItem[] = [...(batch1.items ?? []), ...(batch2.items ?? [])];
+    if (!allItems.length) {
+      return { productId: inputId, found: false, notes: ["OpenAPI 결과 0건"] };
+    }
+
+    // 2) 1차: items[].productId 즉시 매칭 (가장 빠름)
+    let idx = allItems.findIndex((it) => eqNumStr(it.productId, inputId));
+    if (idx !== -1) {
+      const hit = allItems[idx];
+      const globalRank = idx + 1;
+      const pageNumber = Math.ceil(globalRank / 40);
+      const rankInPage = ((globalRank - 1) % 40) + 1;
+      return {
+        productId: hit.productId,
+        storeName: hit.mallName,
+        storeLink: hit.link,
+        price: parseInt(hit.lprice || "0", 10) || 0,
+        globalRank,
+        page: pageNumber,
+        rankInPage,
+        found: true,
+        notes: ["1차: OpenAPI productId 매칭"],
+      };
+    }
+
+    // 3) 2차: 리다이렉트 Location만 해석(HEAD) → ID 매칭
+    //  - 최종 GET까지 가지 않음(느리고 행 가능). 빠르게 Location 체인만 추적.
+    const MAX_PARALLEL = 12;
+    for (let base = 0; base < allItems.length; base += MAX_PARALLEL) {
+      // 하드 데드라인 체크
+      if (Date.now() - started > HARD_DEADLINE_MS) {
+        return { productId: inputId, found: false, notes: ["시간 초과(하드 타임박스)"] };
+      }
+
+      const slice = allItems.slice(base, base + MAX_PARALLEL);
+
+      const settled = await Promise.allSettled(
+        slice.map(async (it) => {
+          try {
+            // 3-a) 먼저 링크 자체에서 ID가 보이면 바로 비교(아주 빠름)
+            const id0 = extractIdsFromUrl(it.link);
+            if (
+              eqNumStr(id0.prodNo, inputId) ||
+              eqNumStr(id0.nvMid, inputId) ||
+              eqNumStr(id0.productId, inputId)
+            ) {
+              return { it, finalUrl: it.link, ids: id0, matched: true };
+            }
+
+            // 3-b) HEAD+manual 로 Location 체인만 해석
+            const finalUrl = await resolveLocationHead(it.link, commonHeaders, 4000, 3);
+            const ids = extractIdsFromUrl(finalUrl);
+
+            const matched =
+              eqNumStr(ids.prodNo, inputId) ||
+              eqNumStr(ids.nvMid, inputId) ||
+              eqNumStr(ids.productId, inputId) ||
+              eqNumStr(it.productId, inputId);
+
+            return { it, finalUrl, ids, matched };
+          } catch (e: any) {
+            return { it, finalUrl: it.link, ids: {}, matched: false, error: e?.message || String(e) };
+          }
+        })
+      );
+
+      const ok = settled
+        .filter((r): r is PromiseFulfilledResult<any> => r.status === "fulfilled")
+        .map((r) => r.value);
+
+      const pos = ok.findIndex((r) => r.matched);
+      if (pos !== -1) {
+        idx = base + pos;
+        const r = ok[pos];
+        const globalRank = idx + 1;
+        const pageNumber = Math.ceil(globalRank / 40);
+        const rankInPage = ((globalRank - 1) % 40) + 1;
+
+        return {
+          productId: r.it.productId,
+          storeName: r.it.mallName,
+          storeLink: r.finalUrl || r.it.link,
+          price: parseInt(r.it.lprice || "0", 10) || 0,
+          globalRank,
+          page: pageNumber,
+          rankInPage,
+          found: true,
+          notes: ["2차: redirect Location(HEAD) 기반 매칭"],
+        };
+      }
+      // 실패한 요청은 다음 슬라이스로 계속 진행 (행 방지)
+    }
+
+    // 4) 200위 내 미발견
+    return {
+      productId: inputId,
+      found: false,
+      notes: ["상위 200위 내 미노출 또는 OpenAPI-실검색 불일치"],
+    };
+  } catch (err: any) {
+    return {
+      productId: inputId,
+      found: false,
+      notes: [`API 오류: ${err?.message || String(err)}`],
+    };
+  }
+}
+```
+
+### 이 버전이 멈추지 않는 이유
+
+* **HEAD + manual**: 최종 페이지 렌더/추가 네트워크 없이 **Location 헤더만** 따라가서 **수 ms\~수백 ms** 수준으로 끝납니다.
+* **강제 타임아웃**: 매 요청 **실제 타임아웃**이 걸리고(`fetchWithTimeout`), 슬라이스는 \*\*`allSettled`\*\*로 묶어서 일부 행이어도 진행됩니다.
+* **하드 타임박스**: 함수 전체 **30초 한도**로 확실히 종료.
+* **1차 매칭 복구**: 맞으면 **즉시 반환**.
+
+---
+
+## 운영 팁
+
+* **정렬 모드**: `sort=sim`(정확도) 기준은 PC SERP와 다를 수 있어요. 그래도 OpenAPI 한계 내에서 **가장 빠른 근사**입니다.
+* **병렬 개수**: 서버 사양/네트워크에 따라 `MAX_PARALLEL`을 8\~16에서 조정.
+* **타임아웃**: 느리면 per-hop 5\~6초, 하드 타임박스 40초로 늘리세요.
+* **로그**: `notes`에 `finalUrl` 일부를 넣어 디버깅하면 유용(민감정보 가림).
+
+이렇게 바꾸면 **“무한 대기처럼 보이는” 현상은 제거**되고, **찾히면 바로 끝**, 못 찾으면 **빠르게 실패**합니다.

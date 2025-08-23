@@ -1,60 +1,87 @@
-// Naver OpenAPI를 사용한 일반(오가닉) 순위 추적 - 교정본
-// - 1차: items[].productId 직접 매칭
-// - 2차: 각 item.link 리다이렉트 최종 URL에서 prodNo/nvMid/productId를 추출해 재매칭
-// - PC 기준 40개/페이지 환산 유지
-
+// Naver OpenAPI 일반(오가닉) 순위 추적 — 속도/안정성 교정본
 import type { RankResult } from "@shared/schema";
 
 const OPENAPI_BASE_URL = "https://openapi.naver.com/v1/search/shop.json";
 
+// ----- 타입 -----
 interface NaverShopItem {
-  productId: string;  // 네이버 쇼핑 상품 ID (OpenAPI 정의)
+  productId: string;
   mallName: string;
-  link: string;       // openapi.naver.com/l?... → 최종 상품 URL로 리다이렉트됨
+  link: string;
   lprice: string;
 }
+interface NaverShopResponse { items: NaverShopItem[]; }
+type IdParts = { productId?: string; prodNo?: string; nvMid?: string; };
 
-interface NaverShopResponse {
-  items: NaverShopItem[];
-}
-
-type IdParts = {
-  productId?: string; // nvMid나 prodNo와는 다른, 네이버 쇼핑 상품 ID
-  prodNo?: string;    // 스마트스토어 상품번호 (/products/{prodNo})
-  nvMid?: string;     // SERP/카탈로그 등에서 쓰이는 ID
-};
-
-// 최종 URL에서 prodNo/nvMid/productId 후보 추출
-function extractIdsFromUrl(finalUrl: string): IdParts {
-  const out: IdParts = {};
-  try {
-    // /products/{prodNo}
-    const mProd = finalUrl.match(/\/products\/(\d+)/i);
-    if (mProd) out.prodNo = mProd[1];
-
-    // 쿼리 스트링에서 nvMid, productId, prodNo 등
-    const mNvMid = finalUrl.match(/[?&]nvMid=(\d+)/i);
-    if (mNvMid) out.nvMid = mNvMid[1];
-
-    const mPid = finalUrl.match(/[?&]productId=(\d+)/i);
-    if (mPid) out.productId = mPid[1];
-
-    const mProdNoQ = finalUrl.match(/[?&]prodNo=(\d+)/i);
-    if (mProdNoQ) out.prodNo = mProdNoQ[1] || out.prodNo;
-  } catch {
-    // 무시
-  }
-  return out;
-}
-
-// 안전한 숫자 문자열 비교(선행 0/형 변환 흔들림 방지)
-function eqNumStr(a?: string | number | null, b?: string | number | null): boolean {
+// ----- 유틸: 숫자 문자열 비교 -----
+function eqNumStr(a?: string | number | null, b?: string | number | null) {
   if (a == null || b == null) return false;
   const sa = String(a).replace(/^0+/, "");
   const sb = String(b).replace(/^0+/, "");
   return sa === sb;
 }
 
+// ----- 유틸: URL에서 ID 후보 추출 -----
+function extractIdsFromUrl(u: string): IdParts {
+  const out: IdParts = {};
+  try {
+    const mProd = u.match(/\/products\/(\d+)/i);
+    if (mProd) out.prodNo = mProd[1];
+
+    const mNvMid = u.match(/[?&]nvMid=(\d+)/i);
+    if (mNvMid) out.nvMid = mNvMid[1];
+
+    const mPid = u.match(/[?&]productId=(\d+)/i);
+    if (mPid) out.productId = mPid[1];
+
+    const mProdNoQ = u.match(/[?&]prodNo=(\d+)/i);
+    if (mProdNoQ) out.prodNo = mProdNoQ[1] || out.prodNo;
+  } catch {}
+  return out;
+}
+
+// ----- 유틸: 확실한 fetch 타임아웃 -----
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}, ms = 5000): Promise<Response> {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(new Error("timeout")), ms);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+// ----- 유틸: HEAD + manual redirect로 Location 뽑기 (빠르고 안전) -----
+async function resolveLocationHead(url: string, headers: Record<string, string>, perHopTimeout = 4000, maxHops = 3): Promise<string> {
+  let current = url;
+  for (let hop = 0; hop < maxHops; hop++) {
+    const res = await fetchWithTimeout(current, {
+      method: "HEAD",
+      redirect: "manual",
+      headers,
+    }, perHopTimeout);
+
+    // 3xx면 Location 추출
+    if (res.status >= 300 && res.status < 400) {
+      const loc = res.headers.get("location");
+      if (loc) {
+        // 절대/상대 처리
+        try { current = new URL(loc, current).href; } catch { current = loc; }
+        continue; // 다음 hop
+      }
+      break; // 3xx인데 Location 없으면 중단
+    }
+
+    // 2xx면 current가 최종
+    if (res.ok) return current;
+
+    // 4xx/5xx면 중단
+    break;
+  }
+  return current;
+}
+
+// ----- 메인 함수 -----
 export async function fetchOrganicRank({
   keyword,
   productId: inputId,
@@ -62,78 +89,90 @@ export async function fetchOrganicRank({
   clientSecret,
 }: {
   keyword: string;
-  productId: string; // 입력: productId 또는 prodNo 또는 nvMid일 수 있다고 가정
+  productId: string; // productId/prodNo/nvMid 아무거나 들어올 수 있음
   clientId: string;
   clientSecret: string;
 }): Promise<RankResult> {
-  console.log(`[organic] OpenAPI 일반 순위 검색 시작: keyword="${keyword}", inputId=${inputId}`);
+  const HARD_DEADLINE_MS = 30000; // 함수 전체 하드 타임박스
+  const started = Date.now();
+  const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+  const commonHeaders = {
+    "User-Agent": ua,
+    "Accept": "*/*",
+    "Referer": "https://search.shopping.naver.com/",
+  };
 
   try {
-    // OpenAPI 2회 호출 (1-100, 101-200)
+    console.log(`[organic] 시작: "${keyword}", inputId=${inputId}`);
+
+    // 1) OpenAPI 호출
     const callApi = async (start: number): Promise<NaverShopResponse> => {
       const url = `${OPENAPI_BASE_URL}?query=${encodeURIComponent(keyword)}&display=100&start=${start}&sort=sim`;
-
-      const response = await fetch(url, {
+      const res = await fetchWithTimeout(url, {
         headers: {
+          ...commonHeaders,
           "X-Naver-Client-Id": clientId,
           "X-Naver-Client-Secret": clientSecret,
-          "User-Agent": "SNAVER-Ranking-Tracker/1.0",
         },
-        // 기본 redirect: 'follow'
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`OpenAPI ${response.status}: ${errorText}`);
-      }
-      return response.json();
+      }, 7000);
+      if (!res.ok) throw new Error(`OpenAPI ${res.status}: ${await res.text()}`);
+      return res.json();
     };
 
-    // 병렬로 1-100, 101-200 조회
     const [batch1, batch2] = await Promise.all([callApi(1), callApi(101)]);
     const allItems: NaverShopItem[] = [...(batch1.items ?? []), ...(batch2.items ?? [])];
-    console.log(`[organic] OpenAPI 수집 완료: ${allItems.length}개`);
+    if (!allItems.length) {
+      return { productId: inputId, found: false, notes: ["OpenAPI 결과 0건"] };
+    }
 
-    // 1차: OpenAPI productId 직접 매칭 (주석처리 - 사용자 요청)
-    // let idx = allItems.findIndex((it) => eqNumStr(it.productId, inputId));
-    // if (idx !== -1) {
-    //   const hit = allItems[idx];
-    //   const globalRank = idx + 1;
-    //   const pageNumber = Math.ceil(globalRank / 40);
-    //   const rankInPage = ((globalRank - 1) % 40) + 1;
-    //   console.log(`[organic] 1차 매칭 성공: globalRank=${globalRank}, page=${pageNumber}, rankInPage=${rankInPage}`);
-    //   return {
-    //     productId: hit.productId,
-    //     storeName: hit.mallName,
-    //     storeLink: hit.link,
-    //     price: parseInt(hit.lprice || "0", 10) || 0,
-    //     globalRank,
-    //     page: pageNumber,
-    //     rankInPage,
-    //     found: true,
-    //   };
-    // }
+    // 2) 1차: items[].productId 즉시 매칭 (가장 빠름)
+    let idx = allItems.findIndex((it) => eqNumStr(it.productId, inputId));
+    if (idx !== -1) {
+      const hit = allItems[idx];
+      const globalRank = idx + 1;
+      const pageNumber = Math.ceil(globalRank / 40);
+      const rankInPage = ((globalRank - 1) % 40) + 1;
+      return {
+        productId: hit.productId,
+        storeName: hit.mallName,
+        storeLink: hit.link,
+        price: parseInt(hit.lprice || "0", 10) || 0,
+        globalRank,
+        page: pageNumber,
+        rankInPage,
+        found: true,
+        notes: ["1차: OpenAPI productId 매칭"],
+      };
+    }
 
-    // 2차: 최종 URL 추출 기반 매칭 (prodNo/nvMid/productId 후보) - 최적화됨
-    console.log(`[organic] 2차 매칭 시도 (1차 건너뜀)`);
-    const MAX_PARALLEL = 16; // 병렬 처리 수 증가
-    let idx = -1; // idx 변수 선언
+    // 3) 2차: 리다이렉트 Location만 해석(HEAD) → ID 매칭
+    //  - 최종 GET까지 가지 않음(느리고 행 가능). 빠르게 Location 체인만 추적.
+    const MAX_PARALLEL = 12;
     for (let base = 0; base < allItems.length; base += MAX_PARALLEL) {
+      // 하드 데드라인 체크
+      if (Date.now() - started > HARD_DEADLINE_MS) {
+        return { productId: inputId, found: false, notes: ["시간 초과(하드 타임박스)"] };
+      }
+
       const slice = allItems.slice(base, base + MAX_PARALLEL);
 
-      // 병렬로 최종 URL 확인
-      const results = await Promise.all(
+      const settled = await Promise.allSettled(
         slice.map(async (it) => {
           try {
-            // openapi 링크는 최종 상품 URL로 리다이렉트됨
-            const resp = await fetch(it.link, { 
-              redirect: "follow", 
-              signal: AbortSignal.timeout(5000) // 5초 타임아웃
-            });
-            const finalUrl = resp.url || it.link;
+            // 3-a) 먼저 링크 자체에서 ID가 보이면 바로 비교(아주 빠름)
+            const id0 = extractIdsFromUrl(it.link);
+            if (
+              eqNumStr(id0.prodNo, inputId) ||
+              eqNumStr(id0.nvMid, inputId) ||
+              eqNumStr(id0.productId, inputId)
+            ) {
+              return { it, finalUrl: it.link, ids: id0, matched: true };
+            }
 
+            // 3-b) HEAD+manual 로 Location 체인만 해석
+            const finalUrl = await resolveLocationHead(it.link, commonHeaders, 4000, 3);
             const ids = extractIdsFromUrl(finalUrl);
-            // 입력값이 productId/prodNo/nvMid 중 무엇이든 매칭되도록 비교
+
             const matched =
               eqNumStr(ids.prodNo, inputId) ||
               eqNumStr(ids.nvMid, inputId) ||
@@ -141,124 +180,50 @@ export async function fetchOrganicRank({
               eqNumStr(it.productId, inputId);
 
             return { it, finalUrl, ids, matched };
-          } catch (e) {
-            return { it, finalUrl: it.link, ids: {}, matched: false };
+          } catch (e: any) {
+            return { it, finalUrl: it.link, ids: {}, matched: false, error: e?.message || String(e) };
           }
         })
       );
 
-      // 매칭된 항목 찾기
-      const pos = results.findIndex((r) => r.matched);
+      const ok = settled
+        .filter((r): r is PromiseFulfilledResult<any> => r.status === "fulfilled")
+        .map((r) => r.value);
+
+      const pos = ok.findIndex((r) => r.matched);
       if (pos !== -1) {
         idx = base + pos;
-        const target = results[pos].it;
+        const r = ok[pos];
         const globalRank = idx + 1;
         const pageNumber = Math.ceil(globalRank / 40);
         const rankInPage = ((globalRank - 1) % 40) + 1;
 
-        console.log(
-          `[organic] 2차 매칭 성공: globalRank=${globalRank}, page=${pageNumber}, rankInPage=${rankInPage}, finalUrl=${results[pos].finalUrl}`
-        );
-
         return {
-          productId: target.productId,
-          storeName: target.mallName,
-          storeLink: results[pos].finalUrl || target.link,
-          price: parseInt(target.lprice || "0", 10) || 0,
+          productId: r.it.productId,
+          storeName: r.it.mallName,
+          storeLink: r.finalUrl || r.it.link,
+          price: parseInt(r.it.lprice || "0", 10) || 0,
           globalRank,
           page: pageNumber,
           rankInPage,
           found: true,
-          notes: ["최종 URL 기반 매칭(prodNo/nvMid 포함)"],
+          notes: ["2차: redirect Location(HEAD) 기반 매칭"],
         };
       }
+      // 실패한 요청은 다음 슬라이스로 계속 진행 (행 방지)
     }
 
-    // 여기까지 못 찾으면 200위 내 미노출 판단
-    console.log(`[organic] 미발견: 입력 제품번호(${inputId})와 일치하는 상품 없음`);
+    // 4) 200위 내 미발견
     return {
       productId: inputId,
       found: false,
       notes: ["상위 200위 내 미노출 또는 OpenAPI-실검색 불일치"],
     };
-  } catch (error: any) {
-    console.error("[organic] OpenAPI 일반 순위 조회 오류:", error?.message || error);
+  } catch (err: any) {
     return {
       productId: inputId,
       found: false,
-      notes: [`API 오류: ${error?.message || String(error)}`],
+      notes: [`API 오류: ${err?.message || String(err)}`],
     };
   }
-  
-  /* 원본 OpenAPI 방식 - 실제 검색과 결과 불일치
-  try {
-  try {
-    // OpenAPI 2회 호출 (1-100, 101-200)
-    const callApi = async (start: number): Promise<NaverShopResponse> => {
-      const url = `${OPENAPI_BASE_URL}?query=${encodeURIComponent(keyword)}&display=100&start=${start}&sort=sim`;
-      
-      const response = await fetch(url, {
-        headers: {
-          "X-Naver-Client-Id": clientId,
-          "X-Naver-Client-Secret": clientSecret,
-          "User-Agent": "SNAVER-Ranking-Tracker/1.0",
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`OpenAPI ${response.status}: ${errorText}`);
-      }
-
-      return response.json();
-    };
-
-    // 병렬로 1-100, 101-200 조회
-    const [batch1, batch2] = await Promise.all([
-      callApi(1),
-      callApi(101),
-    ]);
-
-    // 모든 아이템 합치기 (최대 200개)
-    const allItems = [...(batch1.items ?? []), ...(batch2.items ?? [])];
-
-    // 타겟 상품 찾기
-    const targetIndex = allItems.findIndex(
-      (item) => String(item.productId) === String(productId)
-    );
-
-    if (targetIndex === -1) {
-      return {
-        productId,
-        found: false,
-        notes: ["상위 200위 내 미노출"],
-      };
-    }
-
-    const targetItem = allItems[targetIndex];
-    const globalRank = targetIndex + 1; // 1-based 순위
-    const page = Math.ceil(globalRank / 40); // PC 기준 40개/페이지
-    const rankInPage = ((globalRank - 1) % 40) + 1; // 페이지 내 순위
-
-    return {
-      productId,
-      storeName: targetItem.mallName,
-      storeLink: targetItem.link,
-      price: Number(targetItem.lprice),
-      globalRank,
-      page,
-      rankInPage,
-      found: true,
-    };
-
-  } catch (error: any) {
-    console.error("오가닉 랭킹 조회 오류:", error);
-    
-    return {
-      productId,
-      found: false,
-      notes: [`API 오류: ${error.message}`],
-    };
-  }
-  */
 }
