@@ -64,6 +64,7 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
       }, 1000);
       
       queryClient.invalidateQueries({ queryKey: ["/products"] });
+      queryClient.refetchQueries({ queryKey: ["/products"] });
       toast({
         title: "수동 검색 완료",
         description: "제품 순위가 업데이트되었습니다.",
@@ -92,6 +93,7 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/products"] });
+      queryClient.refetchQueries({ queryKey: ["/products"] });
       toast({
         title: "상태 변경 완료",
         description: "제품 상태가 업데이트되었습니다.",
@@ -113,6 +115,7 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/products"] });
+      queryClient.refetchQueries({ queryKey: ["/products"] });
     },
   });
 
@@ -123,6 +126,7 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/products"] });
+      queryClient.refetchQueries({ queryKey: ["/products"] });
       toast({
         title: "삭제 완료",
         description: "제품이 성공적으로 삭제되었습니다.",
