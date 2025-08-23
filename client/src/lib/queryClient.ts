@@ -1,9 +1,6 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
-// 👇️ DO NOT MODIFY BELOW: VITE_API_URL is required for Replit + server routing
-const BASE_API_URL = (import.meta as any).env?.VITE_API_URL || "/api";
-// 👆️ DO NOT MODIFY ABOVE
-
+// ----- 내부 함수 -----
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -11,9 +8,43 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-// 중복된 apiRequest 함수 제거 - api.ts에서 import하여 사용
+// 👇️ DO NOT MODIFY BELOW: Safe API wrapper for both dev and server
+export async function apiRequest<T = any>(
+  method: string,
+  url: string,
+  data?: unknown,
+): Promise<T> {
+  const token = localStorage.getItem("token");
+  const headers: Record<string, string> = data
+    ? { "Content-Type": "application/json" }
+    : {};
 
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  try {
+    const res = await fetch(url, {
+      method,
+      headers,
+      body: data ? JSON.stringify(data) : undefined,
+    });
+
+    if (!res.ok) {
+      const errorText = (await res.text()) || res.statusText;
+      throw new Error(`${res.status}: ${errorText}`);
+    }
+
+    return (await res.json()) as T;
+  } catch (e: any) {
+    throw new Error(`API 요청 실패: ${e?.message || String(e)}`);
+  }
+}
+// 👆️ DO NOT MODIFY ABOVE
+
+// ----- react-query용 getQueryFn -----
 type UnauthorizedBehavior = "returnNull" | "throw";
+
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
@@ -21,14 +52,12 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const token = localStorage.getItem("token");
     const headers: Record<string, string> = {};
-    
+
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
-    // ✅ BASE_API_URL을 사용하여 올바른 API 엔드포인트 호출
-    const url = `${BASE_API_URL}${queryKey.join("/")}`;
-    const res = await fetch(url, {
+    const res = await fetch(queryKey.join("/") as string, {
       headers,
     });
 
@@ -40,6 +69,7 @@ export const getQueryFn: <T>(options: {
     return await res.json();
   };
 
+// ----- queryClient 인스턴스 생성 -----
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
