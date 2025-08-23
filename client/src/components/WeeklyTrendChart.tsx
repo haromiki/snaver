@@ -65,7 +65,7 @@ export default function WeeklyTrendChart({ productId, dailyRanks, className = ""
           backgroundColor: fillColor,
           borderWidth: 2,
           pointRadius: 3,
-          pointHoverRadius: 5,
+          pointHoverRadius: 3,
           pointBackgroundColor: lineColor,
           pointBorderColor: '#ffffff',
           pointBorderWidth: 1,
@@ -79,32 +79,14 @@ export default function WeeklyTrendChart({ productId, dailyRanks, className = ""
         maintainAspectRatio: false,
         interaction: {
           intersect: false,
-          mode: 'index',
+          mode: 'none',
         },
         plugins: {
           legend: {
             display: false
           },
           tooltip: {
-            enabled: true,
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            titleColor: '#fff',
-            bodyColor: '#fff',
-            borderColor: lineColor,
-            borderWidth: 1,
-            displayColors: false,
-            callbacks: {
-              title: (context) => {
-                const index = context[0].dataIndex;
-                return `${dailyRanks[index].day}요일 (${dailyRanks[index].date})`;
-              },
-              label: (context) => {
-                const rank = context.parsed.y;
-                if (rank === null) return '데이터 없음';
-                const page = Math.ceil(rank / 40);
-                return `순위: ${rank}위 (${page}페이지)`;
-              }
-            }
+            enabled: false
           }
         },
         scales: {
@@ -126,7 +108,7 @@ export default function WeeklyTrendChart({ productId, dailyRanks, className = ""
         },
         elements: {
           point: {
-            hoverBorderWidth: 2
+            hoverBorderWidth: 1
           }
         }
       }

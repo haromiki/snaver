@@ -11,16 +11,13 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState("all");
 
   return (
-    <div className="flex h-screen bg-white dark:bg-gray-900" style={{minHeight: '100vh', width: '100%', display: 'flex', backgroundColor: 'red', color: 'white', padding: '20px'}}>
-      <div style={{position: 'absolute', top: '10px', left: '10px', zIndex: 9999, backgroundColor: 'red', color: 'white', padding: '10px'}}>
-        🔴 DASHBOARD RENDERING TEST
-      </div>
+    <div className="flex h-screen bg-white dark:bg-gray-900">
       <Sidebar 
         activeSection={activeSection} 
         onSectionChange={setActiveSection}
       />
       
-      <div className="flex-1 flex flex-col overflow-hidden" style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
         <header className="bg-gray-50 dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-6 py-4" style={{padding: '16px 24px'}}>
           <div className="flex items-center justify-between" style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>

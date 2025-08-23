@@ -109,22 +109,19 @@ function RouterWithRoutes() {
 
 function App() {
   return (
-    <div style={{position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'blue', color: 'white', zIndex: 10000}}>
-      <h1 style={{padding: '20px'}}>🔵 APP.TSX RENDERING TEST</h1>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider defaultTheme="light" storageKey="snaver-ui-theme">
-          <TooltipProvider>
-            <div className="min-h-screen bg-background dark:bg-gray-900">
-              <Toaster />
-              {/* ✅ basePath를 Router에 직접 적용해야 경로가 올바르게 인식됩니다 */}
-              <Router base={basePath}>
-                <RouterWithRoutes />
-              </Router>
-            </div>
-          </TooltipProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    </div>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider defaultTheme="light" storageKey="snaver-ui-theme">
+        <TooltipProvider>
+          <div className="min-h-screen bg-background dark:bg-gray-900">
+            <Toaster />
+            {/* ✅ basePath를 Router에 직접 적용해야 경로가 올바르게 인식됩니다 */}
+            <Router base={basePath}>
+              <RouterWithRoutes />
+            </Router>
+          </div>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 
