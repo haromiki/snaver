@@ -36,10 +36,16 @@ export async function fetchAdRank({
   let browser: Browser | null = null;
 
   try {
-    console.log("[AD] 브라우저 런칭 시작");
+    console.log("[AD] 🚀 브라우저 런칭 시작");
+    console.log("[AD] 🔧 Puppeteer 환경:", { headful, productId, keyword, maxPages });
     
     // PDF 개선: Stealth 플러그인 재활성화
-    puppeteerExtra.use(StealthPlugin());
+    try {
+      puppeteerExtra.use(StealthPlugin());
+      console.log("[AD] ✅ Stealth 플러그인 활성화 완료");
+    } catch (stealthErr: any) {
+      console.log("[AD] ⚠️ Stealth 플러그인 실패:", stealthErr?.message);
+    }
     
     const launchArgs = [
       "--no-sandbox",
@@ -51,14 +57,28 @@ export async function fetchAdRank({
       "--disable-default-apps"
     ];
 
-    browser = await puppeteerExtra.launch({
-      headless: headful ? false : true,  // PDF 개선: headful 옵션에 따라 결정
-      args: launchArgs,
-    });
+    console.log("[AD] 🌐 브라우저 실행 시도 중...");
+    try {
+      browser = await puppeteerExtra.launch({
+        headless: headful ? false : true,  // PDF 개선: headful 옵션에 따라 결정
+        args: launchArgs,
+      });
+      console.log("[AD] ✅ 브라우저 런칭 성공");
+    } catch (launchErr: any) {
+      console.log("[AD] ❌ 브라우저 런칭 실패:", launchErr?.message);
+      throw launchErr;
+    }
 
-    console.log("[AD] 브라우저 런칭 완료");
-    const page = await browser.newPage();
-    console.log("[AD] 새 페이지 생성 완료");
+    console.log("[AD] ✅ 브라우저 런칭 완료");
+    
+    let page;
+    try {
+      page = await browser.newPage();
+      console.log("[AD] ✅ 새 페이지 생성 완료");
+    } catch (pageErr: any) {
+      console.log("[AD] ❌ 페이지 생성 실패:", pageErr?.message);
+      throw pageErr;
+    }
 
     // 프록시 인증
     if (proxy?.username && proxy?.password) {
@@ -384,8 +404,20 @@ export async function fetchAdRank({
       };
     }
   } catch (err: any) {
+    console.log("[AD] 💥 CRITICAL ERROR:", {
+      message: err?.message,
+      stack: err?.stack?.substring(0, 500),
+      name: err?.name,
+      code: err?.code
+    });
     return { productId, found: false, notes: [`크롤링 오류: ${err?.message || String(err)}`] };
   } finally {
-    try { await browser?.close(); } catch {}
+    try { 
+      console.log("[AD] 🔄 브라우저 종료 중...");
+      await browser?.close(); 
+      console.log("[AD] ✅ 브라우저 종료 완료");
+    } catch (closeErr: any) {
+      console.log("[AD] ⚠️ 브라우저 종료 오류:", closeErr?.message);
+    }
   }
 }
