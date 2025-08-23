@@ -47,30 +47,32 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
       return await response.json();
     },
     onSuccess: (data, productId) => {
-      // Complete progress immediately
+      // VPS 실서버: 실제 완료 시에만 100%로 설정
       setRefreshingProducts(prev => {
         const newMap = new Map(prev);
         newMap.set(productId, 100);
         return newMap;
       });
       
-      // Remove progress after a short delay
+      // 즉시 데이터 갱신
+      const currentFilters = getFilters();
+      queryClient.invalidateQueries({ queryKey: ["/products", currentFilters] });
+      queryClient.refetchQueries({ queryKey: ["/products", currentFilters] });
+      
+      // VPS 환경: progress 제거 전에 충분한 시간 대기
       setTimeout(() => {
         setRefreshingProducts(prev => {
           const newMap = new Map(prev);
           newMap.delete(productId);
           return newMap;
         });
-      }, 1000);
-      
-      // 현재 필터에 해당하는 쿼리만 정확히 무효화
-      const currentFilters = getFilters();
-      queryClient.invalidateQueries({ queryKey: ["/products", currentFilters] });
-      queryClient.refetchQueries({ queryKey: ["/products", currentFilters] });
-      toast({
-        title: "수동 검색 완료",
-        description: "제품 순위가 업데이트되었습니다.",
-      });
+        
+        // 데이터 갱신 완료 후 토스트 표시 (VPS 안정성)
+        toast({
+          title: "수동 검색 완료",
+          description: "제품 순위가 업데이트되었습니다.",
+        });
+      }, 2000); // VPS 환경에 맞게 더 긴 대기
     },
     onError: (error: any, productId) => {
       // Remove progress on error
@@ -153,7 +155,7 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
     },
   });
 
-  // Progress simulation for visual feedback
+  // Progress simulation for visual feedback - VPS 실서버 환경 최적화
   const startProgressSimulation = (productId: number) => {
     setRefreshingProducts(prev => {
       const newMap = new Map(prev);
@@ -165,17 +167,24 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
       setRefreshingProducts(prev => {
         const newMap = new Map(prev);
         const current = newMap.get(productId) || 0;
-        if (current < 90) {
-          newMap.set(productId, current + Math.random() * 10);
+        // VPS 환경: 85%까지만 자동 증가, 나머지는 실제 응답 대기
+        if (current < 85) {
+          newMap.set(productId, current + Math.random() * 8);
         }
         return newMap;
       });
-    }, 500);
+    }, 800); // VPS 환경에 맞게 더 느리게
 
-    // Clear interval after max time (15 seconds)
+    // VPS 실서버: 더 긴 타임아웃 (30초) 후 강제 정리
     setTimeout(() => {
       clearInterval(interval);
-    }, 15000);
+      // 타임아웃 시 progress 완전 제거 (실서버 안정성)
+      setRefreshingProducts(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(productId);
+        return newMap;
+      });
+    }, 30000);
   };
 
   // Initialize sortable functionality for drag & drop
