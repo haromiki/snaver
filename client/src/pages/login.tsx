@@ -101,6 +101,26 @@ export default function Login() {
                 >
                   {isLoginPending ? "로그인 중..." : "로그인"}
                 </Button>
+                
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">또는</span>
+                  </div>
+                </div>
+
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full bg-green-500 hover:bg-green-600 text-white border-green-500"
+                  onClick={() => window.location.href = '/api/auth/naver'}
+                  data-testid="button-naver-login"
+                >
+                  <span className="mr-2">N</span>
+                  네이버로 로그인
+                </Button>
               </form>
             </CardContent>
           </Card>

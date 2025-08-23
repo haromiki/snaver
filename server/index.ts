@@ -4,12 +4,24 @@ dotenv.config();
 // 👆️ DO NOT MODIFY ABOVE
 
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// 세션 설정
+app.use(session({
+  secret: process.env.JWT_SECRET || 'your-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: false, // HTTPS에서는 true로 설정
+    maxAge: 1000 * 60 * 60 // 1시간
+  }
+}));
 
 app.use((req, res, next) => {
   const start = Date.now();

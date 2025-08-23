@@ -1,5 +1,5 @@
 // routes.ts
-import type { Express } from "express";
+import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertUserSchema, insertProductSchema, loginSchema, rankQuerySchema, type RankQuery, type RankResult } from "@shared/schema";
@@ -9,6 +9,14 @@ import { authenticateToken } from "./middleware/auth.ts";
 import { fetchOrganicRank } from "./crawler/naverOrganic.js";
 import { fetchOrganicRankPuppeteer } from "./crawler/naverOrganicPuppeteer.js";
 import { fetchAdRank } from "./crawler/adCrawler.js";
+import crypto from "crypto";
+
+// 세션 타입 확장
+declare module 'express-session' {
+  interface SessionData {
+    naverState?: string;
+  }
+}
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
@@ -97,6 +105,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.status(400).json({ message });
+    }
+  });
+
+  // 네이버 OAuth 로그인 시작
+  app.get("/api/auth/naver", (req, res) => {
+    const clientId = process.env.NAVER_CLIENT_ID;
+    const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/naver/callback`;
+    const state = crypto.randomBytes(32).toString('hex');
+    
+    // 상태값을 세션에 저장 (실제로는 Redis나 DB에 저장하는 것이 좋음)
+    req.session = req.session || {};
+    req.session.naverState = state;
+    
+    const naverAuthUrl = `https://nid.naver.com/oauth2.0/authorize?` +
+      `response_type=code&` +
+      `client_id=${clientId}&` +
+      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+      `state=${state}`;
+    
+    res.redirect(naverAuthUrl);
+  });
+
+  // 네이버 OAuth 콜백 처리
+  app.get("/api/auth/naver/callback", async (req, res) => {
+    try {
+      const { code, state } = req.query;
+      const clientId = process.env.NAVER_CLIENT_ID;
+      const clientSecret = process.env.NAVER_CLIENT_SECRET;
+      
+      // 상태값 검증
+      if (!req.session?.naverState || req.session.naverState !== state) {
+        return res.status(400).json({ message: "잘못된 상태값입니다" });
+      }
+      
+      // Access Token 요청
+      const tokenResponse = await fetch('https://nid.naver.com/oauth2.0/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          client_id: clientId!,
+          client_secret: clientSecret!,
+          code: code as string,
+          state: state as string,
+        }),
+      });
+      
+      const tokenData = await tokenResponse.json();
+      
+      if (!tokenData.access_token) {
+        throw new Error('액세스 토큰을 받지 못했습니다');
+      }
+      
+      // 사용자 정보 요청
+      const userResponse = await fetch('https://openapi.naver.com/v1/nid/me', {
+        headers: {
+          'Authorization': `Bearer ${tokenData.access_token}`,
+        },
+      });
+      
+      const userData = await userResponse.json();
+      
+      if (userData.resultcode !== '00') {
+        throw new Error('사용자 정보를 가져오지 못했습니다');
+      }
+      
+      const naverUser = userData.response;
+      
+      // 기존 사용자 확인 또는 새 사용자 생성
+      let user = await storage.getUserByEmail(naverUser.email);
+      
+      if (!user) {
+        // 새 사용자 생성
+        const username = naverUser.nickname || naverUser.name || `naver_${naverUser.id}`;
+        user = await storage.createUser({
+          username: username,
+          email: naverUser.email,
+          passwordHash: '', // 네이버 로그인 사용자는 비밀번호 없음
+        } as any);
+      }
+      
+      // JWT 토큰 생성
+      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "7d" });
+      
+      // 프론트엔드로 리다이렉트 (토큰을 쿼리 파라미터로 전달)
+      res.redirect(`/?token=${token}&loginSuccess=true`);
+      
+    } catch (error: any) {
+      console.error("네이버 로그인 오류:", error);
+      res.redirect(`/?loginError=${encodeURIComponent(error.message)}`);
     }
   });
 

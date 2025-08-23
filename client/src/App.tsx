@@ -4,9 +4,11 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import NotFound from "@/pages/not-found";
+import { useEffect } from "react";
 
 // 👇️ DO NOT MODIFY BELOW: Server-specific routing fix (snaver base)
 const basePath = window.location.hostname.includes("replit.dev")
@@ -16,9 +18,45 @@ const basePath = window.location.hostname.includes("replit.dev")
 
 function RouterWithRoutes() {
   const { user, isLoading } = useAuth();
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
+  const { toast } = useToast();
 
   console.log('[DEBUG] RouterWithRoutes - user:', user, 'isLoading:', isLoading, 'location:', location);
+
+  // 네이버 OAuth 콜백 처리
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const loginSuccess = urlParams.get('loginSuccess');
+    const loginError = urlParams.get('loginError');
+
+    if (token && loginSuccess) {
+      // 토큰을 localStorage에 저장
+      localStorage.setItem('token', token);
+      
+      // URL 파라미터 제거
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // 성공 메시지
+      toast({
+        title: "네이버 로그인 성공",
+        description: "환영합니다!",
+      });
+      
+      // 페이지 새로고침 (useAuth가 토큰을 감지하도록)
+      window.location.reload();
+    } else if (loginError) {
+      // URL 파라미터 제거
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // 에러 메시지
+      toast({
+        title: "네이버 로그인 실패",
+        description: decodeURIComponent(loginError),
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
 
   if (isLoading) {
     return (
