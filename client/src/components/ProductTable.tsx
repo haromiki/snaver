@@ -72,24 +72,8 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
         if (currentProgress < 100) {
           setTimeout(animateToComplete, 100); // 0.1초마다
         } else {
-          // 100% 완료 후 UI 업데이트
-          const currentFilters = getFilters();
-          queryClient.invalidateQueries({ queryKey: ["/products", currentFilters] });
-          queryClient.refetchQueries({ queryKey: ["/products", currentFilters] });
-          
-          toast({
-            title: "수동 검색 완료",
-            description: "제품 순위가 업데이트되었습니다.",
-          });
-          
-          // 진행률 제거
-          setTimeout(() => {
-            setRefreshingProducts(prev => {
-              const newMap = new Map(prev);
-              newMap.delete(productId);
-              return newMap;
-            });
-          }, 1500);
+          // 100% 완료 후 실제 데이터 확인 방식으로 UI 업데이트
+          verifyAndUpdateData(productId);
         }
       };
       
@@ -110,6 +94,96 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
       });
     },
   });
+
+  // 실서버 안정성 - 데이터 검증 및 강제 업데이트
+  const verifyAndUpdateData = async (productId: number) => {
+    let attempts = 0;
+    const maxAttempts = 10; // 최대 10회 시도
+    
+    const checkData = async (): Promise<void> => {
+      attempts++;
+      
+      try {
+        // 캐시를 완전히 무시하고 새로운 데이터 강제 요청
+        const params = new URLSearchParams();
+        const filters = getFilters();
+        if (filters.type) params.append("type", filters.type);
+        if (filters.active !== undefined) params.append("active", filters.active.toString());
+        
+        // 타임스탬프 추가로 캐시 완전 무효화
+        params.append("_t", Date.now().toString());
+        
+        const response = await apiRequest("GET", `/products?${params}`);
+        const freshData = await response.json();
+        
+        // 해당 제품의 최신 트랙 데이터 확인
+        const updatedProduct = freshData.find((p: any) => p.id === productId);
+        
+        if (updatedProduct && updatedProduct.latestTrack && updatedProduct.latestTrack.id) {
+          // 데이터 확인됨 - UI 업데이트
+          const currentFilters = getFilters();
+          queryClient.setQueryData(["/products", currentFilters], freshData);
+          
+          toast({
+            title: "수동 검색 완료",
+            description: `순위 정보가 업데이트되었습니다. (${updatedProduct.latestTrack.globalRank ? updatedProduct.latestTrack.globalRank + '위' : '미발견'})`,
+          });
+          
+          // 진행률 제거
+          setTimeout(() => {
+            setRefreshingProducts(prev => {
+              const newMap = new Map(prev);
+              newMap.delete(productId);
+              return newMap;
+            });
+          }, 1500);
+          
+          return; // 성공 완료
+        }
+        
+        // 데이터 없음 - 재시도
+        if (attempts < maxAttempts) {
+          setTimeout(() => checkData(), 1000); // 1초 후 재시도
+        } else {
+          // 최대 시도 횟수 초과
+          toast({
+            title: "검색 완료",
+            description: "검색이 완료되었지만 결과를 불러오는데 시간이 걸립니다. 잠시 후 새로고침해주세요.",
+            variant: "destructive",
+          });
+          
+          // 진행률 제거
+          setRefreshingProducts(prev => {
+            const newMap = new Map(prev);
+            newMap.delete(productId);
+            return newMap;
+          });
+        }
+        
+      } catch (error) {
+        console.error('데이터 확인 오류:', error);
+        
+        if (attempts < maxAttempts) {
+          setTimeout(() => checkData(), 1000);
+        } else {
+          toast({
+            title: "검색 실패",
+            description: "데이터를 불러오는데 실패했습니다.",
+            variant: "destructive",
+          });
+          
+          setRefreshingProducts(prev => {
+            const newMap = new Map(prev);
+            newMap.delete(productId);
+            return newMap;
+          });
+        }
+      }
+    };
+    
+    // 1초 후 시작 (서버 처리 시간 고려)
+    setTimeout(() => checkData(), 1000);
+  };
 
   const toggleActiveMutation = useMutation({
     mutationFn: async ({ productId, active }: { productId: number; active: boolean }) => {
