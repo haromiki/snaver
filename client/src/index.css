@@ -136,4 +136,35 @@
   .bg-error {
     @apply bg-red-600;
   }
+
+  /* 드래그 앤 드롭 스타일 */
+  .sortable-ghost {
+    opacity: 0.5;
+    background: #f0f8ff;
+    transform: rotate(2deg);
+  }
+
+  .sortable-chosen {
+    cursor: grabbing !important;
+  }
+
+  .sortable-drag {
+    background: #ffffff;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    transform: rotate(2deg);
+    z-index: 9999;
+  }
+
+  .drag-handle {
+    cursor: grab;
+    transition: color 0.2s ease;
+  }
+
+  .drag-handle:hover {
+    color: #3b82f6;
+  }
+
+  .drag-handle:active {
+    cursor: grabbing;
+  }
 }

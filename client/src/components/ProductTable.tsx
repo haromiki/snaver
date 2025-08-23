@@ -214,11 +214,42 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
       const response = await apiRequest("POST", "/products/sort", { productIds });
       return await response.json();
     },
-    onSuccess: () => {
-      // 현재 필터에 해당하는 쿼리만 정확히 무효화
+    onMutate: async (productIds: number[]) => {
+      // 낙관적 업데이트를 위해 진행 중인 쿼리 취소
       const currentFilters = getFilters();
-      queryClient.invalidateQueries({ queryKey: ["/products", currentFilters] });
-      queryClient.refetchQueries({ queryKey: ["/products", currentFilters] });
+      await queryClient.cancelQueries({ queryKey: ["/products", currentFilters] });
+
+      // 이전 데이터 백업
+      const previousProducts = queryClient.getQueryData(["/products", currentFilters]);
+
+      // 새로운 순서로 즉시 UI 업데이트
+      if (previousProducts) {
+        const orderedProducts = productIds.map(id => 
+          (previousProducts as any[]).find(p => p.id === id)
+        ).filter(Boolean);
+        
+        queryClient.setQueryData(["/products", currentFilters], orderedProducts);
+      }
+
+      return { previousProducts };
+    },
+    onError: (err, productIds, context) => {
+      // 에러 발생 시 이전 데이터로 롤백
+      if (context?.previousProducts) {
+        const currentFilters = getFilters();
+        queryClient.setQueryData(["/products", currentFilters], context.previousProducts);
+      }
+      
+      toast({
+        title: "정렬 실패",
+        description: "제품 순서 변경에 실패했습니다.",
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      // 서버와 동기화 (선택사항: 너무 자주 호출되지 않도록 주의)
+      // const currentFilters = getFilters();
+      // queryClient.invalidateQueries({ queryKey: ["/products", currentFilters] });
     },
   });
 
@@ -291,8 +322,11 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
             const sortableInstance = Sortable.create(element, {
               handle: ".drag-handle",
               animation: 150,
+              ghostClass: "sortable-ghost",
+              chosenClass: "sortable-chosen",
+              dragClass: "sortable-drag",
               onEnd: (evt: any) => {
-                if (evt.oldIndex !== evt.newIndex) {
+                if (evt.oldIndex !== evt.newIndex && !updateSortMutation.isPending) {
                   const newOrder = [...products];
                   const [removed] = newOrder.splice(evt.oldIndex!, 1);
                   newOrder.splice(evt.newIndex!, 0, removed);
@@ -324,7 +358,7 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
         setSortableList(null);
       }
     };
-  }, [products.length]);
+  }, [products.length, updateSortMutation.isPending]);
 
   const formatLastChecked = (latestTrack: any) => {
     if (!latestTrack) return "미확인";
