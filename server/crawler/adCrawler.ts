@@ -60,8 +60,15 @@ export async function fetchAdRank({
     console.log("[AD] 🌐 브라우저 실행 시도 중...");
     try {
       browser = await puppeteerExtra.launch({
-        headless: headful ? false : true,  // PDF 개선: headful 옵션에 따라 결정
-        args: launchArgs,
+        headless: false,  // 2025 최적화: 비헤드리스 모드로 탐지 회피
+        args: [
+          ...launchArgs,
+          "--lang=ko-KR",
+          "--accept-lang=ko-KR,ko;q=0.9,en;q=0.8",
+          "--disable-features=VizDisplayCompositor",
+          "--window-size=1920,1080"
+        ],
+        defaultViewport: null, // 실제 브라우저처럼
       });
       console.log("[AD] ✅ 브라우저 런칭 성공");
     } catch (launchErr: any) {
@@ -85,24 +92,28 @@ export async function fetchAdRank({
       await page.authenticate({ username: proxy.username, password: proxy.password });
     }
 
-    // PDF 개선: 실제 사용자 환경과 동일한 설정
-    await page.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-    );
+    // 2025 최적화: 완전한 한국 사용자 환경 시뮬레이션
+    const koreanUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+    await page.setUserAgent(koreanUserAgent);
+    console.log("[AD] 🇰🇷 한국 사용자 환경 설정 완료");
     await page.setViewport({ 
       width: 1920 + Math.floor(Math.random() * 100), 
       height: 1080 + Math.floor(Math.random() * 50), 
       deviceScaleFactor: 1 
     });
     await page.setExtraHTTPHeaders({ 
-      "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8",
+      "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
       "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-      "Accept-Encoding": "gzip, deflate, br",
-      "DNT": "1",
-      "Upgrade-Insecure-Requests": "1",
+      "Accept-Encoding": "gzip, deflate, br, zstd",
+      "Cache-Control": "max-age=0",
+      "Sec-Ch-Ua": '"Chromium";v="131", "Not_A Brand";v="24"',
+      "Sec-Ch-Ua-Mobile": "?0",
+      "Sec-Ch-Ua-Platform": '"Windows"',
       "Sec-Fetch-Dest": "document",
       "Sec-Fetch-Mode": "navigate",
-      "Sec-Fetch-Site": "same-origin"
+      "Sec-Fetch-Site": "none",
+      "Sec-Fetch-User": "?1",
+      "Upgrade-Insecure-Requests": "1"
     });
     await page.emulateTimezone("Asia/Seoul");
 
@@ -121,10 +132,30 @@ export async function fetchAdRank({
       Object.defineProperty(navigator, "deviceMemory", { get: () => 8 });
     });
 
-    console.log("[AD] 페이지 설정 완료");
+    console.log("[AD] 🔧 페이지 설정 완료");
 
-    // 네트워크 스니핑 제거 - 순수 페이지 접근만
-
+    // 2025 고급: 실제 한국인 사용자처럼 네이버 메인 페이지부터 시작
+    console.log("[AD] 🏠 네이버 메인 페이지 방문 (자연스러운 탐색)");
+    await page.goto("https://www.naver.com", { waitUntil: "networkidle0", timeout: 30000 });
+    
+    // 인간형 행동 1: 메인 페이지에서 잠깐 머물기
+    await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 3000));
+    
+    // 인간형 행동 2: 실제 마우스 움직임과 클릭으로 쇼핑 탭 이동
+    console.log("[AD] 🖱️ 자연스러운 마우스 움직임으로 쇼핑 탭 클릭");
+    try {
+      await page.hover('#gnb_mall');
+      await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
+      await page.click('#gnb_mall', { delay: Math.random() * 100 });
+      await page.waitForNavigation({ waitUntil: "networkidle0", timeout: 15000 });
+    } catch (navError) {
+      console.log("[AD] 🔄 직접 쇼핑 페이지로 이동");
+      await page.goto("https://shopping.naver.com", { waitUntil: "networkidle0", timeout: 30000 });
+    }
+    
+    // 인간형 행동 3: 쇼핑 메인 페이지에서 자연스럽게 둘러보기
+    await new Promise(resolve => setTimeout(resolve, 3000 + Math.random() * 2000));
+    
     let cumulativeAdCount = 0;
 
     for (let pageIndex = 1; pageIndex <= maxPages; pageIndex++) {
@@ -138,11 +169,50 @@ export async function fetchAdRank({
         `viewType=list`;
 
       console.log(`[AD] 📄 "${keyword}" 페이지 ${pageIndex}/${maxPages} 시작`);
-      console.log(`[AD][p${pageIndex}] 🌐 네이버 검색 페이지 접속 중...`);
       
-      // PDF 개선: networkidle2로 네트워크 안정까지 대기
-      await page.goto(url, { waitUntil: "networkidle2", timeout: 90_000 });
-      console.log(`[AD][p${pageIndex}] 페이지 로딩 완료`);
+      if (pageIndex === 1) {
+        // 첫 번째 페이지: 실제 사람처럼 검색창에서 검색
+        console.log(`[AD][p${pageIndex}] 🔍 검색창에 직접 키워드 입력`);
+        
+        try {
+          // 검색창 찾고 클릭
+          await page.waitForSelector('#__next input[placeholder*="검색"]', { timeout: 10000 });
+          await page.click('#__next input[placeholder*="검색"]', { delay: Math.random() * 100 });
+          
+          // 인간형 타이핑: 한 글자씩 입력
+          await page.keyboard.type(keyword, { delay: 100 + Math.random() * 200 });
+          await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
+          
+          // 검색 버튼 클릭 또는 엔터
+          await page.keyboard.press('Enter');
+          await page.waitForNavigation({ waitUntil: "networkidle2", timeout: 30000 });
+          
+          console.log(`[AD][p${pageIndex}] ✅ 자연스러운 검색 완료`);
+        } catch (searchError) {
+          console.log(`[AD][p${pageIndex}] 🔄 검색 실패, 직접 URL 이동`);
+          await page.goto(url, { waitUntil: "networkidle2", timeout: 90_000 });
+        }
+      } else {
+        // 2페이지 이상: 페이지네이션 클릭 또는 URL 이동
+        console.log(`[AD][p${pageIndex}] 🌐 ${pageIndex}페이지로 이동`);
+        
+        try {
+          // 페이지 번호 클릭 시도
+          const pageButton = await page.$(`a[href*="pagingIndex=${pageIndex}"]`);
+          if (pageButton) {
+            await page.hover(`a[href*="pagingIndex=${pageIndex}"]`);
+            await page.click(`a[href*="pagingIndex=${pageIndex}"]`, { delay: Math.random() * 100 });
+            await page.waitForNavigation({ waitUntil: "networkidle2", timeout: 30000 });
+            console.log(`[AD][p${pageIndex}] ✅ 페이지 버튼 클릭 성공`);
+          } else {
+            await page.goto(url, { waitUntil: "networkidle2", timeout: 90_000 });
+            console.log(`[AD][p${pageIndex}] ✅ URL 직접 이동`);
+          }
+        } catch (navError) {
+          await page.goto(url, { waitUntil: "networkidle2", timeout: 90_000 });
+          console.log(`[AD][p${pageIndex}] ⚠️ 페이지 이동 대체 완료`);
+        }
+      }
 
       // PDF 개선: 동적 콘텐츠 로드 대기 및 사용자 행동 시뮬레이션
       console.log(`[AD][p${pageIndex}] 동적 콘텐츠 로드 대기 시작`);
@@ -196,33 +266,92 @@ export async function fetchAdRank({
             return links.length > 0;
           });
 
-          // PDF 개선: 네이버 쇼핑 광고 구조에 최적화된 식별 로직
-          const adCards = cards.filter(card => {
-            const text = card.textContent || '';
-            const innerHTML = card.innerHTML || '';
+          // 2025 완전히 새로운 네이버 광고 탐지 시스템
+          console.log(`[광고탐지] 전체 ${cards.length}개 카드 분석 시작`);
+          
+          const adCards = [];
+          let debugInfo = [];
+          
+          for (let i = 0; i < cards.length; i++) {
+            const card = cards[i];
+            const cardText = (card.textContent || '').trim();
+            const cardHTML = card.innerHTML || '';
+            const cardClass = card.className || '';
             
-            // 1. 기본 텍스트 기반 광고 식별 (기존 방식 유지)
-            const hasAdText = /AD|광고|스폰서/i.test(text);
+            let isAd = false;
+            let reasons = [];
             
-            // 2. PDF 권장: DOM 구조 기반 광고 식별 보강
-            const hasAdBadge = card.querySelector('[class*="ad"], [class*="sponsor"], [data-testid*="ad"]');
-            const hasAdAttribute = card.hasAttribute('data-expose') && /advertisement/i.test(card.getAttribute('data-expose') || '');
-            const hasAdClass = /ad|sponsor|promoted/i.test(card.className || '');
+            // 방법 1: 명시적 광고 텍스트 (한글/영어)
+            const adTexts = ['광고', 'AD', 'Sponsored', '후원', '프로모션', 'PROMOTION'];
+            if (adTexts.some(text => cardText.includes(text))) {
+              isAd = true;
+              reasons.push('광고텍스트');
+            }
             
-            // 3. PDF 권장: 네이버 쇼핑 특유의 광고 영역 구조 확인
-            const isInAdSection = card.closest('[class*="ad"], [class*="sponsor"], [data-testid*="ad"]');
+            // 방법 2: CSS 클래스 패턴 분석
+            const adClassPatterns = [/ad[_-]/, /sponsor/, /advertisement/, /promoted/, /banner/i];
+            if (adClassPatterns.some(pattern => pattern.test(cardClass))) {
+              isAd = true;
+              reasons.push('CSS클래스');
+            }
             
-            // 4. 상품 링크 존재 여부 확인
-            const hasProductLink = Array.from(card.querySelectorAll("a[href]")).some(a => {
-              const href = a.getAttribute("href") || '';
-              return /nvMid=|productId=|prodNo=|\/products\/|\/product\//i.test(href);
-            });
+            // 방법 3: HTML 구조에서 광고 마커 찾기
+            const adMarkers = [
+              '[data-testid*="ad"]',
+              '[data-nv-ad]', 
+              '[class*="ad_"]',
+              '.item_sponsor',
+              '.sponsor_area',
+              '[data-expose*="ad"]'
+            ];
             
-            // PDF 권장: 여러 조건 중 하나라도 만족하면 광고로 판단
-            const isAd = (hasAdText || hasAdBadge || hasAdAttribute || hasAdClass || isInAdSection) && hasProductLink;
+            if (adMarkers.some(marker => card.querySelector(marker))) {
+              isAd = true;
+              reasons.push('HTML마커');
+            }
             
-            return isAd;
-          });
+            // 방법 4: 위치 기반 (상위 결과는 광고일 가능성 높음)
+            if (i < 5) {  // 상위 5개
+              const hasProductLink = Array.from(card.querySelectorAll("a[href]")).some(a => {
+                const href = a.getAttribute("href") || '';
+                return /nvMid=|productId=|prodNo=|\/products\/|\/product\//i.test(href);
+              });
+              
+              if (hasProductLink) {
+                // 추가 광고 징후 확인
+                const extraAdSigns = [
+                  cardHTML.includes('data-cr='), // 클릭 추적
+                  cardHTML.includes('nclick='),  // 네이버 클릭 추적
+                  cardText.includes('무료배송'),
+                  cardText.includes('할인'),
+                  /[0-9]+%/.test(cardText), // 할인율
+                ];
+                
+                if (extraAdSigns.filter(Boolean).length >= 2) {
+                  isAd = true;
+                  reasons.push('위치+징후');
+                }
+              }
+            }
+            
+            // 방법 5: URL 패턴 (nv_ad, adcr 등)
+            const cardLinks = Array.from(card.querySelectorAll("a[href]"));
+            for (const link of cardLinks) {
+              const href = link.getAttribute("href") || '';
+              if (href.includes('nv_ad=') || href.includes('adcr=') || href.includes('AD_')) {
+                isAd = true;
+                reasons.push('광고URL');
+                break;
+              }
+            }
+            
+            if (isAd) {
+              adCards.push(card);
+              debugInfo.push(`카드${i+1}: ${reasons.join(',')}`);
+            }
+          }
+          
+          console.log(`[광고탐지] 결과: ${adCards.length}개 광고 발견`, debugInfo.slice(0, 3));
 
           // 제품 ID 매칭 확인
           let found = null;
