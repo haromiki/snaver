@@ -268,7 +268,7 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
   };
 
   const handleDeleteProduct = (product: any) => {
-    if (window.confirm(`"${product.keyword}" 제품을 정말 삭제하시겠습니까?`)) {
+    if (window.confirm(`"${product.productName}" 제품을 정말 삭제하시겠습니까?`)) {
       deleteProductMutation.mutate(product.id);
     }
   };
@@ -339,8 +339,8 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center space-x-3">
-                            <h4 className="text-sm font-medium text-gray-900" data-testid={`text-keyword-${product.id}`}>
-                              {product.keyword}
+                            <h4 className="text-sm font-medium text-gray-900" data-testid={`text-product-name-${product.id}`}>
+                              {product.productName}
                             </h4>
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               product.active ? "bg-success text-white" : "bg-gray-300 text-gray-700"
@@ -349,6 +349,7 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
                             </span>
                           </div>
                           <p className="text-sm text-gray-500 mt-1">
+                            키워드: <span data-testid={`text-keyword-${product.id}`}>{product.keyword}</span> | 
                             제품번호: <span data-testid={`text-product-no-${product.id}`}>{product.productNo}</span>
                           </p>
                           {product.latestTrack?.productLink && (

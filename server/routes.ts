@@ -162,6 +162,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // 제품 전체 정보 업데이트 또는 부분 업데이트 지원
       const updateData: any = {};
+      if (req.body.productName !== undefined) updateData.productName = req.body.productName;
       if (req.body.productNo !== undefined) updateData.productNo = req.body.productNo;
       if (req.body.keyword !== undefined) updateData.keyword = req.body.keyword;
       if (req.body.type !== undefined) updateData.type = req.body.type;

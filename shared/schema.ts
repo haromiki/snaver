@@ -30,6 +30,7 @@ export const productTypeEnum = pgEnum("product_type", ["ad", "organic"]);
 export const products = pgTable("products", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
   userId: bigint("user_id", { mode: "number" }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  productName: varchar("product_name", { length: 200 }).notNull(),
   productNo: varchar("product_no", { length: 64 }).notNull(),
   keyword: varchar("keyword", { length: 200 }).notNull(),
   type: productTypeEnum("type").notNull(),

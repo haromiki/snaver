@@ -14,6 +14,7 @@ interface AddProductModalProps {
 export default function AddProductModal({ onClose, product }: AddProductModalProps) {
   const isEditing = !!product;
   const [formData, setFormData] = useState({
+    productName: product?.productName || "",
     productNo: product?.productNo || "",
     keyword: product?.keyword || "",
     type: product?.type || "ad",
@@ -65,6 +66,19 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <Label htmlFor="productName">제품명</Label>
+            <Input
+              id="productName"
+              type="text"
+              placeholder="구분하기 위한 제품명을 입력하세요"
+              value={formData.productName}
+              onChange={(e) => setFormData({ ...formData, productName: e.target.value })}
+              required
+              data-testid="input-product-name"
+            />
+          </div>
+
           <div>
             <Label htmlFor="productNo">제품번호</Label>
             <Input
