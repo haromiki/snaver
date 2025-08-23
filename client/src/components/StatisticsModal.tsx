@@ -17,11 +17,11 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
   const [chart, setChart] = useState<any>(null);
   const { toast } = useToast();
 
-  // 날짜 범위 제한 (1년)
+  // 날짜 범위 제한 (3년)
   const today = new Date();
-  const oneYearAgo = new Date(today.getTime() - 365 * 24 * 60 * 60 * 1000);
+  const threeYearsAgo = new Date(today.getTime() - 3 * 365 * 24 * 60 * 60 * 1000);
   const maxDate = today.toISOString().split('T')[0];
-  const minDate = oneYearAgo.toISOString().split('T')[0];
+  const minDate = threeYearsAgo.toISOString().split('T')[0];
 
   const { data: tracks = [] } = useQuery({
     queryKey: ["/tracks", productId, dateRange.from, dateRange.to],
@@ -123,15 +123,15 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
   };
 
   const handleDateUpdate = () => {
-    // 1년 초과 기간 검사
+    // 3년 초과 기간 검사
     const fromDate = new Date(dateRange.from);
     const toDate = new Date(dateRange.to);
     const diffInDays = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24));
     
-    if (diffInDays > 365) {
+    if (diffInDays > 1095) { // 3년 = 365 * 3 = 1095일
       toast({
         title: "기간 설정 오류",
-        description: "검색 기간은 최대 1년(365일)까지 설정 가능합니다. 다시 설정해 주세요.",
+        description: "검색 기간은 최대 3년(1095일)까지 설정 가능합니다. 다시 설정해 주세요.",
         variant: "destructive",
       });
       return;
@@ -212,7 +212,7 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
               </button>
               
               {/* 빠른 기간 선택 버튼 */}
-              <div className="flex items-center space-x-2 border-l border-gray-300 pl-3">
+              <div className="flex items-center flex-wrap gap-2 border-l border-gray-300 pl-3">
                 <span className="text-sm text-gray-600">빠른선택:</span>
                 <button 
                   onClick={() => handleQuickRange(7)}
@@ -235,10 +235,24 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
                 >
                   1년
                 </button>
+                <button 
+                  onClick={() => handleQuickRange(730)}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors"
+                  data-testid="button-quick-2years"
+                >
+                  2년
+                </button>
+                <button 
+                  onClick={() => handleQuickRange(1095)}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors"
+                  data-testid="button-quick-3years"
+                >
+                  3년
+                </button>
               </div>
             </div>
             <div className="text-xs text-gray-500 ml-12">
-              💡 통계 검색 기간은 최대 1년(365일)까지 설정 가능합니다.
+              💡 통계 검색 기간은 최대 3년(1095일)까지 설정 가능합니다.
             </div>
           </div>
 
