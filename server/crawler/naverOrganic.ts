@@ -113,8 +113,8 @@ export async function fetchOrganicRank({
 }): Promise<RankResult> {
   const HARD_DEADLINE_MS = 45000; // 실서버 환경 고려해서 45초로 증가
   const started = Date.now();
-  // 실서버 환경에서 더 안전한 User-Agent 사용
-  const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+  // 실서버 환경에서 더 안전한 User-Agent 사용  
+  const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
   const commonHeaders = {
     "User-Agent": ua,
     "Accept": "application/json, text/plain, */*",
@@ -141,8 +141,16 @@ export async function fetchOrganicRank({
               "X-Naver-Client-Id": clientId,
               "X-Naver-Client-Secret": clientSecret,
               "User-Agent": ua,
-              "Accept": "application/json",
-              "Accept-Language": "ko-KR,ko;q=0.9",
+              "Accept": "application/json, text/plain, */*",
+              "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8",
+              "Accept-Encoding": "gzip, deflate, br",
+              "Cache-Control": "no-cache",
+              "Pragma": "no-cache",
+              "DNT": "1",
+              "Connection": "keep-alive",
+              "Sec-Fetch-Dest": "empty",
+              "Sec-Fetch-Mode": "cors",
+              "Sec-Fetch-Site": "cross-site",
             },
           }, 12000); // 12초로 증가
           
