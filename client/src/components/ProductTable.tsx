@@ -321,143 +321,123 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
           등록된 제품이 없습니다.
         </div>
       ) : (
-        <div className="grid gap-6" id="sortable-products">
+        <div className="space-y-4" id="sortable-products">
           {products.map((product: any) => {
             const refreshProgress = refreshingProducts.get(product.id);
             const isRefreshing = refreshProgress !== undefined;
             
             return (
-              <div key={product.id} className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300">
-                {/* 상단 헤더 */}
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-100">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="drag-handle cursor-move text-gray-400 hover:text-gray-600 text-lg">
-                        ≡
-                      </div>
-                      <div className={`w-4 h-4 rounded-full ${product.active ? 'bg-green-500 shadow-lg' : 'bg-gray-300'}`}></div>
-                      <h3 className="text-lg font-bold text-gray-800">{product.productName}</h3>
+              <div key={product.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
+                <div className="flex items-center justify-between">
+                  {/* 왼쪽: 제품 정보 */}
+                  <div className="flex items-center gap-4">
+                    <div className="drag-handle cursor-move text-gray-400 hover:text-gray-600">
+                      ≡
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleRefresh(product.id)}
-                        disabled={isRefreshing}
-                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-all duration-200 shadow-md"
-                        title="수동 검색"
-                        data-testid={`button-refresh-${product.id}`}
-                      >
-                        🔄 검색
-                      </button>
-                      <button
-                        onClick={() => handleStatistics(product.id)}
-                        className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all duration-200 shadow-md"
-                        title="통계"
-                        data-testid={`button-statistics-${product.id}`}
-                      >
-                        📊 통계
-                      </button>
-                      <button
-                        onClick={() => handleEdit(product)}
-                        className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-all duration-200 shadow-md"
-                        title="수정"
-                        data-testid={`button-edit-${product.id}`}
-                      >
-                        ✏️ 수정
-                      </button>
-                      <button
-                        onClick={() => handleToggleActive(product.id, product.active)}
-                        className={`px-4 py-2 rounded-lg transition-all duration-200 shadow-md ${
-                          product.active 
-                            ? 'bg-red-500 text-white hover:bg-red-600' 
-                            : 'bg-green-500 text-white hover:bg-green-600'
-                        }`}
-                        title={product.active ? "추적 중지" : "추적 시작"}
-                        data-testid={`button-toggle-${product.id}`}
-                      >
-                        {product.active ? '⏸️ 중지' : '▶️ 시작'}
-                      </button>
-                      <button
-                        onClick={() => handleDelete(product.id)}
-                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all duration-200 shadow-md"
-                        title="삭제"
-                        data-testid={`button-delete-${product.id}`}
-                      >
-                        🗑️ 삭제
-                      </button>
+                    <div className="flex items-center gap-3">
+                      <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
+                        product.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {product.active ? '추적' : '대기'}
+                      </span>
+                      <div>
+                        <h3 className="font-semibold text-gray-900">{product.productName}</h3>
+                        <div className="text-sm text-gray-600">
+                          키워드: {product.keyword} | 제품번호: {product.productNo}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          추적 주기: {product.intervalMin}분
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* 메인 콘텐츠 */}
-                <div className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* 제품 정보 */}
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                        📦 제품 정보
-                      </h4>
-                      <div className="space-y-2 text-sm">
-                        <div><strong>키워드:</strong> <span className="text-blue-600">{product.keyword}</span></div>
-                        <div><strong>제품번호:</strong> <span className="text-gray-600">{product.productNo}</span></div>
-                        <div><strong>추적 주기:</strong> <span className="text-green-600">{product.intervalMin}분</span></div>
-                      </div>
-                    </div>
-
-                    {/* 순위 정보 */}
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                        🏆 순위 정보
-                      </h4>
+                  {/* 가운데: 순위 및 가격 정보 */}
+                  <div className="text-center">
+                    {isRefreshing ? (
                       <div className="space-y-2">
-                        <div className="text-center">
-                          {product.latestTrack?.globalRank ? (
-                            <div className="text-3xl font-bold text-blue-600">
+                        <div className="w-32 bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${refreshProgress}%` }}
+                          ></div>
+                        </div>
+                        <div className="text-xs text-blue-600 font-medium">
+                          검색 중 {Math.round(refreshProgress)}%
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {product.latestTrack?.globalRank ? (
+                          <>
+                            <div className="text-2xl font-bold text-blue-600">
                               {product.latestTrack.globalRank}위
                             </div>
-                          ) : (
-                            <div className="text-2xl font-bold text-gray-400">미발견</div>
-                          )}
-                        </div>
-                        {product.latestTrack?.priceKrw && (
-                          <div className="text-center text-lg font-semibold text-green-600">
-                            {formatPrice(product.latestTrack.priceKrw)}원
+                            {product.latestTrack?.priceKrw && (
+                              <div className="text-lg font-semibold text-green-600">
+                                ₩{formatPrice(product.latestTrack.priceKrw)}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="text-lg font-medium text-gray-400">미발견</div>
+                        )}
+                        {product.latestTrack?.checkedAt && (
+                          <div className="text-xs text-gray-500">
+                            {formatDateTime(product.latestTrack.checkedAt)}
                           </div>
                         )}
                       </div>
-                    </div>
+                    )}
+                  </div>
 
-                    {/* 진행 상태 */}
-                    <div className="bg-green-50 rounded-lg p-4">
-                      <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                        ⚡ 진행 상태
-                      </h4>
-                      {isRefreshing ? (
-                        <div className="space-y-3">
-                          <div className="w-full bg-gray-200 rounded-full h-3">
-                            <div 
-                              className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-300 shadow-sm"
-                              style={{ width: `${refreshProgress}%` }}
-                            ></div>
-                          </div>
-                          <div className="text-center text-sm font-semibold text-blue-600">
-                            검색 중... {Math.round(refreshProgress)}%
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-center">
-                          {product.latestTrack?.checkedAt ? (
-                            <div className="space-y-1">
-                              <div className="text-sm text-gray-600">마지막 확인</div>
-                              <div className="font-semibold text-gray-800">
-                                {formatDateTime(product.latestTrack.checkedAt)}
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="text-gray-400">대기 중</div>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                  {/* 오른쪽: 액션 버튼들 */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleRefresh(product.id)}
+                      disabled={isRefreshing}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-50 transition-colors"
+                      title="수동 검색"
+                      data-testid={`button-refresh-${product.id}`}
+                    >
+                      🔄
+                    </button>
+                    <button
+                      onClick={() => handleStatistics(product.id)}
+                      className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                      title="통계"
+                      data-testid={`button-statistics-${product.id}`}
+                    >
+                      📊
+                    </button>
+                    <button
+                      onClick={() => handleEdit(product)}
+                      className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                      title="수정"
+                      data-testid={`button-edit-${product.id}`}
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      onClick={() => handleToggleActive(product.id, product.active)}
+                      className={`p-2 rounded-lg transition-colors ${
+                        product.active 
+                          ? 'text-red-600 hover:bg-red-50' 
+                          : 'text-green-600 hover:bg-green-50'
+                      }`}
+                      title={product.active ? "추적 중지" : "추적 시작"}
+                      data-testid={`button-toggle-${product.id}`}
+                    >
+                      {product.active ? '⏸️' : '▶️'}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(product.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      title="삭제"
+                      data-testid={`button-delete-${product.id}`}
+                    >
+                      🗑️
+                    </button>
                   </div>
                 </div>
               </div>
