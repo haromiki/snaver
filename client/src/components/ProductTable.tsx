@@ -63,8 +63,10 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
         });
       }, 1000);
       
-      queryClient.invalidateQueries({ queryKey: ["/products"] });
-      queryClient.refetchQueries({ queryKey: ["/products"] });
+      // 현재 필터에 해당하는 쿼리만 정확히 무효화
+      const currentFilters = getFilters();
+      queryClient.invalidateQueries({ queryKey: ["/products", currentFilters] });
+      queryClient.refetchQueries({ queryKey: ["/products", currentFilters] });
       toast({
         title: "수동 검색 완료",
         description: "제품 순위가 업데이트되었습니다.",
@@ -92,8 +94,10 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/products"] });
-      queryClient.refetchQueries({ queryKey: ["/products"] });
+      // 현재 필터에 해당하는 쿼리만 정확히 무효화
+      const currentFilters = getFilters();
+      queryClient.invalidateQueries({ queryKey: ["/products", currentFilters] });
+      queryClient.refetchQueries({ queryKey: ["/products", currentFilters] });
       toast({
         title: "상태 변경 완료",
         description: "제품 상태가 업데이트되었습니다.",
@@ -114,8 +118,10 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/products"] });
-      queryClient.refetchQueries({ queryKey: ["/products"] });
+      // 현재 필터에 해당하는 쿼리만 정확히 무효화
+      const currentFilters = getFilters();
+      queryClient.invalidateQueries({ queryKey: ["/products", currentFilters] });
+      queryClient.refetchQueries({ queryKey: ["/products", currentFilters] });
     },
   });
 
@@ -125,8 +131,10 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/products"] });
-      queryClient.refetchQueries({ queryKey: ["/products"] });
+      // 현재 필터에 해당하는 쿼리만 정확히 무효화
+      const currentFilters = getFilters();
+      queryClient.invalidateQueries({ queryKey: ["/products", currentFilters] });
+      queryClient.refetchQueries({ queryKey: ["/products", currentFilters] });
       toast({
         title: "삭제 완료",
         description: "제품이 성공적으로 삭제되었습니다.",
