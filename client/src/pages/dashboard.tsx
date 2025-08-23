@@ -4,7 +4,7 @@ import ProductTable from "@/components/ProductTable";
 import AddProductModal from "@/components/AddProductModal";
 
 export default function Dashboard() {
-  const [activeSection, setActiveSection] = useState("ad-tracking");
+  const [activeSection, setActiveSection] = useState("organic-tracking");
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
