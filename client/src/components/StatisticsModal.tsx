@@ -149,6 +149,17 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
     // Query will automatically refetch due to dependency change
   };
 
+  // 빠른 기간 선택 함수
+  const handleQuickRange = (days: number) => {
+    const today = new Date();
+    const fromDate = new Date(today.getTime() - days * 24 * 60 * 60 * 1000);
+    
+    setDateRange({
+      from: fromDate.toISOString().split('T')[0],
+      to: today.toISOString().split('T')[0],
+    });
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" data-testid="statistics-modal">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
@@ -169,7 +180,7 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
         <div className="p-6">
           {/* Date Range Picker */}
           <div className="flex flex-col space-y-3 mb-6">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center flex-wrap gap-3">
               <div className="flex items-center space-x-2">
                 <label className="text-sm font-medium text-gray-700">기간:</label>
                 <input 
@@ -199,6 +210,32 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
               >
                 조회
               </button>
+              
+              {/* 빠른 기간 선택 버튼 */}
+              <div className="flex items-center space-x-2 border-l border-gray-300 pl-3">
+                <span className="text-sm text-gray-600">빠른선택:</span>
+                <button 
+                  onClick={() => handleQuickRange(7)}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors"
+                  data-testid="button-quick-week"
+                >
+                  1주일
+                </button>
+                <button 
+                  onClick={() => handleQuickRange(30)}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors"
+                  data-testid="button-quick-month"
+                >
+                  30일
+                </button>
+                <button 
+                  onClick={() => handleQuickRange(365)}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors"
+                  data-testid="button-quick-year"
+                >
+                  1년
+                </button>
+              </div>
             </div>
             <div className="text-xs text-gray-500 ml-12">
               💡 통계 검색 기간은 최대 1년(365일)까지 설정 가능합니다.
