@@ -40,43 +40,61 @@ function extractIdsFromUrl(u: string): IdParts {
   return out;
 }
 
-// ----- 유틸: 확실한 fetch 타임아웃 -----
-async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}, ms = 5000): Promise<Response> {
+// ----- 유틸: 실서버 환경 안정성 강화된 fetch -----
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}, ms = 10000): Promise<Response> {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(new Error("timeout")), ms);
   try {
-    return await fetch(input, { ...init, signal: controller.signal });
+    // 실서버 환경 최적화 헤더
+    const headers = {
+      ...init.headers,
+      "Accept": "*/*",
+      "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8",
+      "Cache-Control": "no-cache",
+      "Pragma": "no-cache",
+    };
+    return await fetch(input, { ...init, headers, signal: controller.signal });
   } finally {
     clearTimeout(t);
   }
 }
 
 // ----- 유틸: HEAD + manual redirect로 Location 뽑기 (빠르고 안전) -----
-async function resolveLocationHead(url: string, headers: Record<string, string>, perHopTimeout = 4000, maxHops = 3): Promise<string> {
+async function resolveLocationHead(url: string, headers: Record<string, string>, perHopTimeout = 8000, maxHops = 3): Promise<string> {
   let current = url;
   for (let hop = 0; hop < maxHops; hop++) {
-    const res = await fetchWithTimeout(current, {
-      method: "HEAD",
-      redirect: "manual",
-      headers,
-    }, perHopTimeout);
+    try {
+      const res = await fetchWithTimeout(current, {
+        method: "HEAD",
+        redirect: "manual",
+        headers: {
+          ...headers,
+          "Accept": "*/*",
+          "Accept-Language": "ko-KR,ko;q=0.9",
+        },
+      }, perHopTimeout);
 
-    // 3xx면 Location 추출
-    if (res.status >= 300 && res.status < 400) {
-      const loc = res.headers.get("location");
-      if (loc) {
-        // 절대/상대 처리
-        try { current = new URL(loc, current).href; } catch { current = loc; }
-        continue; // 다음 hop
+      // 3xx면 Location 추출
+      if (res.status >= 300 && res.status < 400) {
+        const loc = res.headers.get("location");
+        if (loc) {
+          // 절대/상대 처리
+          try { current = new URL(loc, current).href; } catch { current = loc; }
+          continue; // 다음 hop
+        }
+        break; // 3xx인데 Location 없으면 중단
       }
-      break; // 3xx인데 Location 없으면 중단
+
+      // 2xx면 current가 최종
+      if (res.ok) return current;
+
+      // 4xx/5xx면 중단
+      console.warn(`[resolveLocationHead] HTTP ${res.status} for ${current}`);
+      break;
+    } catch (error: any) {
+      console.warn(`[resolveLocationHead] hop ${hop} 실패:`, error.message);
+      break;
     }
-
-    // 2xx면 current가 최종
-    if (res.ok) return current;
-
-    // 4xx/5xx면 중단
-    break;
   }
   return current;
 }
@@ -93,36 +111,78 @@ export async function fetchOrganicRank({
   clientId: string;
   clientSecret: string;
 }): Promise<RankResult> {
-  const HARD_DEADLINE_MS = 30000; // 함수 전체 하드 타임박스
+  const HARD_DEADLINE_MS = 45000; // 실서버 환경 고려해서 45초로 증가
   const started = Date.now();
-  const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+  // 실서버 환경에서 더 안전한 User-Agent 사용
+  const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
   const commonHeaders = {
     "User-Agent": ua,
-    "Accept": "*/*",
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8",
     "Referer": "https://search.shopping.naver.com/",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-site",
   };
 
   try {
     console.log(`[organic] 시작: "${keyword}", inputId=${inputId}`);
+    console.log(`[organic] 실서버 환경 최적화 - clientId 존재: ${!!clientId}, clientSecret 존재: ${!!clientSecret}`);
 
-    // 1) OpenAPI 호출
-    const callApi = async (start: number): Promise<NaverShopResponse> => {
+    // 1) OpenAPI 호출 - 실서버 환경 최적화
+    const callApi = async (start: number, retries = 2): Promise<NaverShopResponse> => {
       const url = `${OPENAPI_BASE_URL}?query=${encodeURIComponent(keyword)}&display=100&start=${start}&sort=sim`;
-      const res = await fetchWithTimeout(url, {
-        headers: {
-          ...commonHeaders,
-          "X-Naver-Client-Id": clientId,
-          "X-Naver-Client-Secret": clientSecret,
-        },
-      }, 7000);
-      if (!res.ok) throw new Error(`OpenAPI ${res.status}: ${await res.text()}`);
-      return res.json();
+      
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+          const res = await fetchWithTimeout(url, {
+            headers: {
+              "X-Naver-Client-Id": clientId,
+              "X-Naver-Client-Secret": clientSecret,
+              "User-Agent": ua,
+              "Accept": "application/json",
+              "Accept-Language": "ko-KR,ko;q=0.9",
+            },
+          }, 12000); // 12초로 증가
+          
+          if (!res.ok) {
+            const errorText = await res.text();
+            console.error(`OpenAPI 오류 (시도 ${attempt + 1}/${retries + 1}):`, res.status, errorText);
+            if (attempt === retries) {
+              throw new Error(`OpenAPI ${res.status}: ${errorText}`);
+            }
+            continue;
+          }
+          
+          return await res.json();
+        } catch (error: any) {
+          console.error(`API 호출 실패 (시도 ${attempt + 1}/${retries + 1}):`, error.message);
+          if (attempt === retries) {
+            throw error;
+          }
+          // 재시도 전 잠시 대기
+          await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+        }
+      }
+      
+      throw new Error("API 호출 최대 재시도 횟수 초과");
     };
 
-    const [batch1, batch2] = await Promise.all([callApi(1), callApi(101)]);
+    // 실서버 안정성을 위해 순차 호출로 변경
+    console.log("[organic] 1차 배치 요청 중...");
+    const batch1 = await callApi(1);
+    console.log(`[organic] 1차 배치 결과: ${batch1.items?.length || 0}건`);
+    
+    console.log("[organic] 2차 배치 요청 중...");
+    const batch2 = await callApi(101);
+    console.log(`[organic] 2차 배치 결과: ${batch2.items?.length || 0}건`);
+    
     const allItems: NaverShopItem[] = [...(batch1.items ?? []), ...(batch2.items ?? [])];
+    console.log(`[organic] 전체 아이템 수: ${allItems.length}건`);
+    
     if (!allItems.length) {
-      return { productId: inputId, found: false, notes: ["OpenAPI 결과 0건"] };
+      return { productId: inputId, found: false, notes: ["OpenAPI 결과 0건 - 실서버 네트워크 이슈 가능성"] };
     }
 
     // 2) 1차: items[].productId 즉시 매칭 (가장 빠름)
