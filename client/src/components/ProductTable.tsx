@@ -371,43 +371,31 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="relative inline-block">
+                      <div className="flex justify-center">
                         {refreshingProducts.has(product.id) ? (
-                          <div className="relative w-12 h-12 flex items-center justify-center">
-                            {/* 돋보기 아이콘 배경 */}
-                            <div className="absolute inset-0 text-gray-300">
-                              <svg className="w-full h-full" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 0 0 1.48-5.34c-.47-2.78-2.79-5-5.59-5.34a6.505 6.505 0 0 0-7.27 7.27c.34 2.8 2.56 5.12 5.34 5.59a6.5 6.5 0 0 0 5.34-1.48l.27.28v.79l4.25 4.25c.41.41 1.08.41 1.49 0 .41-.41.41-1.08 0-1.49L15.5 14zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-                              </svg>
-                            </div>
+                          <div className="relative w-16 h-16">
+                            {/* 정사각형 라운드 배경 */}
+                            <div className="absolute inset-0 bg-gray-200 rounded-lg"></div>
                             {/* 파란색 채우기 효과 - 아래에서 위로 차오름 */}
-                            <div className="absolute inset-0 overflow-hidden">
+                            <div className="absolute inset-0 overflow-hidden rounded-lg">
                               <div 
-                                className="absolute bottom-0 left-0 right-0 bg-blue-500 transition-all duration-300 ease-out"
+                                className="absolute bottom-0 left-0 right-0 bg-blue-500 transition-all duration-300 ease-out rounded-lg"
                                 style={{ 
-                                  height: `${refreshingProducts.get(product.id) || 0}%`,
-                                  clipPath: 'polygon(0% 100%, 0% 0%, 20% 0%, 20% 20%, 80% 20%, 80% 0%, 100% 0%, 100% 100%)'
+                                  height: `${refreshingProducts.get(product.id) || 0}%`
                                 }}
-                              >
-                                <svg className="w-full h-full text-blue-500" viewBox="0 0 24 24" fill="currentColor">
-                                  <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 0 0 1.48-5.34c-.47-2.78-2.79-5-5.59-5.34a6.505 6.505 0 0 0-7.27 7.27c.34 2.8 2.56 5.12 5.34 5.59a6.5 6.5 0 0 0 5.34-1.48l.27.28v.79l4.25 4.25c.41.41 1.08.41 1.49 0 .41-.41.41-1.08 0-1.49L15.5 14zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-                                </svg>
-                              </div>
+                              ></div>
                             </div>
                             {/* 퍼센트 텍스트 */}
                             <div className="absolute inset-0 flex items-center justify-center">
-                              <span className="text-xs font-bold text-white drop-shadow-lg">
+                              <span className="text-sm font-bold text-white drop-shadow-lg z-10">
                                 {Math.round(refreshingProducts.get(product.id) || 0)}%
                               </span>
                             </div>
                           </div>
                         ) : (
-                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${
-                            product.type === "ad" ? "bg-warning text-white" : "bg-blue-500 text-white"
-                          }`}>
-                            <i className={`${product.type === "ad" ? "fas fa-bullhorn" : "fas fa-search"} mr-1`}></i>
-                            {product.type === "ad" ? "광고" : "일반"}
-                          </span>
+                          <div className="w-16 h-16 flex items-center justify-center">
+                            <span className="text-gray-400 text-sm">-</span>
+                          </div>
                         )}
                       </div>
                     </td>
