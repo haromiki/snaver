@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
 import StatisticsModal from "./StatisticsModal";
 import { useToast } from "@/hooks/use-toast";
-import { Progress } from "@/components/ui/progress";
 
 interface ProductTableProps {
   section: string;
@@ -314,7 +313,7 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
                   <i className="fas fa-grip-vertical mr-2 text-gray-400"></i>제품 정보
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">추적 주기</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">유형</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">진행상태</th>
                 {section.includes("tracking") && (
                   <>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">스토어명</th>
@@ -372,12 +371,45 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${
-                        product.type === "ad" ? "bg-warning text-white" : "bg-blue-500 text-white"
-                      }`}>
-                        <i className={`${product.type === "ad" ? "fas fa-bullhorn" : "fas fa-search"} mr-1`}></i>
-                        {product.type === "ad" ? "광고" : "일반"}
-                      </span>
+                      <div className="relative inline-block">
+                        {refreshingProducts.has(product.id) ? (
+                          <div className="relative w-12 h-12 flex items-center justify-center">
+                            {/* 돋보기 아이콘 배경 */}
+                            <div className="absolute inset-0 text-gray-300">
+                              <svg className="w-full h-full" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 0 0 1.48-5.34c-.47-2.78-2.79-5-5.59-5.34a6.505 6.505 0 0 0-7.27 7.27c.34 2.8 2.56 5.12 5.34 5.59a6.5 6.5 0 0 0 5.34-1.48l.27.28v.79l4.25 4.25c.41.41 1.08.41 1.49 0 .41-.41.41-1.08 0-1.49L15.5 14zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                              </svg>
+                            </div>
+                            {/* 파란색 채우기 효과 - 아래에서 위로 차오름 */}
+                            <div className="absolute inset-0 overflow-hidden">
+                              <div 
+                                className="absolute bottom-0 left-0 right-0 bg-blue-500 transition-all duration-300 ease-out"
+                                style={{ 
+                                  height: `${refreshingProducts.get(product.id) || 0}%`,
+                                  clipPath: 'polygon(0% 100%, 0% 0%, 20% 0%, 20% 20%, 80% 20%, 80% 0%, 100% 0%, 100% 100%)'
+                                }}
+                              >
+                                <svg className="w-full h-full text-blue-500" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 0 0 1.48-5.34c-.47-2.78-2.79-5-5.59-5.34a6.505 6.505 0 0 0-7.27 7.27c.34 2.8 2.56 5.12 5.34 5.59a6.5 6.5 0 0 0 5.34-1.48l.27.28v.79l4.25 4.25c.41.41 1.08.41 1.49 0 .41-.41.41-1.08 0-1.49L15.5 14zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                                </svg>
+                              </div>
+                            </div>
+                            {/* 퍼센트 텍스트 */}
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className="text-xs font-bold text-white drop-shadow-lg">
+                                {Math.round(refreshingProducts.get(product.id) || 0)}%
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${
+                            product.type === "ad" ? "bg-warning text-white" : "bg-blue-500 text-white"
+                          }`}>
+                            <i className={`${product.type === "ad" ? "fas fa-bullhorn" : "fas fa-search"} mr-1`}></i>
+                            {product.type === "ad" ? "광고" : "일반"}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     {section.includes("tracking") && (
                       <>
@@ -433,30 +465,15 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
                       <div className="flex items-center space-x-2">
                         {section.includes("tracking") ? (
                           <>
-                            <div className="relative">
-                              <button 
-                                onClick={() => refreshProductMutation.mutate(product.id)}
-                                disabled={refreshProductMutation.isPending || refreshingProducts.has(product.id)}
-                                className="p-2 text-gray-400 hover:text-primary rounded-md hover:bg-gray-100" 
-                                title="수동 검색"
-                                data-testid={`button-refresh-${product.id}`}
-                              >
-                                <i className={`fas fa-sync text-sm ${refreshingProducts.has(product.id) ? 'animate-spin' : ''}`}></i>
-                              </button>
-                              {refreshingProducts.has(product.id) && (
-                                <div className="absolute top-full left-0 mt-2 bg-white border border-gray-200 rounded-md p-3 shadow-lg z-10 min-w-[200px]">
-                                  <div className="text-xs text-gray-600 mb-2">검색 진행 중...</div>
-                                  <Progress 
-                                    value={refreshingProducts.get(product.id) || 0} 
-                                    className="h-2"
-                                    data-testid={`progress-refresh-${product.id}`}
-                                  />
-                                  <div className="text-xs text-gray-500 mt-1 text-center">
-                                    {Math.round(refreshingProducts.get(product.id) || 0)}%
-                                  </div>
-                                </div>
-                              )}
-                            </div>
+                            <button 
+                              onClick={() => refreshProductMutation.mutate(product.id)}
+                              disabled={refreshProductMutation.isPending || refreshingProducts.has(product.id)}
+                              className="p-2 text-gray-400 hover:text-primary rounded-md hover:bg-gray-100" 
+                              title="수동 검색"
+                              data-testid={`button-refresh-${product.id}`}
+                            >
+                              <i className={`fas fa-sync text-sm ${refreshingProducts.has(product.id) ? 'animate-spin' : ''}`}></i>
+                            </button>
                             <button 
                               onClick={() => setSelectedProductId(product.id)}
                               className="p-2 text-gray-400 hover:text-primary rounded-md hover:bg-gray-100" 
