@@ -155,7 +155,9 @@ export async function fetchOrganicRank({
             continue;
           }
           
-          return await res.json();
+          const jsonData = await res.json();
+          console.log(`[organic] API 응답 성공 (start=${start}): total=${jsonData.total}, items=${jsonData.items?.length || 0}건`);
+          return jsonData;
         } catch (error: any) {
           console.error(`API 호출 실패 (시도 ${attempt + 1}/${retries + 1}):`, error.message);
           if (attempt === retries) {
@@ -186,12 +188,18 @@ export async function fetchOrganicRank({
     }
 
     // 2) 1차: items[].productId 즉시 매칭 (가장 빠름)
+    console.log(`[organic] 1차 매칭 시도 - 검색할 inputId: "${inputId}"`);
+    console.log(`[organic] 처음 5개 아이템 productId: ${allItems.slice(0, 5).map(it => it.productId).join(', ')}`);
+    
     let idx = allItems.findIndex((it) => eqNumStr(it.productId, inputId));
+    console.log(`[organic] 1차 매칭 결과 - 찾은 인덱스: ${idx}`);
+    
     if (idx !== -1) {
       const hit = allItems[idx];
       const globalRank = idx + 1;
       const pageNumber = Math.ceil(globalRank / 40);
       const rankInPage = ((globalRank - 1) % 40) + 1;
+      console.log(`[organic] 1차 매칭 성공! 순위: ${globalRank}위, 상품ID: ${hit.productId}`);
       return {
         productId: hit.productId,
         storeName: hit.mallName,
@@ -204,6 +212,8 @@ export async function fetchOrganicRank({
         notes: ["1차: OpenAPI productId 매칭"],
       };
     }
+    
+    console.log(`[organic] 1차 매칭 실패 - "${inputId}"와 일치하는 productId 없음`);
 
     // 3) 2차: 리다이렉트 Location만 해석(HEAD) → ID 매칭
     //  - 최종 GET까지 가지 않음(느리고 행 가능). 빠르게 Location 체인만 추적.
@@ -211,6 +221,7 @@ export async function fetchOrganicRank({
     for (let base = 0; base < allItems.length; base += MAX_PARALLEL) {
       // 하드 데드라인 체크
       if (Date.now() - started > HARD_DEADLINE_MS) {
+        console.log(`[organic] 시간 초과 - 하드 데드라인 ${HARD_DEADLINE_MS}ms 도달`);
         return { productId: inputId, found: false, notes: ["시간 초과(하드 타임박스)"] };
       }
 
@@ -274,12 +285,17 @@ export async function fetchOrganicRank({
     }
 
     // 4) 200위 내 미발견
+    console.log(`[organic] 최종 결과: found=false, 전체 아이템 ${allItems.length}건 검색 완료`);
+    console.log(`[organic] 모든 검색 방법 실패 - inputId: "${inputId}" 미발견`);
     return {
       productId: inputId,
       found: false,
       notes: ["상위 200위 내 미노출 또는 OpenAPI-실검색 불일치"],
     };
   } catch (err: any) {
+    console.error(`[organic] 치명적 오류 - inputId: "${inputId}", keyword: "${keyword}"`);
+    console.error(`[organic] 오류 상세:`, err?.message || String(err));
+    console.error(`[organic] 오류 스택:`, err?.stack || 'No stack');
     return {
       productId: inputId,
       found: false,
