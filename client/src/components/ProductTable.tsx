@@ -47,30 +47,32 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
       return await response.json();
     },
     onSuccess: (data, productId) => {
-      // Complete progress immediately
+      // 실서버 환경 최적화 - 강제로 100% 설정 후 즉시 UI 업데이트
       setRefreshingProducts(prev => {
         const newMap = new Map(prev);
         newMap.set(productId, 100);
         return newMap;
       });
       
-      // Remove progress after a short delay
+      // 캐시 무효화를 먼저 수행
+      const currentFilters = getFilters();
+      queryClient.invalidateQueries({ queryKey: ["/products", currentFilters] });
+      queryClient.refetchQueries({ queryKey: ["/products", currentFilters] });
+      
+      // 토스트 메시지
+      toast({
+        title: "수동 검색 완료",
+        description: "제품 순위가 업데이트되었습니다.",
+      });
+      
+      // 실서버 안정성을 위해 진행률 제거 시간 증가
       setTimeout(() => {
         setRefreshingProducts(prev => {
           const newMap = new Map(prev);
           newMap.delete(productId);
           return newMap;
         });
-      }, 1000);
-      
-      // 현재 필터에 해당하는 쿼리만 정확히 무효화
-      const currentFilters = getFilters();
-      queryClient.invalidateQueries({ queryKey: ["/products", currentFilters] });
-      queryClient.refetchQueries({ queryKey: ["/products", currentFilters] });
-      toast({
-        title: "수동 검색 완료",
-        description: "제품 순위가 업데이트되었습니다.",
-      });
+      }, 2500); // 2.5초로 증가
     },
     onError: (error: any, productId) => {
       // Remove progress on error
@@ -149,27 +151,40 @@ export default function ProductTable({ section, onAddProduct, onEditProduct }: P
     },
   });
 
-  // Progress simulation function
+  // Progress simulation function - 실서버 환경 최적화
   const startProgressSimulation = (productId: number) => {
     let progress = 0;
-    const increment = Math.random() * 15 + 5; // Random increment between 5-20
+    let timeoutId: NodeJS.Timeout;
     
     const updateProgress = () => {
-      progress += increment;
-      if (progress > 90) progress = 90; // Cap at 90% until real completion
+      progress += Math.random() * 10 + 5; // 5-15% 증가
+      if (progress > 85) progress = 85; // 85%에서 멈춤 (실서버 안정성)
       
       setRefreshingProducts(prev => {
         const newMap = new Map(prev);
-        newMap.set(productId, progress);
+        newMap.set(productId, Math.floor(progress));
         return newMap;
       });
       
-      if (progress < 90) {
-        setTimeout(updateProgress, Math.random() * 500 + 300); // Random delay 300-800ms
+      if (progress < 85) {
+        timeoutId = setTimeout(updateProgress, Math.random() * 800 + 500); // 500-1300ms
       }
     };
     
+    // 즉시 시작
     updateProgress();
+    
+    // 최대 20초 후 자동으로 85%로 설정 (실서버 안전장치)
+    setTimeout(() => {
+      if (timeoutId) clearTimeout(timeoutId);
+      setRefreshingProducts(prev => {
+        const newMap = new Map(prev);
+        if (newMap.has(productId) && newMap.get(productId)! < 85) {
+          newMap.set(productId, 85);
+        }
+        return newMap;
+      });
+    }, 20000);
   };
 
   // Initialize Sortable when products change
