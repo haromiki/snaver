@@ -473,7 +473,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
 
   const getRankDisplay = (latestTrack: any, product: any) => {
     if (!latestTrack || !latestTrack.globalRank) {
-      return { rank: "-", page: "미발견", change: "변동없음", color: "text-gray-400 dark:text-gray-500", changeColor: "text-gray-500 dark:text-gray-400" };
+      return { rank: "-", page: "미발견", change: "", color: "text-gray-400 dark:text-gray-500", changeColor: "text-gray-500 dark:text-gray-400" };
     }
 
     const rank = latestTrack.globalRank;
@@ -490,7 +490,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     }
 
     // 이전 순위와 비교하여 변동량 계산
-    let change = "변동없음";
+    let change = "";
     let changeColor = "text-gray-500 dark:text-gray-400";
     
     // 제품의 모든 트랙 데이터에서 이전 순위 찾기
@@ -510,15 +510,15 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         
         if (rankDiff > 0) {
           // 순위 상승 (숫자가 작아짐)
-          change = `🔺상승${rankDiff}`;
-          changeColor = "text-green-600 dark:text-green-400";
+          change = `${rankDiff}`;
+          changeColor = "text-blue-600 dark:text-blue-400";
         } else if (rankDiff < 0) {
           // 순위 하락 (숫자가 커짐)
-          change = `🔻하락${Math.abs(rankDiff)}`;
+          change = `${Math.abs(rankDiff)}`;
           changeColor = "text-red-600 dark:text-red-400";
         } else {
           // 순위 변동 없음
-          change = "🔄변동없음";
+          change = "";
           changeColor = "text-gray-500 dark:text-gray-400";
         }
       }
@@ -731,10 +731,57 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex items-center space-x-1">
-                            <span className={`text-sm ${rankDisplay.changeColor} flex items-center`} data-testid={`text-rank-change-${product.id}`}>
-                              {rankDisplay.change}
-                            </span>
+                          <div className="flex items-center space-x-2">
+                            {(() => {
+                              if (!product.tracks || product.tracks.length < 2) {
+                                return <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>;
+                              }
+                              
+                              const currentRank = product.latestTrack?.globalRank;
+                              const previousTrack = product.tracks.find((t: any) => t.createdAt < product.latestTrack.createdAt);
+                              const previousRank = previousTrack?.globalRank;
+                              
+                              if (!currentRank || !previousRank) {
+                                return <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>;
+                              }
+                              
+                              const rankDiff = previousRank - currentRank;
+                              
+                              if (rankDiff > 0) {
+                                // 상승
+                                return (
+                                  <div className="flex items-center space-x-1">
+                                    <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414 6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                    <span className={`text-sm font-medium ${rankDisplay.changeColor}`}>
+                                      {rankDisplay.change}
+                                    </span>
+                                  </div>
+                                );
+                              } else if (rankDiff < 0) {
+                                // 하락
+                                return (
+                                  <div className="flex items-center space-x-1">
+                                    <svg className="w-4 h-4 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                    <span className={`text-sm font-medium ${rankDisplay.changeColor}`}>
+                                      {rankDisplay.change}
+                                    </span>
+                                  </div>
+                                );
+                              } else {
+                                // 변동없음
+                                return (
+                                  <div className="flex items-center space-x-1">
+                                    <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M4 10a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H4.75A.75.75 0 014 10z" clipRule="evenodd" />
+                                    </svg>
+                                  </div>
+                                );
+                              }
+                            })()}
                           </div>
                         </td>
                         <td className="px-6 py-4">
