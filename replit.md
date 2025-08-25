@@ -26,21 +26,6 @@ SNAVER is a production-ready web application designed to track store rankings on
    - 검색 시간 92% 개선 (25초 → 2초)
    - 실서버에서 네이버 OpenAPI 정상 작동 확인됨 ✅
 
-5. **로그 확인 SSH 명령어 (사용자 요청으로 저장)**
-   ```bash
-   # 실시간 로그 모니터링
-   tail -f /var/log/snaver/app.log | grep -E "(organic|API|검색|매칭|OpenAPI)"
-   
-   # 최근 검색 로그 확인 (최근 100줄)
-   tail -100 /var/log/snaver/app.log | grep -E "(organic|productId|keyword)"
-   
-   # 특정 제품 검색 로그
-   grep "제품.*7558362412\|inputId=7558362412" /var/log/snaver/app.log
-   
-   # 에러 로그만 확인
-   grep -E "(오류|실패|ERROR|Failed)" /var/log/snaver/app.log | tail -20
-   ```
-
 ## ✅ Completed Fixes
 1. **제품 수정 기능 완전 해결** (2025-08-22)
    - PATCH `/api/products/:id` API 구현 완료
@@ -243,46 +228,6 @@ import("pg").then(({ Pool }) => {
 These sections contain server-specific routing logic that must remain unchanged.
 
 # System Architecture
-
-## ESM (ECMAScript Module) Environment
-**CRITICAL: 프로젝트 전체가 ESM 환경입니다. 모든 모듈은 반드시 ESM 방식으로 작성해야 합니다.**
-
-### ESM 규칙 (필수 준수)
-1. **Import 확장자**: TypeScript 파일 import 시에도 반드시 `.js` 확장자 사용
-   ```typescript
-   // ✅ 올바른 방식
-   import { module } from "./path/to/module.js";
-   
-   // ❌ 잘못된 방식  
-   import { module } from "./path/to/module.ts";
-   ```
-
-2. **Export 방식**: CommonJS `module.exports` 사용 금지, ES6 `export` 사용
-   ```typescript
-   // ✅ 올바른 방식
-   export const myFunction = () => {};
-   export default myClass;
-   
-   // ❌ 잘못된 방식
-   module.exports = { myFunction };
-   ```
-
-3. **파일 확장자 규칙**
-   - 서버 코드: `.ts` 파일 작성하되 import 시 `.js` 확장자
-   - 클라이언트 코드: `.tsx`, `.ts` 파일 정상 사용
-   - 설정 파일: `.js` 확장자 (postcss.config.js 등)
-
-4. **Dynamic Import**: ESM 방식 사용
-   ```typescript
-   // ✅ 올바른 방식
-   const module = await import("./path/to/module.js");
-   ```
-
-### 현재 ESM 설정 상태
-- `package.json`: `"type": "module"` ✅
-- `tsconfig.json`: `"module": "ESNext"` ✅ 
-- 모든 서버 파일: ESM import/export 방식 적용 ✅
-- 빌드 설정: `--format=esm` 적용 ✅
 
 ## Frontend Architecture
 - **Framework**: React 18 with TypeScript using Vite as the build tool

@@ -1,25 +1,10 @@
 import cron from "node-cron";
 import { storage } from "../storage.js";
 import { crawlProduct } from "../crawler/shoppingCrawler.js";
-import { fetchOrganicRank } from "../crawler/naverOrganic.js";
+import { fetchOrganicRank } from "../crawler/naverOrganic.ts";
 
 let isRunning = false;
-// 타입 정의
-interface Product {
-  id: number;
-  keyword: string;
-  productNo: string;
-  type: string;
-  intervalMin: number;
-}
-
-interface SearchQueueItem {
-  product: Product;
-  timestamp: string;
-  retries: number;
-}
-
-let searchQueue: SearchQueueItem[] = []; // 순차 검색 큐
+let searchQueue = []; // 순차 검색 큐
 let isProcessingQueue = false; // 큐 처리 중 플래그
 
 // Run every minute
@@ -162,8 +147,8 @@ async function processSearchQueue() {
       // 검색 간 지연 (실서버 안정성)
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-    } catch (error: any) {
-      console.error(`❌ 검색 실패 - 제품 ${product.id}:`, error?.message || error);
+    } catch (error) {
+      console.error(`❌ 검색 실패 - 제품 ${product.id}:`, error.message);
       
       // 재시도 로직 (최대 2회)
       if (retries < 2) {

@@ -5,12 +5,11 @@ import { storage } from "./storage";
 import { insertUserSchema, insertProductSchema, loginSchema, rankQuerySchema, type RankQuery, type RankResult } from "@shared/schema";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { authenticateToken } from "./middleware/auth.js";
+import { authenticateToken } from "./middleware/auth.ts";
 import { fetchOrganicRank } from "./crawler/naverOrganic.js";
 import { fetchOrganicRankPuppeteer } from "./crawler/naverOrganicPuppeteer.js";
 import { fetchAdRank } from "./crawler/adCrawler.js";
 import crypto from "crypto";
-import { searchLogger } from "./utils/searchLogger.js";
 
 // 세션 타입 확장
 declare module 'express-session' {
@@ -618,73 +617,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("트랙 조회 오류:", error);
       res.status(500).json({ message: "트랙 데이터를 가져오는데 실패했습니다" });
-    }
-  });
-
-  // 검색 로그 API 엔드포인트들
-  app.get("/api/search/debug/:searchId", authenticateToken, async (req, res) => {
-    try {
-      const searchId = req.params.searchId;
-      
-      // 특정 검색의 상세 로그 조회
-      const logs = searchLogger.getSearchLogs(searchId);
-      
-      res.json({
-        searchId,
-        logs,
-        logCount: logs.length
-      });
-    } catch (error: any) {
-      console.error("검색 로그 조회 오류:", error);
-      res.status(500).json({ message: "검색 로그 조회에 실패했습니다" });
-    }
-  });
-
-  app.get("/api/search/stats", authenticateToken, async (req, res) => {
-    try {
-      // 환경별 성공률 통계
-      const stats = searchLogger.getStats();
-      const recentLogs = searchLogger.getRecentLogs(20);
-      
-      res.json({
-        stats,
-        recentLogs,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error: any) {
-      console.error("검색 통계 조회 오류:", error);
-      res.status(500).json({ message: "검색 통계 조회에 실패했습니다" });
-    }
-  });
-
-  app.get("/api/search/export", authenticateToken, async (req, res) => {
-    try {
-      // 로그 내보내기 (실서버 디버깅용)
-      const exportData = searchLogger.exportLogs();
-      
-      res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Content-Disposition', 'attachment; filename="search-logs.json"');
-      res.send(exportData);
-    } catch (error: any) {
-      console.error("로그 내보내기 오류:", error);
-      res.status(500).json({ message: "로그 내보내기에 실패했습니다" });
-    }
-  });
-
-  // 실서버 로그 파일 조회
-  app.get("/api/search/file", authenticateToken, async (req, res) => {
-    try {
-      const logFileContent = searchLogger.readLogFile();
-      const logFileInfo = searchLogger.getLogFileInfo();
-      
-      res.json({
-        fileInfo: logFileInfo,
-        content: logFileContent,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error: any) {
-      console.error("로그 파일 조회 오류:", error);
-      res.status(500).json({ message: "로그 파일 조회에 실패했습니다" });
     }
   });
 
