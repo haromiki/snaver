@@ -304,34 +304,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
               clientSecret,
             });
           } catch (error: any) {
-            console.log(`⚠️ OpenAPI 실패, Puppeteer fallback - 제품 ${product.id}:`, error.message);
-            // Puppeteer fallback
-            const puppeteerResult = await crawlProduct(product);
+            console.log(`❌ OpenAPI 실패 - 실서버에서 Puppeteer 미사용 (제품 ${product.id}):`, error.message);
+            // 실서버 안전성: Puppeteer fallback 제거
             rankResult = {
               productId: product.productNo,
-              found: !puppeteerResult.notFound,
-              globalRank: puppeteerResult.global_rank || undefined,
-              page: puppeteerResult.page || undefined,
-              rankInPage: puppeteerResult.rank_on_page || undefined,
-              price: puppeteerResult.price_krw || undefined,
-              storeName: puppeteerResult.mall_name || undefined,
-              storeLink: puppeteerResult.product_link || undefined,
-              notes: ["OpenAPI 실패로 Puppeteer 사용"]
+              found: false,
+              notes: [`OpenAPI 오류: ${error.message}`]
             };
           }
         } else {
-          console.log(`⚠️ OpenAPI 인증정보 없음 - Puppeteer 사용 (제품 ${product.id})`);
-          const puppeteerResult = await crawlProduct(product);
+          console.log(`❌ OpenAPI 인증정보 없음 - 실서버에서 Puppeteer 미사용 (제품 ${product.id})`);
           rankResult = {
             productId: product.productNo,
-            found: !puppeteerResult.notFound,
-            globalRank: puppeteerResult.global_rank || undefined,
-            page: puppeteerResult.page || undefined,
-            rankInPage: puppeteerResult.rank_on_page || undefined,
-            price: puppeteerResult.price_krw || undefined,
-            storeName: puppeteerResult.mall_name || undefined,
-            storeLink: puppeteerResult.product_link || undefined,
-            notes: ["OpenAPI 인증정보 없어 Puppeteer 사용"]
+            found: false,
+            notes: ["OpenAPI 인증정보 없음 - 실서버에서 Puppeteer 미사용"]
           };
         }
       } else {
@@ -493,21 +479,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             clientSecret,
           });
         } catch (error: any) {
-          console.log(`⚠️ OpenAPI 실패, Puppeteer fallback:`, error.message);
-          // Puppeteer fallback
-          result = await fetchOrganicRankPuppeteer({
+          console.log(`❌ OpenAPI 실패 - 실서버에서 Puppeteer 미사용:`, error.message);
+          // 실서버 안전성: Puppeteer fallback 제거
+          result = {
             productId: validatedData.productId,
-            keyword: validatedData.keyword,
-            maxPages: 5,
-          });
+            found: false,
+            notes: [`OpenAPI 오류: ${error.message}`]
+          };
         }
       } else {
-        console.log(`⚠️ OpenAPI 인증정보 없음 - Puppeteer 사용`);
-        result = await fetchOrganicRankPuppeteer({
+        console.log(`❌ OpenAPI 인증정보 없음 - 실서버에서 Puppeteer 미사용`);
+        result = {
           productId: validatedData.productId,
-          keyword: validatedData.keyword,
-          maxPages: 5,
-        });
+          found: false,
+          notes: ["OpenAPI 인증정보 없음 - 실서버에서 Puppeteer 미사용"]
+        };
       }
 
       res.json(result);

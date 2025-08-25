@@ -111,7 +111,7 @@ export async function fetchOrganicRank({
   clientId: string;
   clientSecret: string;
 }): Promise<RankResult> {
-  const HARD_DEADLINE_MS = 45000; // 실서버 환경 고려해서 45초로 증가
+  const HARD_DEADLINE_MS = 15000; // 실서버 안정성: 15초로 단축
   const started = Date.now();
   // 실서버 환경에서 더 안전한 User-Agent 사용  
   const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -152,7 +152,7 @@ export async function fetchOrganicRank({
               "Sec-Fetch-Mode": "cors",
               "Sec-Fetch-Site": "cross-site",
             },
-          }, 12000); // 12초로 증가
+          }, 8000); // 실서버 안정성: 8초로 단축
           
           if (!res.ok) {
             const errorText = await res.text();
@@ -223,73 +223,50 @@ export async function fetchOrganicRank({
     
     console.log(`[organic] 1차 매칭 실패 - "${inputId}"와 일치하는 productId 없음`);
 
-    // 3) 2차: 리다이렉트 Location만 해석(HEAD) → ID 매칭
-    //  - 최종 GET까지 가지 않음(느리고 행 가능). 빠르게 Location 체인만 추적.
-    const MAX_PARALLEL = 12;
-    for (let base = 0; base < allItems.length; base += MAX_PARALLEL) {
+    // 3) 실서버 환경 안전성: URL 기반 검색만 사용 (HEAD 요청 제거)
+    console.log(`[organic] 2차 매칭 시도 - URL 기반 ID 추출만 사용 (실서버 안전)`);
+    
+    for (let i = 0; i < allItems.length; i++) {
       // 하드 데드라인 체크
       if (Date.now() - started > HARD_DEADLINE_MS) {
         console.log(`[organic] 시간 초과 - 하드 데드라인 ${HARD_DEADLINE_MS}ms 도달`);
         return { productId: inputId, found: false, notes: ["시간 초과(하드 타임박스)"] };
       }
 
-      const slice = allItems.slice(base, base + MAX_PARALLEL);
+      const item = allItems[i];
+      
+      try {
+        // URL에서 ID 추출만 사용 (네트워크 요청 없음 - 실서버 안전)
+        const ids = extractIdsFromUrl(item.link);
+        
+        const matched =
+          eqNumStr(ids.prodNo, inputId) ||
+          eqNumStr(ids.nvMid, inputId) ||
+          eqNumStr(ids.productId, inputId) ||
+          eqNumStr(item.productId, inputId);
 
-      const settled = await Promise.allSettled(
-        slice.map(async (it) => {
-          try {
-            // 3-a) 먼저 링크 자체에서 ID가 보이면 바로 비교(아주 빠름)
-            const id0 = extractIdsFromUrl(it.link);
-            if (
-              eqNumStr(id0.prodNo, inputId) ||
-              eqNumStr(id0.nvMid, inputId) ||
-              eqNumStr(id0.productId, inputId)
-            ) {
-              return { it, finalUrl: it.link, ids: id0, matched: true };
-            }
+        if (matched) {
+          const globalRank = i + 1;
+          const pageNumber = Math.ceil(globalRank / 40);
+          const rankInPage = ((globalRank - 1) % 40) + 1;
 
-            // 3-b) HEAD+manual 로 Location 체인만 해석
-            const finalUrl = await resolveLocationHead(it.link, commonHeaders, 4000, 3);
-            const ids = extractIdsFromUrl(finalUrl);
-
-            const matched =
-              eqNumStr(ids.prodNo, inputId) ||
-              eqNumStr(ids.nvMid, inputId) ||
-              eqNumStr(ids.productId, inputId) ||
-              eqNumStr(it.productId, inputId);
-
-            return { it, finalUrl, ids, matched };
-          } catch (e: any) {
-            return { it, finalUrl: it.link, ids: {}, matched: false, error: e?.message || String(e) };
-          }
-        })
-      );
-
-      const ok = settled
-        .filter((r): r is PromiseFulfilledResult<any> => r.status === "fulfilled")
-        .map((r) => r.value);
-
-      const pos = ok.findIndex((r) => r.matched);
-      if (pos !== -1) {
-        idx = base + pos;
-        const r = ok[pos];
-        const globalRank = idx + 1;
-        const pageNumber = Math.ceil(globalRank / 40);
-        const rankInPage = ((globalRank - 1) % 40) + 1;
-
-        return {
-          productId: r.it.productId,
-          storeName: r.it.mallName,
-          storeLink: r.finalUrl || r.it.link,
-          price: parseInt(r.it.lprice || "0", 10) || 0,
-          globalRank,
-          page: pageNumber,
-          rankInPage,
-          found: true,
-          notes: ["2차: redirect Location(HEAD) 기반 매칭"],
-        };
+          console.log(`[organic] 2차 매칭 성공! URL 기반 - 순위: ${globalRank}위`);
+          return {
+            productId: item.productId,
+            storeName: item.mallName,
+            storeLink: item.link,
+            price: parseInt(item.lprice || "0", 10) || 0,
+            globalRank,
+            page: pageNumber,
+            rankInPage,
+            found: true,
+            notes: ["2차: URL 기반 ID 매칭 (실서버 안전)"],
+          };
+        }
+      } catch (e: any) {
+        // 개별 아이템 오류는 무시하고 계속 진행
+        console.warn(`[organic] 아이템 ${i} 처리 오류:`, e?.message || String(e));
       }
-      // 실패한 요청은 다음 슬라이스로 계속 진행 (행 방지)
     }
 
     // 4) 200위 내 미발견
