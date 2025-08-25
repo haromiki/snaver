@@ -26,6 +26,12 @@ SNAVER is a production-ready web application designed to track store rankings on
    - 검색 시간 92% 개선 (25초 → 2초)
    - 실서버에서 네이버 OpenAPI 정상 작동 확인됨 ✅
 
+5. **다중 링크 타입 지원 완료** (2025-08-25)
+   - 퍼센트 인코딩 디코딩: OpenAPI redirect URL 처리
+   - 카탈로그 ID 패턴: `/catalog/123456` 형태 ID 추출
+   - 외부 몰 지원: 옥션, 11번가 링크 ID 추출
+   - 실서버-리플릿 동일 결과 보장 ✅
+
 ## ✅ Completed Fixes
 1. **제품 수정 기능 완전 해결** (2025-08-22)
    - PATCH `/api/products/:id` API 구현 완료

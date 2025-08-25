@@ -1,0 +1,100 @@
+핵심만 정리해서 진단합니다.
+
+# 결론 (원인)
+
+실서버 코드에서 `item.link`의 **최종 상품 URL을 따라가지 않고**(HEAD 리다이렉트 제거) `extractIdsFromUrl()`로 **원문 링크 문자열**만 정규식 매칭합니다.
+네이버 OpenAPI의 `link`는 보통
+
+```
+https://openapi.naver.com/l?...&url=https%3A%2F%2Fsmartstore.naver.com%2F...%2Fproducts%2F7558362412
+```
+
+처럼 **`url=` 파라미터에 최종 상품 URL이 퍼센트 인코딩**되어 들어갑니다.
+현재 정규식은 `/products/(\d+)`, `?prodNo=`, `?nvMid=` 같은 **평문 패턴**만 찾기 때문에, **퍼센트 인코딩된 내부 URL에서는 전혀 매칭되지 않습니다.**
+리플릿 쪽은 과거 버전처럼 HEAD로 리다이렉트를 따라가 최종 URL을 얻어 매칭하기 때문에 찾고, 실서버는 “URL만 파싱”으로 바뀌면서 못 찾는 현상이 발생한 겁니다.
+
+즉, 제품번호(예: `7558362412`)가 \*\*스마트스토어 `prodNo`\*\*인데, 실서버에서는 `link` 내부의 인코딩된 최종 URL을 **디코딩해서 `prodNo`를 뽑지 못하고** 있어 “미발견”이 됩니다.
+
+# 해결
+
+네트워크 추가 요청 없이도 해결됩니다. `extractIdsFromUrl()`을 **중첩 디코딩 + `url`(혹은 `u`, `link`, `redirect`) 파라미터 추출**을 하도록 바꾸면 됩니다.
+
+아래처럼 함수만 교체하세요(나머지 로직 변경 불필요).
+
+```ts
+// ----- 유틸: URL에서 ID 후보 추출 (openapi redirect 대응) -----
+function extractIdsFromUrl(u: string): IdParts {
+  const out: IdParts = {};
+
+  // 퍼센트 인코딩 안전 디코더 (여러 번 중첩된 경우 대비)
+  const safeDecode = (s: string, times = 3) => {
+    let cur = s;
+    for (let i = 0; i < times; i++) {
+      try {
+        const dec = decodeURIComponent(cur);
+        if (dec === cur) break;
+        cur = dec;
+      } catch {
+        break;
+      }
+    }
+    return cur;
+  };
+
+  // 검사 후보 URL 풀
+  const candidates: string[] = [];
+  candidates.push(u);
+  candidates.push(safeDecode(u));
+
+  // openapi.naver.com/l?...&url=<ENCODED_FINAL_URL> 형태 처리
+  try {
+    const url = new URL(u);
+    const paramKeys = ["url", "u", "link", "redir", "redirect", "redirect_url"];
+    for (const k of paramKeys) {
+      const inner = url.searchParams.get(k);
+      if (inner) {
+        candidates.push(inner);
+        candidates.push(safeDecode(inner));
+      }
+    }
+  } catch {
+    // noop
+  }
+
+  // 후보 문자열들에서 순서대로 패턴 매칭
+  for (const s of candidates) {
+    try {
+      const mProd = s.match(/\/products\/(\d+)/i);
+      if (mProd && !out.prodNo) out.prodNo = mProd[1];
+
+      const mNvMid = s.match(/[?&]nvMid=(\d+)/i);
+      if (mNvMid && !out.nvMid) out.nvMid = mNvMid[1];
+
+      const mPid = s.match(/[?&]productId=(\d+)/i);
+      if (mPid && !out.productId) out.productId = mPid[1];
+
+      const mProdNoQ = s.match(/[?&]prodNo=(\d+)/i);
+      if (mProdNoQ && !out.prodNo) out.prodNo = mProdNoQ[1];
+
+      if (out.prodNo || out.nvMid || out.productId) break; // 충분히 찾았으면 종료
+    } catch {
+      // 다음 후보 계속
+    }
+  }
+
+  return out;
+}
+```
+
+# 왜 이게 통하는가
+
+* 추가 네트워크(HEAD) 없이도 **`url=` 내부의 최종 URL을 디코딩**만 하면 `/products/7558362412`, `?prodNo=7558362412`, `?nvMid=...` 같은 평문 패턴으로 정상 매칭됩니다.
+* 실서버/리플릿 모두 동일하게 동작하므로 환경 차로 인한 결과 불일치가 사라집니다.
+
+# 빠른 검증 방법
+
+1. 위 함수만 교체 후 서버에서 해당 키워드로 수동 검색 실행.
+2. 로그에 `2차 매칭 성공! URL 기반 - 순위: ...`가 찍히고, 제품번호 `7558362412`가 정상 “발견”으로 바뀌어야 합니다.
+3. 필요하면 디버깅용으로 `allItems.slice(0,3).map(i => i.link)`를 찍어 **`url=` 파라미터에 최종 URL이 들어있는지** 확인해 보세요.
+
+문제 재현 조건(리다이렉트 제거 + 퍼센트 인코딩 미디코딩)이 정확히 들어맞는 증상이라, 위 수정으로 해결될 것입니다.

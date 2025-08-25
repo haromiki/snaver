@@ -21,22 +21,79 @@ function eqNumStr(a?: string | number | null, b?: string | number | null) {
   return sa === sb;
 }
 
-// ----- 유틸: URL에서 ID 후보 추출 -----
+// ----- 유틸: URL에서 ID 후보 추출 (openapi redirect 대응) -----
 function extractIdsFromUrl(u: string): IdParts {
   const out: IdParts = {};
+
+  // 퍼센트 인코딩 안전 디코더 (여러 번 중첩된 경우 대비)
+  const safeDecode = (s: string, times = 3) => {
+    let cur = s;
+    for (let i = 0; i < times; i++) {
+      try {
+        const dec = decodeURIComponent(cur);
+        if (dec === cur) break;
+        cur = dec;
+      } catch {
+        break;
+      }
+    }
+    return cur;
+  };
+
+  // 검사 후보 URL 풀
+  const candidates: string[] = [];
+  candidates.push(u);
+  candidates.push(safeDecode(u));
+
+  // openapi.naver.com/l?...&url=<ENCODED_FINAL_URL> 형태 처리
   try {
-    const mProd = u.match(/\/products\/(\d+)/i);
-    if (mProd) out.prodNo = mProd[1];
+    const url = new URL(u);
+    const paramKeys = ["url", "u", "link", "redir", "redirect", "redirect_url"];
+    for (const k of paramKeys) {
+      const inner = url.searchParams.get(k);
+      if (inner) {
+        candidates.push(inner);
+        candidates.push(safeDecode(inner));
+      }
+    }
+  } catch {
+    // noop
+  }
 
-    const mNvMid = u.match(/[?&]nvMid=(\d+)/i);
-    if (mNvMid) out.nvMid = mNvMid[1];
+  // 후보 문자열들에서 순서대로 패턴 매칭
+  for (const s of candidates) {
+    try {
+      // 1) Smartstore: /products/123456
+      const mProd = s.match(/\/products\/(\d+)/i);
+      if (mProd && !out.prodNo) out.prodNo = mProd[1];
 
-    const mPid = u.match(/[?&]productId=(\d+)/i);
-    if (mPid) out.productId = mPid[1];
+      // 2) Catalog: /catalog/123456 (중요!)
+      const mCatalog = s.match(/\/catalog\/(\d+)/i);
+      if (mCatalog && !out.productId) out.productId = mCatalog[1];
 
-    const mProdNoQ = u.match(/[?&]prodNo=(\d+)/i);
-    if (mProdNoQ) out.prodNo = mProdNoQ[1] || out.prodNo;
-  } catch {}
+      // 3) Query 파라미터들
+      const mNvMid = s.match(/[?&]nvMid=(\d+)/i);
+      if (mNvMid && !out.nvMid) out.nvMid = mNvMid[1];
+
+      const mPid = s.match(/[?&]productId=(\d+)/i);
+      if (mPid && !out.productId) out.productId = mPid[1];
+
+      const mProdNoQ = s.match(/[?&]prodNo=(\d+)/i);
+      if (mProdNoQ && !out.prodNo) out.prodNo = mProdNoQ[1];
+
+      // 4) 외부 몰 지원 (옥션, 11번가)
+      const mAuction = s.match(/item-no=([A-Z0-9]+)/i);
+      if (mAuction && !out.productId) out.productId = mAuction[1];
+
+      const m11st = s.match(/prdNo=(\d+)/i);
+      if (m11st && !out.productId) out.productId = m11st[1];
+
+      if (out.prodNo || out.nvMid || out.productId) break; // 충분히 찾았으면 종료
+    } catch {
+      // 다음 후보 계속
+    }
+  }
+
   return out;
 }
 
@@ -225,6 +282,7 @@ export async function fetchOrganicRank({
 
     // 3) 실서버 환경 안전성: URL 기반 검색만 사용 (HEAD 요청 제거)
     console.log(`[organic] 2차 매칭 시도 - URL 기반 ID 추출만 사용 (실서버 안전)`);
+    // 디버깅 완료
     
     for (let i = 0; i < allItems.length; i++) {
       // 하드 데드라인 체크
@@ -238,6 +296,8 @@ export async function fetchOrganicRank({
       try {
         // URL에서 ID 추출만 사용 (네트워크 요청 없음 - 실서버 안전)
         const ids = extractIdsFromUrl(item.link);
+        
+        // ID 추출 완료
         
         const matched =
           eqNumStr(ids.prodNo, inputId) ||
