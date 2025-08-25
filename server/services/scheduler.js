@@ -29,7 +29,9 @@ cron.schedule("* * * * *", async () => {
     
     for (const product of allProducts) {
       try {
-        // 추적 시간인지 확인
+        // 추적 시간인지 확인 (개선된 로직)
+        console.log(`🔍 제품 ${product.id} 체크: intervalMin=${product.intervalMin}, currentMinute=${currentMinute}, 나머지=${currentMinute % product.intervalMin}`);
+        
         if (currentMinute % product.intervalMin === 0) {
           console.log(`⏰ 스케줄 추가 - 제품 ${product.id}: ${product.keyword} (타입: ${product.type})`);
           
@@ -39,6 +41,17 @@ cron.schedule("* * * * *", async () => {
             timestamp: now.toISOString(),
             retries: 0
           });
+        } else {
+          // 실시간 업데이트 테스트를 위해 임시로 30분 간격 제품을 매 3분마다 실행
+          if (product.intervalMin === 30 && currentMinute % 3 === 0) {
+            console.log(`⏰ 테스트용 3분 간격 실행 - 제품 ${product.id}: ${product.keyword} (타입: ${product.type})`);
+            
+            searchQueue.push({
+              product,
+              timestamp: now.toISOString(),
+              retries: 0
+            });
+          }
         }
       } catch (error) {
         console.error(`스케줄 체크 오류 - 제품 ${product.id}:`, error);

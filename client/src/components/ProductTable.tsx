@@ -121,6 +121,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
   const [bulkRefreshInProgress, setBulkRefreshInProgress] = useState(false);
   const [bulkRefreshProgress, setBulkRefreshProgress] = useState(0);
   const [searchStatus, setSearchStatus] = useState<any>(null);
+  const [currentTime, setCurrentTime] = useState(new Date()); // 실시간 시간 업데이트용
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -457,12 +458,23 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     };
   }, [products.length, updateSortMutation.isPending]);
 
+  // 실시간 시간 업데이트 (매분마다)
+  useEffect(() => {
+    const updateCurrentTime = () => {
+      setCurrentTime(new Date());
+    };
+    
+    updateCurrentTime(); // 초기 설정
+    const interval = setInterval(updateCurrentTime, 60000); // 1분마다 업데이트
+    
+    return () => clearInterval(interval);
+  }, []);
+
   const formatLastChecked = (latestTrack: any) => {
     if (!latestTrack) return "미확인";
     
     const date = new Date(latestTrack.checkedAt);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
+    const diffMs = currentTime.getTime() - date.getTime(); // 실시간 업데이트된 현재 시간 사용
     const diffMins = Math.floor(diffMs / (1000 * 60));
     
     if (diffMins < 1) return "방금 전";
