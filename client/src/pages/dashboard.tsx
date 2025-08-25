@@ -11,7 +11,7 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState("all");
 
   return (
-    <div className="flex min-h-screen bg-white dark:bg-gray-900 p-4 gap-4">
+    <div className="flex h-screen bg-white dark:bg-gray-900">
       <Sidebar 
         activeSection={activeSection} 
         onSectionChange={setActiveSection}
@@ -79,7 +79,7 @@ export default function Dashboard() {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto" style={{flex: 1, overflow: 'auto'}}>
+        <main className="flex-1 overflow-auto p-6" style={{flex: 1, overflow: 'auto'}}>
           <ProductTable 
             section={activeSection}
             searchQuery={searchQuery}
