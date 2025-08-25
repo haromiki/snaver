@@ -255,12 +255,12 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" data-testid="statistics-modal">
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-gray-200 dark:border-gray-700">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2" data-testid="statistics-modal">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-[95vw] max-w-[1200px] h-[95vh] max-h-[680px] overflow-hidden border border-gray-200 dark:border-gray-700">
+        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">순위 통계</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{product?.productName || `제품 #${productId}`}</p>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">순위 통계</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{product?.productName || `제품 #${productId}`}</p>
           </div>
           <button 
             onClick={onClose} 
@@ -271,115 +271,125 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
           </button>
         </div>
         
-        <div className="p-6">
+        <div className="p-4 flex-1 overflow-y-auto">
           {/* Date Range Picker */}
-          <div className="flex flex-col space-y-3 mb-6">
-            <div className="flex items-center flex-wrap gap-3">
+          <div className="flex flex-col space-y-2 mb-4">
+            <div className="flex items-center flex-wrap gap-2">
               <div className="flex items-center space-x-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">기간:</label>
-                <input 
-                  type="date" 
-                  className="border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" 
-                  value={dateRange.from}
-                  min={minDate}
-                  max={maxDate}
-                  onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
-                  data-testid="input-date-from"
-                />
-                <span className="text-gray-500 dark:text-gray-400">~</span>
-                <input 
-                  type="date" 
-                  className="border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" 
-                  value={dateRange.to}
-                  min={minDate}
-                  max={maxDate}
-                  onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
-                  data-testid="input-date-to"
-                />
+                <label className="text-xs font-medium text-gray-700 dark:text-gray-300">기간:</label>
+                <div className="relative">
+                  <input 
+                    type="date" 
+                    className="border border-gray-300 dark:border-gray-600 rounded-md pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" 
+                    value={dateRange.from}
+                    min={minDate}
+                    max={maxDate}
+                    onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
+                    data-testid="input-date-from"
+                  />
+                  <div className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none">
+                    📅
+                  </div>
+                </div>
+                <span className="text-gray-500 dark:text-gray-400 text-xs">~</span>
+                <div className="relative">
+                  <input 
+                    type="date" 
+                    className="border border-gray-300 dark:border-gray-600 rounded-md pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" 
+                    value={dateRange.to}
+                    min={minDate}
+                    max={maxDate}
+                    onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
+                    data-testid="input-date-to"
+                  />
+                  <div className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none">
+                    📅
+                  </div>
+                </div>
               </div>
               <button 
                 onClick={handleDateUpdate}
-                className="px-4 py-2 bg-primary text-white rounded-md text-sm font-medium hover:bg-blue-700"
+                className="px-3 py-1.5 bg-primary text-white rounded-md text-xs font-medium hover:bg-blue-700"
                 data-testid="button-update-chart"
               >
                 조회
               </button>
               
               {/* 빠른 기간 선택 버튼 */}
-              <div className="flex items-center flex-wrap gap-2 border-l border-gray-300 dark:border-gray-600 pl-3">
-                <span className="text-sm text-gray-600 dark:text-gray-400">빠른선택:</span>
+              <div className="flex items-center flex-wrap gap-1 border-l border-gray-300 dark:border-gray-600 pl-2">
+                <span className="text-xs text-gray-600 dark:text-gray-400">빠른선택:</span>
                 <button 
                   onClick={() => handleQuickRange(7)}
-                  className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-xs font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                   data-testid="button-quick-week"
                 >
                   1주일
                 </button>
                 <button 
                   onClick={() => handleQuickRange(30)}
-                  className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-xs font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                   data-testid="button-quick-month"
                 >
                   30일
                 </button>
                 <button 
                   onClick={() => handleQuickRange(365)}
-                  className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-xs font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                   data-testid="button-quick-year"
                 >
                   1년
                 </button>
                 <button 
                   onClick={() => handleQuickRange(730)}
-                  className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-xs font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                   data-testid="button-quick-2years"
                 >
                   2년
                 </button>
                 <button 
                   onClick={() => handleQuickRange(1095)}
-                  className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-xs font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                   data-testid="button-quick-3years"
                 >
                   3년
                 </button>
               </div>
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 ml-12">
+            <div className="text-xs text-gray-500 dark:text-gray-400 ml-8">
               💡 통계 검색 기간은 최대 3년(1095일)까지 설정 가능합니다.
             </div>
           </div>
 
           {/* Chart */}
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-            <canvas id="rank-chart" width="800" height="400"></canvas>
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+            <canvas id="rank-chart" width="1100" height="300"></canvas>
           </div>
 
           {/* Statistics Summary */}
-          <div className="mt-6 grid grid-cols-4 gap-4">
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-success" data-testid="stat-best-rank">
+          <div className="mt-4 grid grid-cols-4 gap-3">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
+              <div className="text-xl font-bold text-success" data-testid="stat-best-rank">
                 {stats.best || "-"}
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">최고 순위</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">최고 순위</div>
             </div>
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-error" data-testid="stat-worst-rank">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
+              <div className="text-xl font-bold text-error" data-testid="stat-worst-rank">
                 {stats.worst || "-"}
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">최저 순위</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">최저 순위</div>
             </div>
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-gray-900 dark:text-gray-100" data-testid="stat-average-rank">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
+              <div className="text-xl font-bold text-gray-900 dark:text-gray-100" data-testid="stat-average-rank">
                 {stats.average}
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">평균 순위</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">평균 순위</div>
             </div>
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-primary" data-testid="stat-found-rate">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
+              <div className="text-xl font-bold text-primary" data-testid="stat-found-rate">
                 {stats.foundRate}%
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">발견율</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">발견율</div>
             </div>
           </div>
         </div>
