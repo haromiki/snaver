@@ -105,15 +105,15 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-lg space-y-6" style={{ maxWidth: '90vw' }}>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4 sm:p-6 lg:p-8">
+      <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="text-center">
-          <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4">
-            <i className="fas fa-chart-line text-white text-xl"></i>
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary rounded-lg flex items-center justify-center mx-auto mb-3 sm:mb-4">
+            <i className="fas fa-chart-line text-white text-lg sm:text-xl"></i>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">SNAVER</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-2">네이버 쇼핑 순위 추적 시스템</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">SNAVER</h1>
+          <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-2">네이버 쇼핑 순위 추적 시스템</p>
         </div>
 
         {/* Login Form */}
@@ -123,7 +123,7 @@ export default function Login() {
               <CardTitle>로그인</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
                 <div>
                   <Label htmlFor="usernameOrEmail">아이디 또는 이메일</Label>
                   <Input
@@ -188,7 +188,7 @@ export default function Login() {
           </CardHeader>
           <CardContent>
             {isRegister ? (
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
                 <div>
                   <Label htmlFor="reg-username">아이디</Label>
                   <Input
