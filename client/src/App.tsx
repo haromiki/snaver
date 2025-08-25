@@ -95,31 +95,7 @@ function RouterWithRoutes() {
 
       {/* /dashboard: 로그인 했을 때만 접근 가능 */}
       <Route path="/dashboard">
-        {user ? (
-          <div style={{ 
-            padding: '20px', 
-            background: 'white', 
-            minHeight: '100vh',
-            color: 'black',
-            fontSize: '16px'
-          }}>
-            <h1 style={{ color: '#1976d2', fontSize: '28px', marginBottom: '20px' }}>
-              🌐 SNAVER - 네이버 쇼핑 순위 추적 시스템
-            </h1>
-            <p>✅ 로그인 성공: {(user as any)?.username}</p>
-            <p>✅ 순위 통계 기능 완료: 한국시간 기준, 24:00마다 새로운 선, 제품명 표시</p>
-            <p>✅ 회원가입/로그인 수정 완료:</p>
-            <ul style={{ marginLeft: '20px', marginTop: '10px' }}>
-              <li>• 이메일 필드 주석처리 (숨김)</li>
-              <li>• 아이디 실시간 중복체크 구현</li>
-              <li>• 네이버 로그인 주석처리 (숨김)</li>
-            </ul>
-            <div style={{ marginTop: '20px', padding: '15px', background: '#e8f5e8', borderRadius: '8px', border: '1px solid #4caf50' }}>
-              <h3 style={{ color: '#2e7d32', margin: '0 0 10px 0' }}>🎉 모든 요청사항 완료!</h3>
-              <p style={{ margin: 0 }}>로그인/회원가입 수정과 순위 통계 기능이 모두 정상적으로 구현되었습니다.</p>
-            </div>
-          </div>
-        ) : <Redirect to="/login" />}
+        {user ? <Dashboard /> : <Redirect to="/login" />}
       </Route>
 
       {/* 루트: 로그인 상태에 따라 분기 */}
