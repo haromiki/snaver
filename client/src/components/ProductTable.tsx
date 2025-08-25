@@ -449,18 +449,17 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
       return { rank: "-", page: "미발견", change: "변동없음", color: "text-gray-400 dark:text-gray-500" };
     }
 
-    const globalRank = latestTrack.globalRank;
-    const page = Math.ceil(globalRank / 40);
-    const rankInPage = ((globalRank - 1) % 40) + 1; // 페이지 내 순위 계산
+    const rank = latestTrack.globalRank;
+    const page = Math.ceil(rank / 40);
     
     // Determine color based on rank
     let color = "text-gray-900 dark:text-gray-100";
     let change = "변동없음";
     
-    if (globalRank <= 10) {
+    if (rank <= 10) {
       color = "text-success";
       change = "순위 상승";
-    } else if (globalRank <= 30) {
+    } else if (rank <= 30) {
       color = "text-warning";
       change = "순위 유지";
     } else {
@@ -468,12 +467,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
       change = "순위 하락";
     }
 
-    return { 
-      rank: `${globalRank} ㅣ ${rankInPage} ㅣ ${page}페이지`, 
-      page: `${page}페이지`, 
-      change, 
-      color 
-    };
+    return { rank, page: `${page}페이지`, change, color };
   };
 
   const formatPrice = (priceKrw: number | null) => {
