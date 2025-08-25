@@ -277,35 +277,31 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
             <div className="flex items-center flex-wrap gap-2">
               <div className="flex items-center space-x-2">
                 <label className="text-xs font-medium text-gray-700 dark:text-gray-300">기간:</label>
-                <div className="relative">
-                  <input 
-                    type="date" 
-                    className="border border-gray-300 dark:border-gray-600 rounded-md pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" 
-                    value={dateRange.from}
-                    min={minDate}
-                    max={maxDate}
-                    onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
-                    data-testid="input-date-from"
-                  />
-                  <div className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none">
-                    📅
-                  </div>
-                </div>
+                <input 
+                  type="date" 
+                  className="border border-gray-300 dark:border-gray-600 rounded-md px-3 py-1.5 text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" 
+                  style={{
+                    colorScheme: document?.documentElement?.classList?.contains('dark') ? 'dark' : 'light'
+                  }}
+                  value={dateRange.from}
+                  min={minDate}
+                  max={maxDate}
+                  onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
+                  data-testid="input-date-from"
+                />
                 <span className="text-gray-500 dark:text-gray-400 text-xs">~</span>
-                <div className="relative">
-                  <input 
-                    type="date" 
-                    className="border border-gray-300 dark:border-gray-600 rounded-md pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" 
-                    value={dateRange.to}
-                    min={minDate}
-                    max={maxDate}
-                    onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
-                    data-testid="input-date-to"
-                  />
-                  <div className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none">
-                    📅
-                  </div>
-                </div>
+                <input 
+                  type="date" 
+                  className="border border-gray-300 dark:border-gray-600 rounded-md px-3 py-1.5 text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" 
+                  style={{
+                    colorScheme: document?.documentElement?.classList?.contains('dark') ? 'dark' : 'light'
+                  }}
+                  value={dateRange.to}
+                  min={minDate}
+                  max={maxDate}
+                  onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
+                  data-testid="input-date-to"
+                />
               </div>
               <button 
                 onClick={handleDateUpdate}
