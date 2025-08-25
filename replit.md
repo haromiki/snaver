@@ -4,6 +4,26 @@ SNAVER is a production-ready web application designed to track store rankings on
 
 # Recent Changes (Latest Session)
 
+## ✅ 실서버 환경 검색 최적화 완료 (2025-08-25)
+1. **OpenAPI 우선 시스템 구현**
+   - 네이버 OpenAPI를 1차 검색 방법으로 설정
+   - Puppeteer는 fallback으로만 사용 (실서버 안정성)
+   - 25초 내 200위 검색 완료 (실서버 환경 최적화)
+
+2. **순차 검색 큐 시스템 구현**
+   - 동시 검색으로 인한 충돌 방지
+   - 큐 기반 순차 처리로 안정성 향상
+   - 재시도 로직 포함 (최대 2회)
+
+3. **스케줄러 완전 개선**
+   - 모든 사용자 제품 검색 (기존 userId=0 문제 해결)
+   - OpenAPI 우선 사용으로 실서버 호환성 개선
+   - 검색 간 2초 지연으로 서버 부하 최소화
+
+4. **실서버 정보 제공 협의**
+   - 사용자가 실서버 로그/정보 제공 가능
+   - 필요시 요청하여 문제 해결에 활용
+
 ## ✅ Completed Fixes
 1. **제품 수정 기능 완전 해결** (2025-08-22)
    - PATCH `/api/products/:id` API 구현 완료
