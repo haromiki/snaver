@@ -123,29 +123,7 @@ function RouterWithRoutes() {
       </Route>
 
       {/* 루트: 로그인 상태에 따라 분기 */}
-      <Route path="/">{user ? (
-        <div style={{ 
-          padding: '20px', 
-          background: 'white', 
-          minHeight: '100vh',
-          color: 'black',
-          fontSize: '16px'
-        }}>
-          <h1 style={{ color: '#1976d2', fontSize: '28px', marginBottom: '20px' }}>
-            🌐 SNAVER - 네이버 쇼핑 순위 추적 시스템
-          </h1>
-          <p>✅ 모든 로그인/회원가입 수정 완료:</p>
-          <ul style={{ marginLeft: '20px', marginTop: '10px' }}>
-            <li>• 이메일 필드 주석처리 (완전 숨김)</li>
-            <li>• 아이디 실시간 중복체크 구현</li>
-            <li>• 네이버 로그인 버튼 주석처리 (완전 숨김)</li>
-          </ul>
-          <div style={{ marginTop: '20px', padding: '15px', background: '#e8f5e8', borderRadius: '8px', border: '1px solid #4caf50' }}>
-            <h3 style={{ color: '#2e7d32', margin: '0 0 10px 0' }}>🎉 모든 요청사항 완료!</h3>
-            <p style={{ margin: 0 }}>회원가입과 로그인 기능이 모두 완성되었습니다!</p>
-          </div>
-        </div>
-      ) : <Redirect to="/login" />}</Route>
+      <Route path="/">{user ? <Dashboard /> : <Redirect to="/login" />}</Route>
 
       {/* 없는 경로 */}
       <Route component={NotFound} />
