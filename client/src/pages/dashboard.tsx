@@ -11,7 +11,7 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState("all");
 
   return (
-    <div className="flex h-screen bg-white dark:bg-gray-900">
+    <div className="flex min-h-screen bg-white dark:bg-gray-900 p-4 gap-4">
       <Sidebar 
         activeSection={activeSection} 
         onSectionChange={setActiveSection}
