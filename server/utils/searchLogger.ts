@@ -6,7 +6,7 @@ export interface SearchLogData {
   searchId: string;
   timestamp: string;
   environment: 'replit' | 'production' | 'unknown';
-  step: 'start' | 'config' | 'api_request' | 'api_response' | 'matching' | 'result' | 'end' | 'error';
+  step: string; // 유연한 step 타입 (기존 API 호환성)
   message: string;
   data?: any;
   error?: string;
@@ -201,8 +201,112 @@ export function getLogFileInfo() {
   };
 }
 
-// SearchLogger 객체 생성 (기존 코드 호환성)
+// 기존 API 호환성을 위한 추가 상태
+let activeSearches = new Map<string, { startTime: number; productId: string; keyword: string }>();
+
+// startSearch 메서드 (기존 API 호환성)
+function startSearch(productId: string, keyword: string): string {
+  const searchId = `${productId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const startTime = Date.now();
+  
+  activeSearches.set(searchId, { startTime, productId, keyword });
+  
+  addLog({
+    searchId,
+    timestamp: new Date().toISOString(),
+    environment: detectEnvironment(),
+    step: 'start',
+    message: `검색 시작 - 제품ID: ${productId}, 키워드: "${keyword}"`,
+    status: 'running'
+  });
+  
+  return searchId;
+}
+
+// logProgress 메서드 (기존 API 호환성)
+function logProgress(searchId: string, step: string, message: string, data?: any): void {
+  const search = activeSearches.get(searchId);
+  if (!search) {
+    console.warn(`⚠️ 활성 검색 없음: ${searchId}`);
+    return;
+  }
+  
+  addLog({
+    searchId,
+    timestamp: new Date().toISOString(),
+    environment: detectEnvironment(),
+    step,
+    message,
+    data,
+    status: 'running'
+  });
+}
+
+// endSearch 메서드 (기존 API 호환성)
+function endSearch(searchId: string, found: boolean, result?: any, notes?: string[]): void {
+  const search = activeSearches.get(searchId);
+  if (!search) {
+    console.warn(`⚠️ 활성 검색 없음: ${searchId}`);
+    return;
+  }
+  
+  const duration = Date.now() - search.startTime;
+  
+  addLog({
+    searchId,
+    timestamp: new Date().toISOString(),
+    environment: detectEnvironment(),
+    step: 'end',
+    message: `검색 완료 - ${found ? `${result?.globalRank || '미발견'}위 발견` : '미발견'} (${duration}ms)`,
+    data: {
+      found,
+      ...result,
+      notes,
+      totalDuration: duration
+    },
+    status: 'end'
+  });
+  
+  activeSearches.delete(searchId);
+}
+
+// logError 메서드 (기존 API 호환성)  
+function logError(searchId: string, error: string | Error, data?: any): void {
+  const search = activeSearches.get(searchId);
+  const errorMessage = error instanceof Error ? error.message : error;
+  
+  addLog({
+    searchId,
+    timestamp: new Date().toISOString(),
+    environment: detectEnvironment(),
+    step: 'error',
+    message: `검색 오류 - ${errorMessage}`,
+    error: errorMessage,
+    data,
+    status: 'end'
+  });
+  
+  if (search) {
+    activeSearches.delete(searchId);
+  }
+}
+
+// logSuccess 메서드 (기존 API 호환성)
+function logSuccess(searchId: string, message: string, data?: any): void {
+  addLog({
+    searchId,
+    timestamp: new Date().toISOString(),
+    environment: detectEnvironment(),
+    step: 'result',
+    message,
+    data,
+    status: 'running'
+  });
+}
+
+// SearchLogger 객체 생성 (기존 코드 완전 호환성)
 export const searchLogger = {
+  // 새로운 함수형 API
   addLog,
   getSearchLogs,
   getRecentLogs,
@@ -210,9 +314,14 @@ export const searchLogger = {
   exportLogs,
   readLogFile,
   getLogFileInfo,
+  initialize: initializeLogger,
   
-  // 초기화 메서드 (클래스 호환성)
-  initialize: initializeLogger
+  // 기존 클래스 API 호환성
+  startSearch,
+  logProgress,
+  endSearch,
+  logError,
+  logSuccess
 };
 
 // 초기화 실행
