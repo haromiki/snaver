@@ -9,6 +9,24 @@ import { apiRequest } from "@/lib/api";
 
 export default function Login() {
   const [isRegister, setIsRegister] = useState(false);
+
+  // 로그인 페이지에서만 반응형 뷰포트 적용
+  useEffect(() => {
+    const viewport = document.querySelector('meta[name="viewport"]');
+    const originalContent = viewport?.getAttribute('content');
+    
+    // 로그인 페이지용 반응형 뷰포트 설정
+    if (viewport) {
+      viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=3.0, minimum-scale=0.5');
+    }
+    
+    // 컴포넌트 언마운트 시 원래 뷰포트 복원
+    return () => {
+      if (viewport && originalContent) {
+        viewport.setAttribute('content', originalContent);
+      }
+    };
+  }, []);
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -105,22 +123,22 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4 sm:p-6 lg:p-8">
-      <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg space-y-4 sm:space-y-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col justify-center px-6 py-12 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-sm space-y-6">
         {/* Header */}
         <div className="text-center">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary rounded-lg flex items-center justify-center mx-auto mb-3 sm:mb-4">
-            <i className="fas fa-chart-line text-white text-lg sm:text-xl"></i>
+          <div className="mx-auto h-16 w-16 bg-primary rounded-xl flex items-center justify-center mb-6">
+            <i className="fas fa-chart-line text-white text-2xl"></i>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">SNAVER</h1>
-          <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-2">네이버 쇼핑 순위 추적 시스템</p>
+          <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">SNAVER</h2>
+          <p className="text-gray-500 dark:text-gray-400 mt-2 text-base">네이버 쇼핑 순위 추적 시스템</p>
         </div>
 
         {/* Login Form */}
         {!isRegister && (
-          <Card data-testid="login-form">
-            <CardHeader>
-              <CardTitle>로그인</CardTitle>
+          <Card data-testid="login-form" className="border-0 shadow-lg">
+            <CardHeader className="space-y-1 pb-4">
+              <CardTitle className="text-center text-xl">로그인</CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
@@ -182,9 +200,9 @@ export default function Login() {
         )}
 
         {/* Register Form */}
-        <Card data-testid="register-form">
-          <CardHeader>
-            <CardTitle>{isRegister ? "회원가입" : "계정이 없으신가요?"}</CardTitle>
+        <Card data-testid="register-form" className="border-0 shadow-lg">
+          <CardHeader className="space-y-1 pb-4">
+            <CardTitle className="text-center text-xl">{isRegister ? "회원가입" : "계정이 없으신가요?"}</CardTitle>
           </CardHeader>
           <CardContent>
             {isRegister ? (
