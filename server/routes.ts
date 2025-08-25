@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import { insertUserSchema, insertProductSchema, loginSchema, rankQuerySchema, type RankQuery, type RankResult } from "@shared/schema";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { authenticateToken } from "./middleware/auth.ts";
+import { authenticateToken } from "./middleware/auth.js";
 import { fetchOrganicRank } from "./crawler/naverOrganic.js";
 import { fetchOrganicRankPuppeteer } from "./crawler/naverOrganicPuppeteer.js";
 import { fetchAdRank } from "./crawler/adCrawler.js";
