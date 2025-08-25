@@ -444,30 +444,60 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     return date.toLocaleDateString();
   };
 
-  const getRankDisplay = (latestTrack: any) => {
+  const getRankDisplay = (latestTrack: any, product: any) => {
     if (!latestTrack || !latestTrack.globalRank) {
-      return { rank: "-", page: "미발견", change: "변동없음", color: "text-gray-400 dark:text-gray-500" };
+      return { rank: "-", page: "미발견", change: "변동없음", color: "text-gray-400 dark:text-gray-500", changeColor: "text-gray-500 dark:text-gray-400" };
     }
 
     const rank = latestTrack.globalRank;
     const page = Math.ceil(rank / 40);
     
-    // Determine color based on rank
+    // 기본 순위 색상 (순위 값 자체에 따른 색상)
     let color = "text-gray-900 dark:text-gray-100";
-    let change = "변동없음";
-    
     if (rank <= 10) {
       color = "text-success";
-      change = "순위 상승";
     } else if (rank <= 30) {
       color = "text-warning";
-      change = "순위 유지";
     } else {
       color = "text-error";
-      change = "순위 하락";
     }
 
-    return { rank, page: `${page}페이지`, change, color };
+    // 이전 순위와 비교하여 변동량 계산
+    let change = "변동없음";
+    let changeColor = "text-gray-500 dark:text-gray-400";
+    
+    // 제품의 모든 트랙 데이터에서 이전 순위 찾기
+    if (product.tracks && product.tracks.length >= 2) {
+      // 최신 순으로 정렬 (최신이 첫번째)
+      const sortedTracks = [...product.tracks].sort((a, b) => 
+        new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime()
+      );
+      
+      const currentTrack = sortedTracks[0]; // 최신 트랙
+      const previousTrack = sortedTracks[1]; // 이전 트랙
+      
+      if (currentTrack.globalRank && previousTrack.globalRank) {
+        const currentRank = currentTrack.globalRank;
+        const previousRank = previousTrack.globalRank;
+        const rankDiff = previousRank - currentRank; // 이전 순위 - 현재 순위
+        
+        if (rankDiff > 0) {
+          // 순위 상승 (숫자가 작아짐)
+          change = `🔺상승${rankDiff}`;
+          changeColor = "text-green-600 dark:text-green-400";
+        } else if (rankDiff < 0) {
+          // 순위 하락 (숫자가 커짐)
+          change = `🔻하락${Math.abs(rankDiff)}`;
+          changeColor = "text-red-600 dark:text-red-400";
+        } else {
+          // 순위 변동 없음
+          change = "🔄변동없음";
+          changeColor = "text-gray-500 dark:text-gray-400";
+        }
+      }
+    }
+
+    return { rank, page: `${page}페이지`, change, color, changeColor };
   };
 
   const formatPrice = (priceKrw: number | null) => {
@@ -593,7 +623,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
             </thead>
             <tbody id="sortable-products" className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
               {products.map((product: any) => {
-                const rankDisplay = getRankDisplay(product.latestTrack);
+                const rankDisplay = getRankDisplay(product.latestTrack, product);
                 
                 return (
                   <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors sortable-item" data-testid={`row-product-${product.id}`}>
@@ -694,16 +724,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center space-x-1">
-                            <i className={`fas ${
-                              rankDisplay.change === "순위 상승" ? "fa-arrow-up text-success" :
-                              rankDisplay.change === "순위 하락" ? "fa-arrow-down text-error" :
-                              "fa-minus text-gray-400 dark:text-gray-500"
-                            } text-sm`}></i>
-                            <span className={`text-sm ${
-                              rankDisplay.change === "순위 상승" ? "text-success" :
-                              rankDisplay.change === "순위 하락" ? "text-error" :
-                              "text-gray-500 dark:text-gray-400 dark:text-gray-500"
-                            }`} data-testid={`text-rank-change-${product.id}`}>
+                            <span className={`text-sm ${rankDisplay.changeColor} flex items-center`} data-testid={`text-rank-change-${product.id}`}>
                               {rankDisplay.change}
                             </span>
                           </div>

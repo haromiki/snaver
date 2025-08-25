@@ -81,18 +81,20 @@ export class DatabaseStorage implements IStorage {
       .where(and(...conditions))
       .orderBy(asc(products.sortOrder), desc(products.createdAt));
 
-    // 각 제품별로 최신 트랙 정보 가져오기
-    const productsWithLatestTrack = await Promise.all(
+    // 각 제품별로 최신 트랙 정보와 최근 2개 트랙 가져오기
+    const productsWithTracks = await Promise.all(
       productList.map(async (product: Product) => {
         const latestTrack = await this.getLatestTrack(product.id);
+        const recentTracks = await this.getRecentTracks(product.id, 2);
         return {
           ...product,
-          latestTrack
+          latestTrack,
+          tracks: recentTracks
         };
       })
     );
 
-    return productsWithLatestTrack;
+    return productsWithTracks;
   }
 
   async getProduct(id: number, userId: number): Promise<Product | undefined> {
@@ -165,6 +167,14 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(tracks.checkedAt))
       .limit(1);
     return track;
+  }
+
+  async getRecentTracks(productId: number, limit: number = 2): Promise<Track[]> {
+    const recentTracks = await db.select().from(tracks)
+      .where(eq(tracks.productId, productId))
+      .orderBy(desc(tracks.checkedAt))
+      .limit(limit);
+    return recentTracks;
   }
 
   async getProductTracksInRange(productId: number, userId: number, fromDate: string, toDate: string): Promise<Track[]> {
