@@ -3,6 +3,7 @@ import Sidebar from "@/components/Sidebar";
 import ProductTable from "@/components/ProductTable";
 import AddProductModal from "@/components/AddProductModal";
 import { apiRequest } from "@/lib/api";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 export default function Dashboard() {
   const [activeSection, setActiveSection] = useState("organic-tracking");
@@ -11,6 +12,10 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchStatus, setSearchStatus] = useState<any>(null);
+
+  // 웹소켓 실시간 연결 및 업데이트
+  const { isConnected } = useWebSocket();
+  console.log('🔗 웹소켓 연결 상태:', isConnected);
 
   // 검색 상태는 웹소켓을 통해 실시간 업데이트됨 (폴링 제거)
 

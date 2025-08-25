@@ -42,12 +42,14 @@ export function useWebSocket() {
               
             case 'searchCompleted':
               console.log('✅ 검색 완료:', message.data);
+              console.log('🔄 캐시 무효화 시작 - 제품 목록 및 주간 데이터');
               // 제품 목록과 주간 데이터 캐시 무효화
               queryClient.invalidateQueries({ queryKey: ['/api/products'] });
               queryClient.invalidateQueries({ 
-                queryKey: [`/products/${message.data.productId}/weekly-ranks`] 
+                queryKey: [`/api/products/${message.data.productId}/weekly-ranks`] 
               });
               queryClient.invalidateQueries({ queryKey: ['/api/search-status'] });
+              console.log('✅ 캐시 무효화 완료');
               break;
               
             case 'searchFailed':

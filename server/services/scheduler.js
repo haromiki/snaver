@@ -103,6 +103,7 @@ async function processSearchQueue() {
       searchStatus.set(product.id, statusData);
       
       // 웹소켓으로 검색 시작 알림
+      console.log('📡 웹소켓 검색 시작 이벤트 발송:', statusData);
       broadcastToClients({
         type: 'searchStarted',
         data: statusData
@@ -180,6 +181,7 @@ async function processSearchQueue() {
       searchStatus.set(product.id, completedStatusData);
       
       // 웹소켓으로 검색 완료 알림
+      console.log('📡 웹소켓 검색 완료 이벤트 발송:', completedStatusData);
       broadcastToClients({
         type: 'searchCompleted',
         data: completedStatusData
