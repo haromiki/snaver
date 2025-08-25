@@ -9,6 +9,7 @@ import { authenticateToken } from "./middleware/auth.ts";
 import { fetchOrganicRank } from "./crawler/naverOrganic.js";
 import { fetchOrganicRankPuppeteer } from "./crawler/naverOrganicPuppeteer.js";
 import { fetchAdRank } from "./crawler/adCrawler.js";
+import { getSearchStatus } from "./services/scheduler.js";
 import crypto from "crypto";
 
 // 세션 타입 확장
@@ -702,6 +703,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("트랙 조회 오류:", error);
       res.status(500).json({ message: "트랙 데이터를 가져오는데 실패했습니다" });
+    }
+  });
+
+  // 자동 검색 진행상태 API
+  app.get("/api/search-status", authenticateToken, async (req, res) => {
+    try {
+      const status = getSearchStatus();
+      res.json(status);
+    } catch (error) {
+      console.error("검색 상태 조회 오류:", error);
+      res.status(500).json({ message: "검색 상태를 가져오는데 실패했습니다" });
     }
   });
 

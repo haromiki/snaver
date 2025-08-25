@@ -6,6 +6,7 @@ import { fetchOrganicRank } from "../crawler/naverOrganic.ts";
 let isRunning = false;
 let searchQueue = []; // 순차 검색 큐
 let isProcessingQueue = false; // 큐 처리 중 플래그
+let searchStatus = new Map(); // 제품별 검색 진행상태 추적
 
 // Run every minute
 cron.schedule("* * * * *", async () => {
@@ -88,6 +89,17 @@ async function processSearchQueue() {
     try {
       console.log(`🔍 검색 시작 - 제품 ${product.id}: "${product.keyword}" (${product.type}타입)`);
       
+      // 진행상태 업데이트
+      searchStatus.set(product.id, {
+        productId: product.id,
+        productName: product.productName,
+        keyword: product.keyword,
+        status: 'searching',
+        startTime: new Date(),
+        retries: retries,
+        lastUpdate: new Date()
+      });
+      
       let result;
       
       // 실서버 안정성: OpenAPI 우선 사용, Puppeteer는 fallback
@@ -144,6 +156,20 @@ async function processSearchQueue() {
       
       console.log(`✅ 저장 완료 - 제품 ${product.id}: ${result.notFound ? "미발견" : `${result.global_rank}위`}`);
       
+      // 진행상태 완료로 업데이트
+      searchStatus.set(product.id, {
+        productId: product.id,
+        productName: product.productName,
+        keyword: product.keyword,
+        status: 'completed',
+        result: result.notFound ? "미발견" : `${result.global_rank}위`,
+        rank: result.global_rank,
+        startTime: searchStatus.get(product.id)?.startTime || new Date(),
+        completeTime: new Date(),
+        retries: retries,
+        lastUpdate: new Date()
+      });
+      
       // 검색 간 지연 (실서버 안정성)
       await new Promise(resolve => setTimeout(resolve, 2000));
       
@@ -159,10 +185,35 @@ async function processSearchQueue() {
           retries: retries + 1
         });
         
+        // 진행상태를 재시도로 업데이트
+        searchStatus.set(product.id, {
+          productId: product.id,
+          productName: product.productName,
+          keyword: product.keyword,
+          status: 'retrying',
+          retries: retries + 1,
+          error: error.message,
+          startTime: searchStatus.get(product.id)?.startTime || new Date(),
+          lastUpdate: new Date()
+        });
+        
         // 재시도 전 지연
         await new Promise(resolve => setTimeout(resolve, 5000));
       } else {
         console.log(`💥 최대 재시도 초과 - 제품 ${product.id} 건너뜀`);
+        
+        // 진행상태를 실패로 업데이트
+        searchStatus.set(product.id, {
+          productId: product.id,
+          productName: product.productName,
+          keyword: product.keyword,
+          status: 'failed',
+          error: error.message,
+          retries: retries,
+          startTime: searchStatus.get(product.id)?.startTime || new Date(),
+          failTime: new Date(),
+          lastUpdate: new Date()
+        });
       }
     }
   }
@@ -172,3 +223,23 @@ async function processSearchQueue() {
 }
 
 console.log("🚀 실서버 최적화 스케줄러 시작 - 매분 실행, OpenAPI 우선 사용, 순차 처리");
+
+// 진행상태 조회 함수 (routes.ts에서 사용)
+export function getSearchStatus() {
+  const statusArray = Array.from(searchStatus.values());
+  
+  // 30분 이전 완료된 항목들은 제거 (메모리 정리)
+  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+  for (const [productId, status] of searchStatus.entries()) {
+    if (status.status === 'completed' && status.completeTime && status.completeTime < thirtyMinutesAgo) {
+      searchStatus.delete(productId);
+    }
+  }
+  
+  return {
+    isProcessing: isProcessingQueue,
+    queueLength: searchQueue.length,
+    activeSearches: statusArray,
+    lastUpdate: new Date()
+  };
+}

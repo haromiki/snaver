@@ -123,15 +123,15 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col justify-center px-6 py-12 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-sm space-y-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col justify-center px-6 py-8 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-xs space-y-4">
         {/* Header */}
         <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-primary rounded-xl flex items-center justify-center mb-6">
-            <i className="fas fa-chart-line text-white text-2xl"></i>
+          <div className="mx-auto h-12 w-12 bg-primary rounded-lg flex items-center justify-center mb-4">
+            <i className="fas fa-chart-line text-white text-lg"></i>
           </div>
-          <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">SNAVER</h2>
-          <p className="text-gray-500 dark:text-gray-400 mt-2 text-base">네이버 쇼핑 순위 추적 시스템</p>
+          <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">SNAVER</h2>
+          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">네이버 쇼핑 순위 추적 시스템</p>
         </div>
 
         {/* Login Form */}

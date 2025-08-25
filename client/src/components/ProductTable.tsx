@@ -55,9 +55,28 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
   const [refreshingProducts, setRefreshingProducts] = useState<Map<number, number>>(new Map()); // productId -> progress percentage
   const [bulkRefreshInProgress, setBulkRefreshInProgress] = useState(false);
   const [bulkRefreshProgress, setBulkRefreshProgress] = useState(0);
+  const [searchStatus, setSearchStatus] = useState<any>(null);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // 자동 검색 상태 조회 (5초마다)
+  useEffect(() => {
+    const fetchSearchStatus = async () => {
+      try {
+        const response = await apiRequest("GET", "/search-status");
+        const status = await response.json();
+        setSearchStatus(status);
+      } catch (error) {
+        console.error("검색 상태 조회 실패:", error);
+      }
+    };
+
+    fetchSearchStatus(); // 초기 조회
+    const interval = setInterval(fetchSearchStatus, 5000); // 5초마다 조회
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Determine filters based on section
   const getFilters = () => {
@@ -667,32 +686,60 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex justify-center">
-                        {refreshingProducts.has(product.id) ? (
-                          <div className="relative w-16 h-16">
-                            {/* 정사각형 라운드 배경 */}
-                            <div className="absolute inset-0 bg-gray-200 dark:bg-gray-600 rounded-lg"></div>
-                            {/* 파란색 채우기 효과 - 아래에서 위로 차오름 */}
-                            <div className="absolute inset-0 overflow-hidden rounded-lg">
-                              <div 
-                                className="absolute bottom-0 left-0 right-0 bg-blue-500 transition-all duration-300 ease-out rounded-lg"
-                                style={{ 
-                                  height: `${refreshingProducts.get(product.id) || 0}%`
-                                }}
-                              ></div>
+                      <div className="flex flex-col items-center space-y-2">
+                        {/* 수동 검색 진행상태 */}
+                        <div className="flex justify-center">
+                          {refreshingProducts.has(product.id) ? (
+                            <div className="relative w-16 h-16">
+                              {/* 정사각형 라운드 배경 */}
+                              <div className="absolute inset-0 bg-gray-200 dark:bg-gray-600 rounded-lg"></div>
+                              {/* 파란색 채우기 효과 - 아래에서 위로 차오름 */}
+                              <div className="absolute inset-0 overflow-hidden rounded-lg">
+                                <div 
+                                  className="absolute bottom-0 left-0 right-0 bg-blue-500 transition-all duration-300 ease-out rounded-lg"
+                                  style={{ 
+                                    height: `${refreshingProducts.get(product.id) || 0}%`
+                                  }}
+                                ></div>
+                              </div>
+                              {/* 퍼센트 텍스트 */}
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <span className="text-sm font-bold text-white drop-shadow-lg z-10">
+                                  {Math.round(refreshingProducts.get(product.id) || 0)}%
+                                </span>
+                              </div>
                             </div>
-                            {/* 퍼센트 텍스트 */}
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <span className="text-sm font-bold text-white drop-shadow-lg z-10">
-                                {Math.round(refreshingProducts.get(product.id) || 0)}%
+                          ) : (
+                            <div className="w-16 h-16 flex items-center justify-center">
+                              <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* 자동 검색 진행상태 */}
+                        {(() => {
+                          const autoSearch = searchStatus?.activeSearches?.find((s: any) => s.productId === product.id);
+                          if (!autoSearch) return null;
+                          
+                          const statusIcons = {
+                            'searching': <i className="fas fa-search animate-pulse text-blue-500"></i>,
+                            'retrying': <i className="fas fa-redo animate-spin text-yellow-500"></i>,
+                            'completed': <i className="fas fa-check-circle text-green-500"></i>,
+                            'failed': <i className="fas fa-exclamation-circle text-red-500"></i>
+                          };
+                          
+                          return (
+                            <div className="flex items-center space-x-1 text-xs">
+                              {statusIcons[autoSearch.status as keyof typeof statusIcons]}
+                              <span className="text-gray-600 dark:text-gray-400">
+                                {autoSearch.status === 'searching' && '자동 검색중'}
+                                {autoSearch.status === 'retrying' && `재시도 ${autoSearch.retries}/2`}
+                                {autoSearch.status === 'completed' && `완료: ${autoSearch.result}`}
+                                {autoSearch.status === 'failed' && '실패'}
                               </span>
                             </div>
-                          </div>
-                        ) : (
-                          <div className="w-16 h-16 flex items-center justify-center">
-                            <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>
-                          </div>
-                        )}
+                          );
+                        })()}
                       </div>
                     </td>
                     {section.includes("tracking") && (
