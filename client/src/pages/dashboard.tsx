@@ -11,7 +11,7 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState("all");
 
   return (
-    <div className="flex h-screen bg-white dark:bg-gray-900" style={{ minWidth: '1900px' }}>
+    <div className="flex h-screen bg-white dark:bg-gray-900" style={{ minWidth: '1700px' }}>
       <Sidebar 
         activeSection={activeSection} 
         onSectionChange={setActiveSection}
