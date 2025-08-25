@@ -12,23 +12,7 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchStatus, setSearchStatus] = useState<any>(null);
 
-  // 자동 검색 상태 조회 (5초마다)
-  useEffect(() => {
-    const fetchSearchStatus = async () => {
-      try {
-        const response = await apiRequest("GET", "/search-status");
-        const status = await response.json();
-        setSearchStatus(status);
-      } catch (error) {
-        console.error("검색 상태 조회 실패:", error);
-      }
-    };
-
-    fetchSearchStatus(); // 초기 조회
-    const interval = setInterval(fetchSearchStatus, 5000); // 5초마다 조회
-
-    return () => clearInterval(interval);
-  }, []);
+  // 검색 상태는 웹소켓을 통해 실시간 업데이트됨 (폴링 제거)
 
   return (
     <div className="flex h-screen bg-white dark:bg-gray-900" style={{ width: '1920px', maxWidth: '1920px' }}>

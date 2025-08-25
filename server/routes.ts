@@ -11,6 +11,7 @@ import { fetchOrganicRankPuppeteer } from "./crawler/naverOrganicPuppeteer.js";
 import { fetchAdRank } from "./crawler/adCrawler.js";
 import { getSearchStatus } from "./services/scheduler.js";
 import crypto from "crypto";
+import { setupWebSocket } from "./websocket";
 
 // 세션 타입 확장
 declare module 'express-session' {
@@ -751,5 +752,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
+  
+  // 웹소켓 서버 설정
+  setupWebSocket(httpServer);
+  
   return httpServer;
 }

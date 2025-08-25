@@ -4,6 +4,7 @@ import { apiRequest } from "@/lib/api";
 import StatisticsModal from "./StatisticsModal";
 import WeeklyTrendChart from "./WeeklyTrendChart";
 import { useToast } from "@/hooks/use-toast";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 function RankChangeIndicator({ productId }: { productId: number }) {
   const { data: weeklyData } = useQuery({
@@ -123,74 +124,9 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  // 스마트 검색 상태 조회 (진행 중일 때만 자주 확인)
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    let lastStatusTime = 0;
-    
-    const fetchSearchStatus = async () => {
-      try {
-        const response = await apiRequest("GET", "/search-status");
-        const status = await response.json();
-        
-        // 이전 상태와 비교하여 완료된 검색이 있는지 확인
-        if (searchStatus && searchStatus.activeSearches) {
-          const completedSearches = status.activeSearches.filter((current: any) => 
-            current.status === 'completed' && 
-            !searchStatus.activeSearches.some((prev: any) => 
-              prev.productId === current.productId && prev.status === 'completed'
-            )
-          );
-          
-          // 완료된 검색들의 주간 트렌드 캐시 무효화 및 전체 목록 새로고침
-          if (completedSearches.length > 0) {
-            completedSearches.forEach((search: any) => {
-              queryClient.invalidateQueries({ queryKey: [`/products/${search.productId}/weekly-ranks`] });
-            });
-            
-            // 전체 제품 목록 새로고침으로 마지막 확인 시간 업데이트
-            const currentFilters = getFilters();
-            queryClient.invalidateQueries({ queryKey: ["/products", currentFilters] });
-            queryClient.refetchQueries({ queryKey: ["/products", currentFilters] });
-          }
-        }
-        
-        setSearchStatus(status);
-        
-        // 동적 간격 설정
-        const isSearching = status.isProcessing || status.activeSearches.length > 0;
-        const hasManualRefresh = refreshingProducts.size > 0;
-        
-        // 검색 중이면 빠르게, 아니면 느리게
-        let nextInterval = 10000; // 기본 10초
-        if (isSearching || hasManualRefresh) {
-          nextInterval = 2000; // 검색 중일 때는 2초
-        }
-        
-        // 브라우저가 백그라운드에 있으면 더 느리게
-        if (document.hidden) {
-          nextInterval *= 3;
-        }
-        
-        // 다음 호출 스케줄링
-        if (interval) clearTimeout(interval);
-        interval = setTimeout(fetchSearchStatus, nextInterval);
-        
-      } catch (error) {
-        console.error("검색 상태 조회 실패:", error);
-        // 에러 시 15초 후 재시도
-        if (interval) clearTimeout(interval);
-        interval = setTimeout(fetchSearchStatus, 15000);
-      }
-    };
-
-    fetchSearchStatus(); // 초기 조회
-
-    return () => {
-      if (interval) clearTimeout(interval);
-    };
-  }, [queryClient, refreshingProducts.size]); // 수동 검색 상태도 고려
+  
+  // 웹소켓 연결 (폴링 대체)
+  const { isConnected } = useWebSocket();
 
   // Determine filters based on section
   const getFilters = () => {

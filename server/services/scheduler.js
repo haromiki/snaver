@@ -2,6 +2,7 @@ import cron from "node-cron";
 import { storage } from "../storage.js";
 import { crawlProduct } from "../crawler/shoppingCrawler.js";
 import { fetchOrganicRank } from "../crawler/naverOrganic.ts";
+import { broadcastToClients } from "../websocket.js";
 
 let isRunning = false;
 let searchQueue = []; // 순차 검색 큐
@@ -90,7 +91,7 @@ async function processSearchQueue() {
       console.log(`🔍 검색 시작 - 제품 ${product.id}: "${product.keyword}" (${product.type}타입)`);
       
       // 진행상태 업데이트
-      searchStatus.set(product.id, {
+      const statusData = {
         productId: product.id,
         productName: product.productName,
         keyword: product.keyword,
@@ -98,6 +99,13 @@ async function processSearchQueue() {
         startTime: new Date(),
         retries: retries,
         lastUpdate: new Date()
+      };
+      searchStatus.set(product.id, statusData);
+      
+      // 웹소켓으로 검색 시작 알림
+      broadcastToClients({
+        type: 'searchStarted',
+        data: statusData
       });
       
       let result;
@@ -157,7 +165,7 @@ async function processSearchQueue() {
       console.log(`✅ 저장 완료 - 제품 ${product.id}: ${result.notFound ? "미발견" : `${result.global_rank}위`}`);
       
       // 진행상태 완료로 업데이트
-      searchStatus.set(product.id, {
+      const completedStatusData = {
         productId: product.id,
         productName: product.productName,
         keyword: product.keyword,
@@ -168,6 +176,13 @@ async function processSearchQueue() {
         completeTime: new Date(),
         retries: retries,
         lastUpdate: new Date()
+      };
+      searchStatus.set(product.id, completedStatusData);
+      
+      // 웹소켓으로 검색 완료 알림
+      broadcastToClients({
+        type: 'searchCompleted',
+        data: completedStatusData
       });
       
       // 검색 간 지연 (속도 최적화 - 실서버 안정성 확보됨)
@@ -203,7 +218,7 @@ async function processSearchQueue() {
         console.log(`💥 최대 재시도 초과 - 제품 ${product.id} 건너뜀`);
         
         // 진행상태를 실패로 업데이트
-        searchStatus.set(product.id, {
+        const failedStatusData = {
           productId: product.id,
           productName: product.productName,
           keyword: product.keyword,
@@ -213,6 +228,13 @@ async function processSearchQueue() {
           startTime: searchStatus.get(product.id)?.startTime || new Date(),
           failTime: new Date(),
           lastUpdate: new Date()
+        };
+        searchStatus.set(product.id, failedStatusData);
+        
+        // 웹소켓으로 검색 실패 알림
+        broadcastToClients({
+          type: 'searchFailed',
+          data: failedStatusData
         });
       }
     }
