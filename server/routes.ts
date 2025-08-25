@@ -516,15 +516,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const productId = parseInt(req.params.id);
       
-      // 월요일 기준으로 이번 주 시작일 계산
+      // 한국 시간(KST, UTC+9) 기준으로 이번 주 시작일 계산
       const now = new Date();
-      const dayOfWeek = now.getDay(); // 0=일요일, 1=월요일, ..., 6=토요일
+      // 한국 시간으로 변환 (UTC+9)
+      const kstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+      const dayOfWeek = kstNow.getDay(); // 0=일요일, 1=월요일, ..., 6=토요일
       const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 일요일이면 6일 전, 아니면 현재요일-1
       
-      const thisWeekMonday = new Date(now);
-      thisWeekMonday.setDate(now.getDate() - daysFromMonday);
+      // 한국 시간 기준 이번 주 월요일 00:00
+      const thisWeekMonday = new Date(kstNow.getTime() - (daysFromMonday * 24 * 60 * 60 * 1000));
       thisWeekMonday.setHours(0, 0, 0, 0);
       
+      // 다음 주 월요일 00:00
       const nextWeekMonday = new Date(thisWeekMonday);
       nextWeekMonday.setDate(thisWeekMonday.getDate() + 7);
       
@@ -544,10 +547,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const dayName = ['월', '화', '수', '목', '금', '토', '일'][i];
         
-        // 해당 날짜의 트랙 데이터 중 가장 최근 것
+        // 해당 날짜의 트랙 데이터 중 가장 최근 것 (한국 시간 기준)
         const dayTracks = weeklyRanks.filter((track: any) => {
           const trackDate = new Date(track.checkedAt);
-          return trackDate.toDateString() === targetDate.toDateString();
+          // 한국 시간으로 변환하여 날짜 비교
+          const kstTrackDate = new Date(trackDate.getTime() + (9 * 60 * 60 * 1000));
+          const kstTargetDate = new Date(targetDate.getTime() + (9 * 60 * 60 * 1000));
+          return kstTrackDate.toDateString() === kstTargetDate.toDateString();
         });
         
         const latestTrack = dayTracks.length > 0 ? 

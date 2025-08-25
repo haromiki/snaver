@@ -32,26 +32,87 @@ export default function WeeklyTrendChart({ productId, dailyRanks, className = ""
     const ctx = canvasRef.current.getContext('2d');
     if (!ctx) return;
 
-    // 데이터 준비 - null 값을 제외하고 실제 순위 데이터만 사용
+    // 데이터 준비 - 각 날짜별로 개별 dataset 생성 (24:00마다 새로운 선)
     const labels = dailyRanks.map(item => item.day);
-    const data = dailyRanks.map(item => item.rank);
     
-    // 색상 결정 (평균 순위에 따라)
-    const validRanks = data.filter(rank => rank !== null) as number[];
-    const avgRank = validRanks.length > 0 ? validRanks.reduce((sum, rank) => sum + rank, 0) / validRanks.length : 50;
-    
-    let lineColor = '#6B7280'; // 기본 회색
-    let fillColor = 'rgba(107, 114, 128, 0.1)';
-    
-    if (avgRank <= 10) {
-      lineColor = '#059669'; // 성공 (녹색)
-      fillColor = 'rgba(5, 150, 105, 0.1)';
-    } else if (avgRank <= 30) {
-      lineColor = '#D97706'; // 경고 (주황색)
-      fillColor = 'rgba(217, 119, 6, 0.1)';
-    } else if (avgRank > 30) {
-      lineColor = '#DC2626'; // 오류 (빨간색)
-      fillColor = 'rgba(220, 38, 38, 0.1)';
+    // 색상 팔레트 (7가지 다른 색상)
+    const colors = [
+      { line: '#3B82F6', fill: 'rgba(59, 130, 246, 0.1)' }, // 파란색 (월)
+      { line: '#10B981', fill: 'rgba(16, 185, 129, 0.1)' }, // 녹색 (화)
+      { line: '#F59E0B', fill: 'rgba(245, 158, 11, 0.1)' }, // 노란색 (수)
+      { line: '#EF4444', fill: 'rgba(239, 68, 68, 0.1)' },  // 빨간색 (목)
+      { line: '#8B5CF6', fill: 'rgba(139, 92, 246, 0.1)' }, // 보라색 (금)
+      { line: '#06B6D4', fill: 'rgba(6, 182, 212, 0.1)' },  // 청록색 (토)
+      { line: '#F97316', fill: 'rgba(249, 115, 22, 0.1)' }  // 주황색 (일)
+    ];
+
+    // 연속된 데이터 구간별로 dataset 생성 (24:00마다 새로운 선)
+    const datasets = [];
+    let currentSegment = [];
+    let segmentStartIndex = 0;
+
+    for (let i = 0; i < dailyRanks.length; i++) {
+      const dayRank = dailyRanks[i];
+      
+      if (dayRank.hasData && dayRank.rank !== null) {
+        // 데이터가 있는 경우 현재 구간에 추가
+        if (currentSegment.length === 0) {
+          segmentStartIndex = i;
+        }
+        currentSegment.push({ index: i, rank: dayRank.rank, day: dayRank.day });
+      } else {
+        // 데이터가 없는 경우 현재 구간 종료
+        if (currentSegment.length > 0) {
+          const color = colors[segmentStartIndex % colors.length];
+          const segmentData = new Array(dailyRanks.length).fill(null);
+          currentSegment.forEach(point => {
+            segmentData[point.index] = point.rank;
+          });
+
+          datasets.push({
+            label: `${currentSegment[0].day}${currentSegment.length > 1 ? '~' + currentSegment[currentSegment.length - 1].day : ''}`,
+            data: segmentData,
+            borderColor: color.line,
+            backgroundColor: color.fill,
+            borderWidth: 2,
+            pointRadius: 3,
+            pointHoverRadius: 4,
+            pointBackgroundColor: color.line,
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 1,
+            fill: false,
+            tension: 0.3, // 부드러운 곡선
+            spanGaps: false,
+          });
+          
+          currentSegment = [];
+        }
+      }
+    }
+
+    // 마지막 구간 처리
+    if (currentSegment.length > 0) {
+      const color = colors[segmentStartIndex % colors.length];
+      const segmentData = new Array(dailyRanks.length).fill(null);
+      currentSegment.forEach(point => {
+        segmentData[point.index] = point.rank;
+      });
+
+      datasets.push({
+        label: `${currentSegment[0].day}${currentSegment.length > 1 ? '~' + currentSegment[currentSegment.length - 1].day : ''}`,
+        data: segmentData,
+        borderColor: color.line,
+        backgroundColor: color.fill,
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 4,
+        pointBackgroundColor: color.line,
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 1,
+        fill: false,
+        tension: 0.3, // 부드러운 곡선
+        spanGaps: false,
+      });
     }
 
     // 차트 생성
@@ -59,27 +120,14 @@ export default function WeeklyTrendChart({ productId, dailyRanks, className = ""
       type: 'line',
       data: {
         labels,
-        datasets: [{
-          data,
-          borderColor: lineColor,
-          backgroundColor: fillColor,
-          borderWidth: 2,
-          pointRadius: 3,
-          pointHoverRadius: 3,
-          pointBackgroundColor: lineColor,
-          pointBorderColor: '#ffffff',
-          pointBorderWidth: 1,
-          fill: true,
-          tension: 0.3, // 부드러운 곡선
-          spanGaps: true, // null 값 건너뛰기
-        }]
+        datasets,
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         interaction: {
           intersect: false,
-          mode: 'none',
+          mode: 'nearest',
         },
         plugins: {
           legend: {
