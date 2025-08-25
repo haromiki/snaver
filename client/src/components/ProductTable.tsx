@@ -469,7 +469,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     }
 
     return { 
-      rank: `${rankInPage}위 총${globalRank}위`, 
+      rank: `${globalRank} ㅣ ${rankInPage} ㅣ ${page}페이지`, 
       page: `${page}페이지`, 
       change, 
       color 
