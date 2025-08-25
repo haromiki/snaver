@@ -170,8 +170,8 @@ async function processSearchQueue() {
         lastUpdate: new Date()
       });
       
-      // 검색 간 지연 (실서버 안정성)
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // 검색 간 지연 (속도 최적화 - 실서버 안정성 확보됨)
+      await new Promise(resolve => setTimeout(resolve, 500));
       
     } catch (error) {
       console.error(`❌ 검색 실패 - 제품 ${product.id}:`, error.message);
@@ -197,8 +197,8 @@ async function processSearchQueue() {
           lastUpdate: new Date()
         });
         
-        // 재시도 전 지연
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        // 재시도 전 지연 (단축)
+        await new Promise(resolve => setTimeout(resolve, 2000));
       } else {
         console.log(`💥 최대 재시도 초과 - 제품 ${product.id} 건너뜀`);
         

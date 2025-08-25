@@ -13,7 +13,7 @@ function WeeklyTrendChartWrapper({ productId }: { productId: number }) {
       const response = await apiRequest("GET", `/products/${productId}/weekly-ranks`);
       return await response.json();
     },
-    staleTime: 1000 * 60 * 60, // 1시간 캐시 (수동/자동 검색 시 무효화됨)
+    staleTime: 1000 * 60 * 5, // 5분 캐시 (수동/자동 검색 시 즉시 무효화됨)
     refetchOnWindowFocus: false,
   });
 
@@ -60,8 +60,11 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // 자동 검색 상태 조회 (5초마다)
+  // 스마트 검색 상태 조회 (진행 중일 때만 자주 확인)
   useEffect(() => {
+    let interval: NodeJS.Timeout;
+    let lastStatusTime = 0;
+    
     const fetchSearchStatus = async () => {
       try {
         const response = await apiRequest("GET", "/search-status");
@@ -83,16 +86,40 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         }
         
         setSearchStatus(status);
+        
+        // 동적 간격 설정
+        const isSearching = status.isProcessing || status.activeSearches.length > 0;
+        const hasManualRefresh = refreshingProducts.size > 0;
+        
+        // 검색 중이면 빠르게, 아니면 느리게
+        let nextInterval = 10000; // 기본 10초
+        if (isSearching || hasManualRefresh) {
+          nextInterval = 2000; // 검색 중일 때는 2초
+        }
+        
+        // 브라우저가 백그라운드에 있으면 더 느리게
+        if (document.hidden) {
+          nextInterval *= 3;
+        }
+        
+        // 다음 호출 스케줄링
+        if (interval) clearTimeout(interval);
+        interval = setTimeout(fetchSearchStatus, nextInterval);
+        
       } catch (error) {
         console.error("검색 상태 조회 실패:", error);
+        // 에러 시 15초 후 재시도
+        if (interval) clearTimeout(interval);
+        interval = setTimeout(fetchSearchStatus, 15000);
       }
     };
 
     fetchSearchStatus(); // 초기 조회
-    const interval = setInterval(fetchSearchStatus, 5000); // 5초마다 조회
 
-    return () => clearInterval(interval);
-  }, [searchStatus, queryClient]);
+    return () => {
+      if (interval) clearTimeout(interval);
+    };
+  }, [queryClient, refreshingProducts.size]); // 수동 검색 상태도 고려
 
   // Determine filters based on section
   const getFilters = () => {
@@ -152,9 +179,9 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
       const response = await apiRequest("POST", `/products/${productId}/refresh`);
       const result = await response.json();
       
-      // 실서버 환경 - 최소 8초 보장 (사용자 경험 개선)
+      // 검색 완료 - 최소 3초 보장 (빠른 사용자 경험)
       const elapsed = Date.now() - startTime;
-      const minDuration = 8000; // 8초
+      const minDuration = 3000; // 3초로 단축
       if (elapsed < minDuration) {
         await new Promise(resolve => setTimeout(resolve, minDuration - elapsed));
       }
@@ -390,7 +417,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     let progress = 0;
     
     const updateProgress = () => {
-      progress += Math.random() * 12 + 8; // 8-20% 빠른 증가
+      progress += Math.random() * 15 + 10; // 10-25% 더 빠른 증가
       if (progress > 85) progress = 85; // 85%에서 대기
       
       setRefreshingProducts(prev => {
@@ -400,7 +427,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
       });
       
       if (progress < 85) {
-        setTimeout(updateProgress, Math.random() * 400 + 200); // 200-600ms 빠른 간격
+        setTimeout(updateProgress, Math.random() * 300 + 150); // 150-450ms 더 빠른 간격
       }
     };
     
