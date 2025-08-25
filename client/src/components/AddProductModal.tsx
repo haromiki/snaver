@@ -60,14 +60,14 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" data-testid="add-product-modal">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-md w-full border border-gray-200 dark:border-gray-700">
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{isEditing ? "제품 수정" : "제품 추가"}</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{isEditing ? "제품 수정" : "제품 추가"}</h3>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <Label htmlFor="productName">제품명</Label>
+            <Label htmlFor="productName" className="text-gray-700 dark:text-gray-300">제품명</Label>
             <Input
               id="productName"
               type="text"
@@ -76,11 +76,12 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
               onChange={(e) => setFormData({ ...formData, productName: e.target.value })}
               required
               data-testid="input-product-name"
+              className="mt-1 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
             />
           </div>
 
           <div>
-            <Label htmlFor="productNo">제품번호</Label>
+            <Label htmlFor="productNo" className="text-gray-700 dark:text-gray-300">제품번호</Label>
             <Input
               id="productNo"
               type="text"
@@ -89,11 +90,12 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
               onChange={(e) => setFormData({ ...formData, productNo: e.target.value })}
               required
               data-testid="input-product-no"
+              className="mt-1 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
             />
           </div>
 
           <div>
-            <Label htmlFor="keyword">검색 키워드</Label>
+            <Label htmlFor="keyword" className="text-gray-700 dark:text-gray-300">검색 키워드</Label>
             <Input
               id="keyword"
               type="text"
@@ -102,14 +104,15 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
               onChange={(e) => setFormData({ ...formData, keyword: e.target.value })}
               required
               data-testid="input-keyword"
+              className="mt-1 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
             />
           </div>
 
           <div>
-            <Label htmlFor="type">유형</Label>
+            <Label htmlFor="type" className="text-gray-700 dark:text-gray-300">유형</Label>
             <select 
               id="type"
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               value={formData.type}
               onChange={(e) => setFormData({ ...formData, type: e.target.value as "ad" | "organic" })}
               data-testid="select-type"
@@ -120,10 +123,10 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
           </div>
 
           <div>
-            <Label htmlFor="intervalMin">추적 주기</Label>
+            <Label htmlFor="intervalMin" className="text-gray-700 dark:text-gray-300">추적 주기</Label>
             <select 
               id="intervalMin"
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               value={formData.intervalMin}
               onChange={(e) => setFormData({ ...formData, intervalMin: parseInt(e.target.value) })}
               data-testid="select-interval"

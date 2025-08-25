@@ -42,9 +42,9 @@ cron.schedule("* * * * *", async () => {
             retries: 0
           });
         } else {
-          // 실시간 업데이트 테스트를 위해 임시로 30분 간격 제품을 매 3분마다 실행
-          if (product.intervalMin === 30 && currentMinute % 3 === 0) {
-            console.log(`⏰ 테스트용 3분 간격 실행 - 제품 ${product.id}: ${product.keyword} (타입: ${product.type})`);
+          // 실시간 업데이트 테스트를 위해 임시로 제품 22를 매분마다 실행
+          if (product.id === 22) {
+            console.log(`⏰ 테스트용 매분 실행 - 제품 ${product.id}: ${product.keyword} (타입: ${product.type})`);
             
             searchQueue.push({
               product,
