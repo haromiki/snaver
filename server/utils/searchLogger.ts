@@ -1,7 +1,12 @@
 /**
  * 상품 추적 검색 로그 시스템
  * 실서버와 리플릿 환경의 차이점 분석을 위한 상세 로깅
+ * 실서버: /srv/xpro0/.pm2/logs/snaver-app.log 파일에 로깅
+ * 리플릿: 콘솔 출력
  */
+
+import fs from 'fs';
+import path from 'path';
 
 export interface SearchLogData {
   searchId: string;
@@ -20,6 +25,18 @@ export interface SearchLogData {
 class SearchLogger {
   private logs: SearchLogData[] = [];
   private activeSearches = new Map<string, { startTime: number; productId: string; keyword: string }>();
+  private logFilePath: string;
+  private isProduction: boolean;
+
+  constructor() {
+    this.isProduction = this.detectEnvironment() === 'production';
+    this.logFilePath = this.isProduction 
+      ? '/srv/xpro0/.pm2/logs/snaver-app.log'
+      : path.join(process.cwd(), 'logs', 'snaver-app.log');
+    
+    // 로그 디렉토리 생성
+    this.ensureLogDirectory();
+  }
 
   /**
    * 환경 감지
@@ -34,6 +51,36 @@ class SearchLogger {
       return 'production';
     }
     return 'unknown';
+  }
+
+  /**
+   * 로그 디렉토리 생성
+   */
+  private ensureLogDirectory() {
+    try {
+      const logDir = path.dirname(this.logFilePath);
+      if (!fs.existsSync(logDir)) {
+        fs.mkdirSync(logDir, { recursive: true });
+        console.log(`✅ 로그 디렉토리 생성됨: ${logDir}`);
+      }
+    } catch (error) {
+      console.error('로그 디렉토리 생성 실패:', error);
+    }
+  }
+
+  /**
+   * 파일에 로그 쓰기
+   */
+  private writeToFile(logLine: string) {
+    if (!this.isProduction) return; // 리플릿에서는 파일 로깅 안함
+    
+    try {
+      const timestamp = new Date().toISOString();
+      const formattedLog = `[${timestamp}] ${logLine}\n`;
+      fs.appendFileSync(this.logFilePath, formattedLog, 'utf8');
+    } catch (error) {
+      console.error('로그 파일 쓰기 실패:', error);
+    }
   }
 
   /**
@@ -189,14 +236,20 @@ class SearchLogger {
     const color = colorMap[logData.status] || '\x1b[0m';
     const reset = '\x1b[0m';
     
+    // 콘솔 출력
     console.log(`${color}[SEARCH-LOG] ${logData.message}${reset}`);
+    
+    // 파일 로그 (실서버만)
+    this.writeToFile(`[SEARCH-LOG] ${logData.message}`);
     
     if (logData.data) {
       console.log(`${color}[SEARCH-DATA]${reset}`, JSON.stringify(logData.data, null, 2));
+      this.writeToFile(`[SEARCH-DATA] ${JSON.stringify(logData.data)}`);
     }
     
     if (logData.error) {
       console.log(`${color}[SEARCH-ERROR]${reset}`, logData.error);
+      this.writeToFile(`[SEARCH-ERROR] ${logData.error}`);
     }
 
     // 로그 개수 제한 (메모리 관리)
@@ -250,6 +303,33 @@ class SearchLogger {
    */
   exportLogs(): string {
     return JSON.stringify(this.logs, null, 2);
+  }
+
+  /**
+   * 실서버 로그 파일 읽기 (디버깅용)
+   */
+  readLogFile(): string {
+    try {
+      if (fs.existsSync(this.logFilePath)) {
+        return fs.readFileSync(this.logFilePath, 'utf8');
+      }
+      return '로그 파일이 존재하지 않습니다.';
+    } catch (error) {
+      return `로그 파일 읽기 오류: ${error}`;
+    }
+  }
+
+  /**
+   * 로그 파일 정보
+   */
+  getLogFileInfo() {
+    return {
+      environment: this.detectEnvironment(),
+      logFilePath: this.logFilePath,
+      isProduction: this.isProduction,
+      fileExists: fs.existsSync(this.logFilePath),
+      fileSize: fs.existsSync(this.logFilePath) ? fs.statSync(this.logFilePath).size : 0
+    };
   }
 }
 

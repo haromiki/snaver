@@ -671,6 +671,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 실서버 로그 파일 조회
+  app.get("/api/search/file", authenticateToken, async (req, res) => {
+    try {
+      const logFileContent = searchLogger.readLogFile();
+      const logFileInfo = searchLogger.getLogFileInfo();
+      
+      res.json({
+        fileInfo: logFileInfo,
+        content: logFileContent,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error("로그 파일 조회 오류:", error);
+      res.status(500).json({ message: "로그 파일 조회에 실패했습니다" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
