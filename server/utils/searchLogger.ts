@@ -29,13 +29,30 @@ class SearchLogger {
   private isProduction: boolean;
 
   constructor() {
-    this.isProduction = this.detectEnvironment() === 'production';
-    this.logFilePath = this.isProduction 
+    // 강화된 환경 감지
+    const detectedEnv = this.detectEnvironment();
+    this.isProduction = detectedEnv === 'production';
+    
+    // 실서버 로그 강제 활성화 (NODE_ENV=production일 때도)
+    const forceServerLogging = process.env.NODE_ENV === 'production' || 
+                              process.cwd().includes('/srv/') || 
+                              process.env.HOSTNAME?.includes('xpro');
+    
+    this.logFilePath = forceServerLogging
       ? '/srv/xpro0/.pm2/logs/snaver-app.log'
       : path.join(process.cwd(), 'logs', 'snaver-app.log');
     
     // 로그 디렉토리 생성
     this.ensureLogDirectory();
+    
+    // 환경 정보 로깅 (디버깅용)
+    console.log(`🔧 SearchLogger 초기화:`);
+    console.log(`   환경: ${detectedEnv}`);
+    console.log(`   로그파일: ${this.logFilePath}`);
+    console.log(`   실서버모드: ${forceServerLogging}`);
+    console.log(`   NODE_ENV: ${process.env.NODE_ENV}`);
+    console.log(`   HOSTNAME: ${process.env.HOSTNAME}`);
+    console.log(`   CWD: ${process.cwd()}`);
   }
 
   /**
@@ -54,32 +71,78 @@ class SearchLogger {
   }
 
   /**
-   * 로그 디렉토리 생성
+   * 로그 디렉토리 생성 (강화된 버전)
    */
   private ensureLogDirectory() {
     try {
       const logDir = path.dirname(this.logFilePath);
+      console.log(`🔍 로그 디렉토리 확인: ${logDir}`);
+      
       if (!fs.existsSync(logDir)) {
+        console.log(`📁 로그 디렉토리가 없음. 생성 시도: ${logDir}`);
         fs.mkdirSync(logDir, { recursive: true });
-        console.log(`✅ 로그 디렉토리 생성됨: ${logDir}`);
+        console.log(`✅ 로그 디렉토리 생성 성공: ${logDir}`);
+      } else {
+        console.log(`✅ 로그 디렉토리 이미 존재: ${logDir}`);
+      }
+      
+      // 권한 확인
+      try {
+        fs.accessSync(logDir, fs.constants.W_OK);
+        console.log(`✅ 로그 디렉토리 쓰기 권한 있음: ${logDir}`);
+      } catch (permError) {
+        console.error(`❌ 로그 디렉토리 쓰기 권한 없음: ${logDir}`, permError);
+        
+        // 대안 디렉토리 생성 시도 (/tmp)
+        const fallbackDir = '/tmp';
+        console.log(`📁 대안 디렉토리 사용: ${fallbackDir}`);
+        this.logFilePath = path.join(fallbackDir, 'snaver-app.log');
       }
     } catch (error) {
-      console.error('로그 디렉토리 생성 실패:', error);
+      console.error('❌ 로그 디렉토리 생성 실패:', error);
+      
+      // 최후의 수단: /tmp 사용
+      console.log(`📁 최후 수단: /tmp 디렉토리 사용`);
+      this.logFilePath = '/tmp/snaver-app.log';
     }
   }
 
   /**
-   * 파일에 로그 쓰기
+   * 파일에 로그 쓰기 (강화된 버전)
    */
   private writeToFile(logLine: string) {
-    if (!this.isProduction) return; // 리플릿에서는 파일 로깅 안함
+    // 실서버 환경 감지 강화 (여러 조건으로 확인)
+    const shouldWriteFile = this.isProduction || 
+                           process.env.NODE_ENV === 'production' ||
+                           process.cwd().includes('/srv/') ||
+                           process.env.HOSTNAME?.includes('xpro') ||
+                           this.logFilePath.includes('/srv/');
+    
+    if (!shouldWriteFile) {
+      console.log(`📝 파일 로깅 건너뜀 (리플릿 환경)`);
+      return;
+    }
     
     try {
       const timestamp = new Date().toISOString();
       const formattedLog = `[${timestamp}] ${logLine}\n`;
+      
+      // 파일 쓰기 시도
       fs.appendFileSync(this.logFilePath, formattedLog, 'utf8');
+      console.log(`✅ 로그 파일 쓰기 성공: ${this.logFilePath}`);
     } catch (error) {
-      console.error('로그 파일 쓰기 실패:', error);
+      console.error(`❌ 로그 파일 쓰기 실패 (${this.logFilePath}):`, error);
+      
+      // 권한 문제 시 대안 경로 시도
+      try {
+        const fallbackPath = '/tmp/snaver-app.log';
+        const timestamp = new Date().toISOString();
+        const formattedLog = `[${timestamp}] ${logLine}\n`;
+        fs.appendFileSync(fallbackPath, formattedLog, 'utf8');
+        console.log(`✅ 대안 로그 파일 쓰기 성공: ${fallbackPath}`);
+      } catch (fallbackError) {
+        console.error(`❌ 대안 로그 파일도 실패:`, fallbackError);
+      }
     }
   }
 
