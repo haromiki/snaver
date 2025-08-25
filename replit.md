@@ -244,6 +244,46 @@ These sections contain server-specific routing logic that must remain unchanged.
 
 # System Architecture
 
+## ESM (ECMAScript Module) Environment
+**CRITICAL: 프로젝트 전체가 ESM 환경입니다. 모든 모듈은 반드시 ESM 방식으로 작성해야 합니다.**
+
+### ESM 규칙 (필수 준수)
+1. **Import 확장자**: TypeScript 파일 import 시에도 반드시 `.js` 확장자 사용
+   ```typescript
+   // ✅ 올바른 방식
+   import { module } from "./path/to/module.js";
+   
+   // ❌ 잘못된 방식  
+   import { module } from "./path/to/module.ts";
+   ```
+
+2. **Export 방식**: CommonJS `module.exports` 사용 금지, ES6 `export` 사용
+   ```typescript
+   // ✅ 올바른 방식
+   export const myFunction = () => {};
+   export default myClass;
+   
+   // ❌ 잘못된 방식
+   module.exports = { myFunction };
+   ```
+
+3. **파일 확장자 규칙**
+   - 서버 코드: `.ts` 파일 작성하되 import 시 `.js` 확장자
+   - 클라이언트 코드: `.tsx`, `.ts` 파일 정상 사용
+   - 설정 파일: `.js` 확장자 (postcss.config.js 등)
+
+4. **Dynamic Import**: ESM 방식 사용
+   ```typescript
+   // ✅ 올바른 방식
+   const module = await import("./path/to/module.js");
+   ```
+
+### 현재 ESM 설정 상태
+- `package.json`: `"type": "module"` ✅
+- `tsconfig.json`: `"module": "ESNext"` ✅ 
+- 모든 서버 파일: ESM import/export 방식 적용 ✅
+- 빌드 설정: `--format=esm` 적용 ✅
+
 ## Frontend Architecture
 - **Framework**: React 18 with TypeScript using Vite as the build tool
 - **Styling**: Tailwind CSS with shadcn/ui component library for consistent design patterns
