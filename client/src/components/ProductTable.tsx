@@ -754,8 +754,8 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                                     <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
                                       <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414 6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
                                     </svg>
-                                    <span className={`text-sm font-medium ${rankDisplay.changeColor}`}>
-                                      {rankDisplay.change}
+                                    <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                                      {rankDiff}
                                     </span>
                                   </div>
                                 );
@@ -766,15 +766,15 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                                     <svg className="w-4 h-4 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
                                       <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                     </svg>
-                                    <span className={`text-sm font-medium ${rankDisplay.changeColor}`}>
-                                      {rankDisplay.change}
+                                    <span className="text-sm font-medium text-red-600 dark:text-red-400">
+                                      {Math.abs(rankDiff)}
                                     </span>
                                   </div>
                                 );
                               } else {
                                 // 변동없음
                                 return (
-                                  <div className="flex items-center space-x-1">
+                                  <div className="flex items-center justify-center">
                                     <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                                       <path fillRule="evenodd" d="M4 10a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H4.75A.75.75 0 014 10z" clipRule="evenodd" />
                                     </svg>
