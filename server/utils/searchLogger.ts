@@ -396,7 +396,8 @@ class SearchLogger {
   }
 }
 
-// 싱글톤 인스턴스 (ESM 방식)
-const searchLoggerInstance = new SearchLogger();
-export { searchLoggerInstance as searchLogger };
-export default searchLoggerInstance;
+// 싱글톤 인스턴스를 직접 export (ESM 완전 호환)
+export const searchLogger = new SearchLogger();
+
+// default export도 동일한 인스턴스
+export default searchLogger;
