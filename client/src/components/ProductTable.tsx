@@ -645,7 +645,6 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                   <i className="fas fa-grip-vertical mr-2 text-gray-400 dark:text-gray-500"></i>제품 정보
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">추적 주기</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">진행상태</th>
                 {section.includes("tracking") && (
                   <>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">스토어명</th>
@@ -703,71 +702,6 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
                         {product.intervalMin}분
                       </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex justify-center">
-                        {(() => {
-                          // 수동 검색 진행상태 확인
-                          const isManualRefreshing = refreshingProducts.has(product.id);
-                          let progress = 0;
-                          let progressText = "";
-                          let progressColor = "bg-blue-500";
-                          
-                          // 자동 검색 진행상태 확인
-                          const autoSearch = searchStatus?.activeSearches?.find((s: any) => s.productId === product.id);
-                          
-                          if (isManualRefreshing) {
-                            // 수동 검색 중  
-                            progress = 50; // 검색 중일 때는 50%로 표시
-                            progressText = "수동";
-                            progressColor = "bg-blue-500";
-                          } else if (autoSearch && autoSearch.status !== 'completed') {
-                            // 자동 검색 중
-                            if (autoSearch.status === 'searching') {
-                              progress = 50; // 검색 중일 때는 50%로 표시
-                              progressText = "자동";
-                              progressColor = "bg-green-500";
-                            } else if (autoSearch.status === 'retrying') {
-                              progress = 25; // 재시도 중일 때는 25%로 표시
-                              progressText = "재시도";
-                              progressColor = "bg-yellow-500";
-                            } else if (autoSearch.status === 'failed') {
-                              progress = 100; // 실패 시 100%로 표시
-                              progressText = "실패";
-                              progressColor = "bg-red-500";
-                            }
-                          }
-                          
-                          if (progress > 0) {
-                            let statusColor = "text-blue-500";
-                            
-                            if (progressColor === "bg-green-500") statusColor = "text-green-500";
-                            else if (progressColor === "bg-yellow-500") statusColor = "text-yellow-500";
-                            else if (progressColor === "bg-red-500") statusColor = "text-red-500";
-                            
-                            return (
-                              <div className="flex flex-col items-center justify-center w-16 h-16 space-y-1">
-                                {/* 회전 아이콘 */}
-                                <div className={`animate-spin ${statusColor}`}>
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                  </svg>
-                                </div>
-                                {/* 상태 텍스트 */}
-                                <span className={`text-xs font-medium ${statusColor}`}>
-                                  {progressText}
-                                </span>
-                              </div>
-                            );
-                          } else {
-                            return (
-                              <div className="w-16 h-16 flex items-center justify-center">
-                                <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>
-                              </div>
-                            );
-                          }
-                        })()}
-                      </div>
                     </td>
                     {section.includes("tracking") && (
                       <>
