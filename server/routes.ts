@@ -717,6 +717,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 회원탈퇴 API
+  app.delete("/api/auth/delete-account", authenticateToken, async (req, res) => {
+    try {
+      const { password, confirmText } = req.body;
+      const userId = (req as any).user.id;
+
+      // 확인 텍스트 검증
+      if (confirmText !== "회원탈퇴") {
+        return res.status(400).json({ message: "확인 텍스트가 일치하지 않습니다" });
+      }
+
+      // 현재 사용자 정보 가져오기
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "사용자를 찾을 수 없습니다" });
+      }
+
+      // 비밀번호 확인
+      const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+      if (!isValidPassword) {
+        return res.status(400).json({ message: "현재 비밀번호가 일치하지 않습니다" });
+      }
+
+      // 사용자와 관련된 모든 데이터 삭제
+      await storage.deleteUser(userId);
+
+      res.json({ message: "계정이 성공적으로 삭제되었습니다" });
+    } catch (error) {
+      console.error("회원탈퇴 오류:", error);
+      res.status(500).json({ message: "계정 삭제에 실패했습니다" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

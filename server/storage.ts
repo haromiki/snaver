@@ -19,6 +19,7 @@ export interface IStorage {
   getAllUsers(): Promise<User[]>;
   createUser(user: InsertUser & { passwordHash: string }): Promise<User>;
   updateUserPassword(userId: number, newPasswordHash: string): Promise<void>;
+  deleteUser(userId: number): Promise<void>;
 
   // Product operations
   getProducts(userId: number, filters?: { type?: string; active?: boolean }): Promise<Product[]>;
@@ -70,6 +71,21 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ passwordHash: newPasswordHash })
       .where(eq(users.id, userId));
+  }
+
+  async deleteUser(userId: number): Promise<void> {
+    // 사용자의 모든 제품의 트랙 데이터 삭제
+    await db.delete(tracks).where(
+      tracks.productId.in(
+        db.select({ id: products.id }).from(products).where(eq(products.userId, userId))
+      )
+    );
+    
+    // 사용자의 모든 제품 삭제
+    await db.delete(products).where(eq(products.userId, userId));
+    
+    // 사용자 삭제
+    await db.delete(users).where(eq(users.id, userId));
   }
 
   // Product operations

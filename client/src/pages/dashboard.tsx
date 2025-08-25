@@ -98,51 +98,6 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* 자동 검색 상태 표시 */}
-        {searchStatus && (searchStatus.isProcessing || searchStatus.activeSearches?.length > 0) && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 px-6 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  {searchStatus.isProcessing && (
-                    <div className="animate-spin w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-                  )}
-                  <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                    {searchStatus.isProcessing ? '자동 검색 진행중' : '자동 검색 완료'}
-                  </span>
-                </div>
-                
-                {searchStatus.queueLength > 0 && (
-                  <div className="flex items-center space-x-1 text-sm text-blue-700 dark:text-blue-300">
-                    <i className="fas fa-clock"></i>
-                    <span>대기 중: {searchStatus.queueLength}개</span>
-                  </div>
-                )}
-                
-                <div className="flex items-center space-x-4 text-sm text-blue-700 dark:text-blue-300">
-                  {searchStatus.activeSearches?.map((search: any) => (
-                    <div key={search.productId} className="flex items-center space-x-1">
-                      {search.status === 'searching' && <i className="fas fa-search animate-pulse"></i>}
-                      {search.status === 'retrying' && <i className="fas fa-redo animate-spin"></i>}
-                      {search.status === 'completed' && <i className="fas fa-check-circle"></i>}
-                      {search.status === 'failed' && <i className="fas fa-exclamation-circle text-red-500"></i>}
-                      <span className="truncate max-w-32">{search.keyword}</span>
-                      {search.status === 'completed' && search.result && (
-                        <span className="text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 px-1 rounded">
-                          {search.result}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              <div className="text-xs text-blue-600 dark:text-blue-400">
-                마지막 업데이트: {new Date(searchStatus.lastUpdate).toLocaleTimeString()}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Main Content */}
         <main className="flex-1 overflow-auto" style={{ padding: '24px' }}>

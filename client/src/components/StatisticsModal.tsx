@@ -125,6 +125,8 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
                 y: {
                   reverse: true, // Lower rank numbers appear higher
                   beginAtZero: false,
+                  min: 1,
+                  max: 200,
                   title: {
                     display: true,
                     text: "순위 (낮을수록 상위)"

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "./ThemeProvider";
 import ChangePasswordModal from "./ChangePasswordModal";
+import DeleteAccountModal from "./DeleteAccountModal";
 
 interface SidebarProps {
   activeSection: string;
@@ -12,6 +13,7 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
 
   const navItems = [
     {
@@ -81,6 +83,14 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
             비밀번호 변경
           </button>
           <button
+            onClick={() => setShowDeleteAccountModal(true)}
+            className="w-full text-left group flex items-center px-3 py-2 text-sm font-medium rounded-md text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+            data-testid="button-delete-account"
+          >
+            <i className="fas fa-user-times mr-3 text-sm"></i>
+            회원탈퇴
+          </button>
+          <button
             onClick={logout}
             className="w-full text-left group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
             data-testid="button-logout"
@@ -136,6 +146,11 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
       {/* 비밀번호 변경 모달 */}
       {showChangePasswordModal && (
         <ChangePasswordModal onClose={() => setShowChangePasswordModal(false)} />
+      )}
+      
+      {/* 회원탈퇴 확인 모달 */}
+      {showDeleteAccountModal && (
+        <DeleteAccountModal onClose={() => setShowDeleteAccountModal(false)} />
       )}
     </div>
   );
