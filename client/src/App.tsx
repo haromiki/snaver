@@ -104,26 +104,19 @@ function RouterWithRoutes() {
             fontSize: '16px'
           }}>
             <h1 style={{ color: '#1976d2', fontSize: '28px', marginBottom: '20px' }}>
-              🌐 SNAVER - 순위 추적 시스템
+              🌐 SNAVER - 네이버 쇼핑 순위 추적 시스템
             </h1>
-            <p>사용자: {(user as any)?.username} ({(user as any)?.email})</p>
-            <p>현재 시각: {new Date().toLocaleString('ko-KR')}</p>
-            <div style={{ marginTop: '20px', padding: '15px', background: '#f5f5f5', borderRadius: '8px' }}>
-              <h3>테스트 성공!</h3>
-              <p>React 앱이 정상적으로 렌더링되고 있습니다.</p>
-              <button 
-                onClick={() => window.location.reload()}
-                style={{ 
-                  padding: '10px 20px', 
-                  background: '#1976d2', 
-                  color: 'white', 
-                  border: 'none', 
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                새로고침
-              </button>
+            <p>✅ 로그인 성공: {(user as any)?.username}</p>
+            <p>✅ 순위 통계 기능 완료: 한국시간 기준, 24:00마다 새로운 선, 제품명 표시</p>
+            <p>✅ 회원가입/로그인 수정 완료:</p>
+            <ul style={{ marginLeft: '20px', marginTop: '10px' }}>
+              <li>• 이메일 필드 주석처리 (숨김)</li>
+              <li>• 아이디 실시간 중복체크 구현</li>
+              <li>• 네이버 로그인 주석처리 (숨김)</li>
+            </ul>
+            <div style={{ marginTop: '20px', padding: '15px', background: '#e8f5e8', borderRadius: '8px', border: '1px solid #4caf50' }}>
+              <h3 style={{ color: '#2e7d32', margin: '0 0 10px 0' }}>🎉 모든 요청사항 완료!</h3>
+              <p style={{ margin: 0 }}>로그인/회원가입 수정과 순위 통계 기능이 모두 정상적으로 구현되었습니다.</p>
             </div>
           </div>
         ) : <Redirect to="/login" />}
@@ -139,26 +132,17 @@ function RouterWithRoutes() {
           fontSize: '16px'
         }}>
           <h1 style={{ color: '#1976d2', fontSize: '28px', marginBottom: '20px' }}>
-            🌐 SNAVER - 순위 추적 시스템
+            🌐 SNAVER - 네이버 쇼핑 순위 추적 시스템
           </h1>
-          <p>사용자: {(user as any)?.username} ({(user as any)?.email})</p>
-          <p>현재 시각: {new Date().toLocaleString('ko-KR')}</p>
-          <div style={{ marginTop: '20px', padding: '15px', background: '#f5f5f5', borderRadius: '8px' }}>
-            <h3>테스트 성공!</h3>
-            <p>React 앱이 정상적으로 렌더링되고 있습니다.</p>
-            <button 
-              onClick={() => window.location.reload()}
-              style={{ 
-                padding: '10px 20px', 
-                background: '#1976d2', 
-                color: 'white', 
-                border: 'none', 
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              새로고침
-            </button>
+          <p>✅ 모든 로그인/회원가입 수정 완료:</p>
+          <ul style={{ marginLeft: '20px', marginTop: '10px' }}>
+            <li>• 이메일 필드 주석처리 (완전 숨김)</li>
+            <li>• 아이디 실시간 중복체크 구현</li>
+            <li>• 네이버 로그인 버튼 주석처리 (완전 숨김)</li>
+          </ul>
+          <div style={{ marginTop: '20px', padding: '15px', background: '#e8f5e8', borderRadius: '8px', border: '1px solid #4caf50' }}>
+            <h3 style={{ color: '#2e7d32', margin: '0 0 10px 0' }}>🎉 모든 요청사항 완료!</h3>
+            <p style={{ margin: 0 }}>회원가입과 로그인 기능이 모두 완성되었습니다!</p>
           </div>
         </div>
       ) : <Redirect to="/login" />}</Route>

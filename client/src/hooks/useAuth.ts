@@ -40,7 +40,7 @@ export function useAuth() {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (userData: { username: string; email: string; password: string }) => {
+    mutationFn: async (userData: { username: string; email?: string; password: string }) => {
       const response = await apiRequest("POST", "/auth/register", userData);
       return await response.json();
     },

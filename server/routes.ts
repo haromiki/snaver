@@ -26,6 +26,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ ok: true, service: "snaver-api" });
   });
 
+  // 아이디 중복체크 API
+  app.get("/api/auth/check-username/:username", async (req, res) => {
+    try {
+      const { username } = req.params;
+      
+      if (!username || username.length < 3) {
+        return res.json({ 
+          available: false,
+          message: "아이디는 3자 이상이어야 합니다"
+        });
+      }
+
+      const existingUser = await storage.getUserByUsername(username);
+      
+      res.json({ 
+        available: !existingUser,
+        message: existingUser ? "이미 사용 중인 아이디입니다" : "사용 가능한 아이디입니다"
+      });
+    } catch (error) {
+      console.error("아이디 중복체크 오류:", error);
+      res.status(500).json({ message: "중복체크에 실패했습니다" });
+    }
+  });
+
   // Auth routes
   app.post("/api/auth/register", async (req, res) => {
     try {
@@ -35,11 +59,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validatedData = insertUserSchema.parse(req.body);
 
-      const existingUser = await storage.getUserByUsername(validatedData.username) ||
-                          await storage.getUserByEmail(validatedData.email);
+      // 아이디 중복 확인
+      const existingUserByUsername = await storage.getUserByUsername(validatedData.username);
+      if (existingUserByUsername) {
+        return res.status(400).json({ message: "이미 사용 중인 아이디입니다" });
+      }
 
-      if (existingUser) {
-        return res.status(400).json({ message: "이미 존재하는 사용자입니다" });
+      // 이메일이 제공된 경우에만 이메일 중복 확인
+      if (validatedData.email) {
+        const existingUserByEmail = await storage.getUserByEmail(validatedData.email);
+        if (existingUserByEmail) {
+          return res.status(400).json({ message: "이미 사용 중인 이메일입니다" });
+        }
       }
 
       const passwordHash = await bcrypt.hash(validatedData.password, 12);
@@ -53,7 +84,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ 
         ok: true, 
-        user: { id: user.id, username: user.username, email: user.email },
+        user: { id: user.id, username: user.username, email: user.email || null },
         token 
       });
     } catch (error: any) {

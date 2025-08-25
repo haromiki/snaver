@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/api";
 
 export default function Login() {
   const [isRegister, setIsRegister] = useState(false);
@@ -15,17 +16,69 @@ export default function Login() {
     usernameOrEmail: "",
   });
   
+  // 아이디 중복체크 상태
+  const [usernameCheck, setUsernameCheck] = useState<{
+    status: 'idle' | 'checking' | 'available' | 'unavailable' | 'error';
+    message: string;
+  }>({ status: 'idle', message: '' });
+  
   const { login, register, isLoginPending, isRegisterPending } = useAuth();
   const { toast } = useToast();
+
+  // 실시간 아이디 중복체크 (debounce)
+  const checkUsernameAvailability = useCallback(async (username: string) => {
+    if (!username || username.length < 3) {
+      setUsernameCheck({ status: 'idle', message: '' });
+      return;
+    }
+
+    setUsernameCheck({ status: 'checking', message: '중복 확인 중...' });
+
+    try {
+      const response = await apiRequest("GET", `/auth/check-username/${username}`);
+      const result = await response.json();
+      
+      setUsernameCheck({
+        status: result.available ? 'available' : 'unavailable',
+        message: result.message
+      });
+    } catch (error) {
+      setUsernameCheck({ 
+        status: 'error', 
+        message: '중복확인에 실패했습니다. 다시 시도해주세요.' 
+      });
+    }
+  }, []);
+
+  // 아이디 입력 시 debounce로 중복체크
+  useEffect(() => {
+    if (!isRegister) return;
+    
+    const timeoutId = setTimeout(() => {
+      checkUsernameAvailability(formData.username);
+    }, 500); // 500ms 지연
+
+    return () => clearTimeout(timeoutId);
+  }, [formData.username, isRegister, checkUsernameAvailability]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
       if (isRegister) {
+        // 아이디 중복체크 확인
+        if (usernameCheck.status !== 'available') {
+          toast({
+            title: "오류",
+            description: "사용 가능한 아이디를 입력해주세요.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
         await register({
           username: formData.username,
-          email: formData.email,
+          // email: formData.email, // 이메일 제거
           password: formData.password,
         });
         toast({
@@ -102,6 +155,7 @@ export default function Login() {
                   {isLoginPending ? "로그인 중..." : "로그인"}
                 </Button>
                 
+                {/* 네이버 로그인 주석처리 - 사용자 요청에 따라 비활성화
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t" />
@@ -121,6 +175,7 @@ export default function Login() {
                   <span className="mr-2">N</span>
                   네이버로 로그인
                 </Button>
+                */}
               </form>
             </CardContent>
           </Card>
@@ -142,9 +197,29 @@ export default function Login() {
                     type="text"
                     value={formData.username}
                     onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    className={`${
+                      usernameCheck.status === 'available' ? 'border-green-500' :
+                      usernameCheck.status === 'unavailable' ? 'border-red-500' :
+                      ''
+                    }`}
                     required
                   />
+                  {/* 중복체크 결과 표시 */}
+                  {formData.username.length >= 3 && (
+                    <p className={`text-xs mt-1 ${
+                      usernameCheck.status === 'checking' ? 'text-gray-500' :
+                      usernameCheck.status === 'available' ? 'text-green-600' :
+                      usernameCheck.status === 'unavailable' ? 'text-red-600' :
+                      'text-gray-500'
+                    }`}>
+                      {usernameCheck.status === 'checking' && '⚠️ '}
+                      {usernameCheck.status === 'available' && '✅ '}
+                      {usernameCheck.status === 'unavailable' && '❌ '}
+                      {usernameCheck.message}
+                    </p>
+                  )}
                 </div>
+                {/* 이메일 필드 주석처리 - 사용자 요청에 따라 비활성화
                 <div>
                   <Label htmlFor="reg-email">이메일</Label>
                   <Input
@@ -156,6 +231,7 @@ export default function Login() {
                     required
                   />
                 </div>
+                */}
                 <div>
                   <Label htmlFor="reg-password">비밀번호</Label>
                   <Input
@@ -174,7 +250,7 @@ export default function Login() {
                   <Button 
                     type="submit" 
                     className="flex-1" 
-                    disabled={isRegisterPending}
+                    disabled={isRegisterPending || usernameCheck.status !== 'available'}
                     data-testid="button-register"
                   >
                     {isRegisterPending ? "등록 중..." : "회원가입"}
