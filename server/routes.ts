@@ -290,15 +290,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let rankResult: RankResult;
 
       if (product.type === "organic") {
-        // 일반(오가닉) 순위 조회 - 개선된 OpenAPI 방식
-        rankResult = await fetchOrganicRank({
-          keyword: product.keyword,
-          productId: product.productNo,
-          clientId: process.env.NAVER_CLIENT_ID!,
-          clientSecret: process.env.NAVER_CLIENT_SECRET!,
-        });
+        // 일반(오가닉) 순위 조회 - 실서버 환경 최적화 (OpenAPI 우선, Puppeteer fallback)
+        const clientId = process.env.NAVER_CLIENT_ID;
+        const clientSecret = process.env.NAVER_CLIENT_SECRET;
+        
+        if (clientId && clientSecret) {
+          console.log(`📡 수동 검색 - OpenAPI 사용 (제품 ${product.id})`);
+          try {
+            rankResult = await fetchOrganicRank({
+              keyword: product.keyword,
+              productId: product.productNo,
+              clientId,
+              clientSecret,
+            });
+          } catch (error: any) {
+            console.log(`⚠️ OpenAPI 실패, Puppeteer fallback - 제품 ${product.id}:`, error.message);
+            // Puppeteer fallback
+            const puppeteerResult = await crawlProduct(product);
+            rankResult = {
+              productId: product.productNo,
+              found: !puppeteerResult.notFound,
+              globalRank: puppeteerResult.global_rank || undefined,
+              page: puppeteerResult.page || undefined,
+              rankInPage: puppeteerResult.rank_on_page || undefined,
+              price: puppeteerResult.price_krw || undefined,
+              storeName: puppeteerResult.mall_name || undefined,
+              storeLink: puppeteerResult.product_link || undefined,
+              notes: ["OpenAPI 실패로 Puppeteer 사용"]
+            };
+          }
+        } else {
+          console.log(`⚠️ OpenAPI 인증정보 없음 - Puppeteer 사용 (제품 ${product.id})`);
+          const puppeteerResult = await crawlProduct(product);
+          rankResult = {
+            productId: product.productNo,
+            found: !puppeteerResult.notFound,
+            globalRank: puppeteerResult.global_rank || undefined,
+            page: puppeteerResult.page || undefined,
+            rankInPage: puppeteerResult.rank_on_page || undefined,
+            price: puppeteerResult.price_krw || undefined,
+            storeName: puppeteerResult.mall_name || undefined,
+            storeLink: puppeteerResult.product_link || undefined,
+            notes: ["OpenAPI 인증정보 없어 Puppeteer 사용"]
+          };
+        }
       } else {
-        // 광고 순위 조회
+        // 광고 순위 조회 - Puppeteer만 가능
+        console.log(`🎯 수동 검색 - 광고 검색 (제품 ${product.id})`);
         rankResult = await fetchAdRank({
           productId: product.productNo,
           keyword: product.keyword,
@@ -439,12 +477,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = rankQuerySchema.parse(req.body);
       
-      // Puppeteer 방식으로 일반 순위 조회
-      const result = await fetchOrganicRankPuppeteer({
-        productId: validatedData.productId,
-        keyword: validatedData.keyword,
-        maxPages: 5,
-      });
+      // 실서버 환경 최적화: OpenAPI 우선, Puppeteer fallback
+      const clientId = process.env.NAVER_CLIENT_ID;
+      const clientSecret = process.env.NAVER_CLIENT_SECRET;
+      
+      let result: RankResult;
+      
+      if (clientId && clientSecret) {
+        console.log(`📡 OpenAPI 우선 사용 - 키워드: "${validatedData.keyword}"`);
+        try {
+          result = await fetchOrganicRank({
+            keyword: validatedData.keyword,
+            productId: validatedData.productId,
+            clientId,
+            clientSecret,
+          });
+        } catch (error: any) {
+          console.log(`⚠️ OpenAPI 실패, Puppeteer fallback:`, error.message);
+          // Puppeteer fallback
+          result = await fetchOrganicRankPuppeteer({
+            productId: validatedData.productId,
+            keyword: validatedData.keyword,
+            maxPages: 5,
+          });
+        }
+      } else {
+        console.log(`⚠️ OpenAPI 인증정보 없음 - Puppeteer 사용`);
+        result = await fetchOrganicRankPuppeteer({
+          productId: validatedData.productId,
+          keyword: validatedData.keyword,
+          maxPages: 5,
+        });
+      }
 
       res.json(result);
     } catch (error: any) {
