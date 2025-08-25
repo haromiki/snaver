@@ -9,19 +9,34 @@ interface StatisticsModalProps {
 }
 
 export default function StatisticsModal({ productId, onClose }: StatisticsModalProps) {
+  // 한국시간 기준으로 날짜 계산
+  const getKSTDate = (offsetDays = 0) => {
+    const now = new Date();
+    const kstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000) + (offsetDays * 24 * 60 * 60 * 1000));
+    return kstNow.toISOString().split('T')[0];
+  };
+
   const [dateRange, setDateRange] = useState({
-    from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days ago
-    to: new Date().toISOString().split('T')[0], // today
+    from: getKSTDate(-30), // 30일 전 (한국시간)
+    to: getKSTDate(0), // 오늘 (한국시간)
   });
   
   const [chart, setChart] = useState<any>(null);
   const { toast } = useToast();
 
-  // 날짜 범위 제한 (3년)
-  const today = new Date();
-  const threeYearsAgo = new Date(today.getTime() - 3 * 365 * 24 * 60 * 60 * 1000);
-  const maxDate = today.toISOString().split('T')[0];
-  const minDate = threeYearsAgo.toISOString().split('T')[0];
+  // 날짜 범위 제한 (3년) - 한국시간 기준
+  const maxDate = getKSTDate(0);
+  const minDate = getKSTDate(-365 * 3);
+
+  // 제품 정보 가져오기
+  const { data: product } = useQuery({
+    queryKey: ["/products", productId],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/products");
+      const products = await response.json();
+      return products.find((p: any) => p.id === productId);
+    },
+  });
 
   const { data: tracks = [] } = useQuery({
     queryKey: ["/tracks", productId, dateRange.from, dateRange.to],
@@ -51,26 +66,57 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
             chart.destroy();
           }
 
-          // Prepare data
-          const chartData = tracks
-            .filter((track: any) => track.globalRank) // Only show tracks with rank
-            .reverse() // Show chronological order
-            .map((track: any) => ({
-              x: new Date(track.checkedAt).toLocaleDateString(),
-              y: track.globalRank || 220, // Show 220 for not found
-            }));
+          // 한국시간 기준으로 날짜별 데이터 그룹화 (24:00마다 새로운 선)
+          const dateGroups = new Map();
+          
+          tracks
+            .filter((track: any) => track.globalRank)
+            .forEach((track: any) => {
+              // 한국시간 기준 날짜 추출
+              const trackDate = new Date(track.checkedAt);
+              const kstDate = new Date(trackDate.getTime() + (9 * 60 * 60 * 1000));
+              const dateKey = kstDate.toISOString().split('T')[0];
+              
+              if (!dateGroups.has(dateKey)) {
+                dateGroups.set(dateKey, []);
+              }
+              dateGroups.get(dateKey).push({
+                x: kstDate.toLocaleString('ko-KR'),
+                y: track.globalRank
+              });
+            });
+
+          // 일별로 다른 색상의 dataset 생성
+          const colors = [
+            { border: '#3B82F6', bg: 'rgba(59, 130, 246, 0.1)' },
+            { border: '#10B981', bg: 'rgba(16, 185, 129, 0.1)' },
+            { border: '#F59E0B', bg: 'rgba(245, 158, 11, 0.1)' },
+            { border: '#EF4444', bg: 'rgba(239, 68, 68, 0.1)' },
+            { border: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.1)' },
+            { border: '#06B6D4', bg: 'rgba(6, 182, 212, 0.1)' },
+            { border: '#F97316', bg: 'rgba(249, 115, 22, 0.1)' }
+          ];
+
+          const datasets = Array.from(dateGroups.entries())
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([date, data], index) => {
+              const color = colors[index % colors.length];
+              return {
+                label: `${date} (${data.length}건)`,
+                data: data.sort((a: any, b: any) => new Date(a.x).getTime() - new Date(b.x).getTime()),
+                borderColor: color.border,
+                backgroundColor: color.bg,
+                tension: 0.3,
+                fill: false,
+                pointRadius: 3,
+                pointHoverRadius: 5,
+              };
+            });
 
           const newChart = new Chart(ctx, {
             type: "line",
             data: {
-              datasets: [{
-                label: "순위",
-                data: chartData,
-                borderColor: "#1976D2",
-                backgroundColor: "rgba(25, 118, 210, 0.1)",
-                tension: 0.4,
-                fill: true,
-              }]
+              datasets
             },
             options: {
               responsive: true,
@@ -93,7 +139,23 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
               },
               plugins: {
                 legend: {
-                  display: false
+                  display: true,
+                  position: 'top',
+                  labels: {
+                    boxWidth: 12,
+                    padding: 15,
+                    color: '#374151'
+                  }
+                },
+                tooltip: {
+                  callbacks: {
+                    title: function(context: any) {
+                      return context[0].dataset.label;
+                    },
+                    label: function(context: any) {
+                      return `순위: ${context.parsed.y}위`;
+                    }
+                  }
                 }
               }
             }
@@ -123,9 +185,9 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
   };
 
   const handleDateUpdate = () => {
-    // 3년 초과 기간 검사
-    const fromDate = new Date(dateRange.from);
-    const toDate = new Date(dateRange.to);
+    // 한국시간 기준으로 날짜 검증
+    const fromDate = new Date(dateRange.from + 'T09:00:00.000Z'); // 한국시간으로 변환
+    const toDate = new Date(dateRange.to + 'T09:00:00.000Z'); // 한국시간으로 변환
     const diffInDays = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24));
     
     if (diffInDays > 1095) { // 3년 = 365 * 3 = 1095일
@@ -149,14 +211,11 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
     // Query will automatically refetch due to dependency change
   };
 
-  // 빠른 기간 선택 함수
+  // 빠른 기간 선택 함수 (한국시간 기준)
   const handleQuickRange = (days: number) => {
-    const today = new Date();
-    const fromDate = new Date(today.getTime() - days * 24 * 60 * 60 * 1000);
-    
     setDateRange({
-      from: fromDate.toISOString().split('T')[0],
-      to: today.toISOString().split('T')[0],
+      from: getKSTDate(-days),
+      to: getKSTDate(0),
     });
   };
 
@@ -166,7 +225,7 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">순위 통계</h3>
-            <p className="text-sm text-gray-500">제품 #{productId}</p>
+            <p className="text-sm text-gray-500">{product?.productName || `제품 #${productId}`}</p>
           </div>
           <button 
             onClick={onClose} 

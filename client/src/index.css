@@ -2,6 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 기본 HTML 및 body 스타일 강제 적용 */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  font-family: system-ui, -apple-system, sans-serif !important;
+  background: white !important;
+  color: black !important;
+  overflow: visible !important;
+  position: relative !important;
+}
+
+#root {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100vh !important;
+  display: block !important;
+  position: relative !important;
+  background: white !important;
+  z-index: 1 !important;
+}
+
 :root {
   --background: hsl(0 0% 100%);
   --foreground: hsl(210 25% 7.8431%);

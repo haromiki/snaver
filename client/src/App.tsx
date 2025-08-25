@@ -95,11 +95,73 @@ function RouterWithRoutes() {
 
       {/* /dashboard: 로그인 했을 때만 접근 가능 */}
       <Route path="/dashboard">
-        {user ? <Dashboard /> : <Redirect to="/login" />}
+        {user ? (
+          <div style={{ 
+            padding: '20px', 
+            background: 'white', 
+            minHeight: '100vh',
+            color: 'black',
+            fontSize: '16px'
+          }}>
+            <h1 style={{ color: '#1976d2', fontSize: '28px', marginBottom: '20px' }}>
+              🌐 SNAVER - 순위 추적 시스템
+            </h1>
+            <p>사용자: {(user as any)?.username} ({(user as any)?.email})</p>
+            <p>현재 시각: {new Date().toLocaleString('ko-KR')}</p>
+            <div style={{ marginTop: '20px', padding: '15px', background: '#f5f5f5', borderRadius: '8px' }}>
+              <h3>테스트 성공!</h3>
+              <p>React 앱이 정상적으로 렌더링되고 있습니다.</p>
+              <button 
+                onClick={() => window.location.reload()}
+                style={{ 
+                  padding: '10px 20px', 
+                  background: '#1976d2', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                새로고침
+              </button>
+            </div>
+          </div>
+        ) : <Redirect to="/login" />}
       </Route>
 
       {/* 루트: 로그인 상태에 따라 분기 */}
-      <Route path="/">{user ? <Dashboard /> : <Redirect to="/login" />}</Route>
+      <Route path="/">{user ? (
+        <div style={{ 
+          padding: '20px', 
+          background: 'white', 
+          minHeight: '100vh',
+          color: 'black',
+          fontSize: '16px'
+        }}>
+          <h1 style={{ color: '#1976d2', fontSize: '28px', marginBottom: '20px' }}>
+            🌐 SNAVER - 순위 추적 시스템
+          </h1>
+          <p>사용자: {(user as any)?.username} ({(user as any)?.email})</p>
+          <p>현재 시각: {new Date().toLocaleString('ko-KR')}</p>
+          <div style={{ marginTop: '20px', padding: '15px', background: '#f5f5f5', borderRadius: '8px' }}>
+            <h3>테스트 성공!</h3>
+            <p>React 앱이 정상적으로 렌더링되고 있습니다.</p>
+            <button 
+              onClick={() => window.location.reload()}
+              style={{ 
+                padding: '10px 20px', 
+                background: '#1976d2', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              새로고침
+            </button>
+          </div>
+        </div>
+      ) : <Redirect to="/login" />}</Route>
 
       {/* 없는 경로 */}
       <Route component={NotFound} />
