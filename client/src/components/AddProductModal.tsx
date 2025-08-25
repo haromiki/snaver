@@ -60,9 +60,9 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" data-testid="add-product-modal">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">{isEditing ? "제품 수정" : "제품 추가"}</h3>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{isEditing ? "제품 수정" : "제품 추가"}</h3>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
@@ -109,7 +109,7 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
             <Label htmlFor="type">유형</Label>
             <select 
               id="type"
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               value={formData.type}
               onChange={(e) => setFormData({ ...formData, type: e.target.value as "ad" | "organic" })}
               data-testid="select-type"
@@ -123,7 +123,7 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
             <Label htmlFor="intervalMin">추적 주기</Label>
             <select 
               id="intervalMin"
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               value={formData.intervalMin}
               onChange={(e) => setFormData({ ...formData, intervalMin: parseInt(e.target.value) })}
               data-testid="select-interval"
