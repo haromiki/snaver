@@ -113,6 +113,11 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
               };
             });
 
+          // 다크모드 감지
+          const isDarkMode = document.documentElement.classList.contains('dark');
+          const textColor = isDarkMode ? '#e5e7eb' : '#374151';
+          const gridColor = isDarkMode ? '#4b5563' : '#e5e7eb';
+
           const newChart = new Chart(ctx, {
             type: "line",
             data: {
@@ -129,13 +134,33 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
                   max: 200,
                   title: {
                     display: true,
-                    text: "순위 (낮을수록 상위)"
+                    text: "순위 (낮을수록 상위)",
+                    color: textColor,
+                    font: {
+                      size: 12
+                    }
+                  },
+                  ticks: {
+                    color: textColor
+                  },
+                  grid: {
+                    color: gridColor
                   }
                 },
                 x: {
                   title: {
                     display: true,
-                    text: "날짜"
+                    text: "날짜",
+                    color: textColor,
+                    font: {
+                      size: 12
+                    }
+                  },
+                  ticks: {
+                    color: textColor
+                  },
+                  grid: {
+                    color: gridColor
                   }
                 }
               },
@@ -146,10 +171,18 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
                   labels: {
                     boxWidth: 12,
                     padding: 15,
-                    color: '#374151'
+                    color: textColor,
+                    font: {
+                      size: 11
+                    }
                   }
                 },
                 tooltip: {
+                  backgroundColor: isDarkMode ? '#1f2937' : '#ffffff',
+                  titleColor: textColor,
+                  bodyColor: textColor,
+                  borderColor: isDarkMode ? '#4b5563' : '#e5e7eb',
+                  borderWidth: 1,
                   callbacks: {
                     title: function(context: any) {
                       return context[0].dataset.label;
@@ -223,15 +256,15 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" data-testid="statistics-modal">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-gray-200 dark:border-gray-700">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">순위 통계</h3>
-            <p className="text-sm text-gray-500">{product?.productName || `제품 #${productId}`}</p>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">순위 통계</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{product?.productName || `제품 #${productId}`}</p>
           </div>
           <button 
             onClick={onClose} 
-            className="text-gray-400 hover:text-gray-600"
+            className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
             data-testid="button-close-modal"
           >
             <i className="fas fa-times text-xl"></i>
@@ -243,20 +276,20 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
           <div className="flex flex-col space-y-3 mb-6">
             <div className="flex items-center flex-wrap gap-3">
               <div className="flex items-center space-x-2">
-                <label className="text-sm font-medium text-gray-700">기간:</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">기간:</label>
                 <input 
                   type="date" 
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" 
+                  className="border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" 
                   value={dateRange.from}
                   min={minDate}
                   max={maxDate}
                   onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
                   data-testid="input-date-from"
                 />
-                <span className="text-gray-500">~</span>
+                <span className="text-gray-500 dark:text-gray-400">~</span>
                 <input 
                   type="date" 
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" 
+                  className="border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" 
                   value={dateRange.to}
                   min={minDate}
                   max={maxDate}
@@ -273,80 +306,80 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
               </button>
               
               {/* 빠른 기간 선택 버튼 */}
-              <div className="flex items-center flex-wrap gap-2 border-l border-gray-300 pl-3">
-                <span className="text-sm text-gray-600">빠른선택:</span>
+              <div className="flex items-center flex-wrap gap-2 border-l border-gray-300 dark:border-gray-600 pl-3">
+                <span className="text-sm text-gray-600 dark:text-gray-400">빠른선택:</span>
                 <button 
                   onClick={() => handleQuickRange(7)}
-                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors"
+                  className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                   data-testid="button-quick-week"
                 >
                   1주일
                 </button>
                 <button 
                   onClick={() => handleQuickRange(30)}
-                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors"
+                  className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                   data-testid="button-quick-month"
                 >
                   30일
                 </button>
                 <button 
                   onClick={() => handleQuickRange(365)}
-                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors"
+                  className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                   data-testid="button-quick-year"
                 >
                   1년
                 </button>
                 <button 
                   onClick={() => handleQuickRange(730)}
-                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors"
+                  className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                   data-testid="button-quick-2years"
                 >
                   2년
                 </button>
                 <button 
                   onClick={() => handleQuickRange(1095)}
-                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors"
+                  className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                   data-testid="button-quick-3years"
                 >
                   3년
                 </button>
               </div>
             </div>
-            <div className="text-xs text-gray-500 ml-12">
+            <div className="text-xs text-gray-500 dark:text-gray-400 ml-12">
               💡 통계 검색 기간은 최대 3년(1095일)까지 설정 가능합니다.
             </div>
           </div>
 
           {/* Chart */}
-          <div className="bg-gray-50 rounded-lg p-4">
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
             <canvas id="rank-chart" width="800" height="400"></canvas>
           </div>
 
           {/* Statistics Summary */}
           <div className="mt-6 grid grid-cols-4 gap-4">
-            <div className="bg-gray-50 rounded-lg p-4 text-center">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-center">
               <div className="text-2xl font-bold text-success" data-testid="stat-best-rank">
                 {stats.best || "-"}
               </div>
-              <div className="text-sm text-gray-600">최고 순위</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">최고 순위</div>
             </div>
-            <div className="bg-gray-50 rounded-lg p-4 text-center">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-center">
               <div className="text-2xl font-bold text-error" data-testid="stat-worst-rank">
                 {stats.worst || "-"}
               </div>
-              <div className="text-sm text-gray-600">최저 순위</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">최저 순위</div>
             </div>
-            <div className="bg-gray-50 rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-gray-900" data-testid="stat-average-rank">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-gray-900 dark:text-gray-100" data-testid="stat-average-rank">
                 {stats.average}
               </div>
-              <div className="text-sm text-gray-600">평균 순위</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">평균 순위</div>
             </div>
-            <div className="bg-gray-50 rounded-lg p-4 text-center">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-center">
               <div className="text-2xl font-bold text-primary" data-testid="stat-found-rate">
                 {stats.foundRate}%
               </div>
-              <div className="text-sm text-gray-600">발견율</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">발견율</div>
             </div>
           </div>
         </div>

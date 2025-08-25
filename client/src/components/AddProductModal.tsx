@@ -151,6 +151,7 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
               type="button" 
               variant="outline" 
               onClick={onClose}
+              className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
               data-testid="button-cancel-add"
             >
               취소
