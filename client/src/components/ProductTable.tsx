@@ -681,9 +681,9 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                           <div className="flex items-center space-x-2">
                             <span className={`text-2xl font-bold ${rankDisplay.color}`} data-testid={`text-rank-${product.id}`}>
                               {rankDisplay.rank}
-                              {product.latestTrack?.rankInPage && (
+                              {product.latestTrack?.rankOnPage && (
                                 <span className="text-sm text-gray-500 dark:text-gray-400 ml-1 font-normal">
-                                  ({product.latestTrack.rankInPage})
+                                  ({product.latestTrack.rankOnPage})
                                 </span>
                               )}
                             </span>
