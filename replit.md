@@ -26,6 +26,21 @@ SNAVER is a production-ready web application designed to track store rankings on
    - 검색 시간 92% 개선 (25초 → 2초)
    - 실서버에서 네이버 OpenAPI 정상 작동 확인됨 ✅
 
+5. **로그 확인 SSH 명령어 (사용자 요청으로 저장)**
+   ```bash
+   # 실시간 로그 모니터링
+   tail -f /var/log/snaver/app.log | grep -E "(organic|API|검색|매칭|OpenAPI)"
+   
+   # 최근 검색 로그 확인 (최근 100줄)
+   tail -100 /var/log/snaver/app.log | grep -E "(organic|productId|keyword)"
+   
+   # 특정 제품 검색 로그
+   grep "제품.*7558362412\|inputId=7558362412" /var/log/snaver/app.log
+   
+   # 에러 로그만 확인
+   grep -E "(오류|실패|ERROR|Failed)" /var/log/snaver/app.log | tail -20
+   ```
+
 ## ✅ Completed Fixes
 1. **제품 수정 기능 완전 해결** (2025-08-22)
    - PATCH `/api/products/:id` API 구현 완료
