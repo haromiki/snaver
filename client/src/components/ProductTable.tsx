@@ -52,7 +52,7 @@ interface ProductTableProps {
 export default function ProductTable({ section, searchQuery = "", statusFilter = "all", onAddProduct, onEditProduct }: ProductTableProps) {
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [sortableList, setSortableList] = useState<any>(null);
-  const [refreshingProducts, setRefreshingProducts] = useState<Map<number, number>>(new Map()); // productId -> progress percentage
+  const [refreshingProducts, setRefreshingProducts] = useState<Set<number>>(new Set()); // 간단한 Set으로 변경
   const [bulkRefreshInProgress, setBulkRefreshInProgress] = useState(false);
   const [bulkRefreshProgress, setBulkRefreshProgress] = useState(0);
   const [searchStatus, setSearchStatus] = useState<any>(null);
@@ -79,10 +79,17 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
             )
           );
           
-          // 완료된 검색들의 주간 트렌드 캐시 무효화
-          completedSearches.forEach((search: any) => {
-            queryClient.invalidateQueries({ queryKey: [`/products/${search.productId}/weekly-ranks`] });
-          });
+          // 완료된 검색들의 주간 트렌드 캐시 무효화 및 전체 목록 새로고침
+          if (completedSearches.length > 0) {
+            completedSearches.forEach((search: any) => {
+              queryClient.invalidateQueries({ queryKey: [`/products/${search.productId}/weekly-ranks`] });
+            });
+            
+            // 전체 제품 목록 새로고침으로 마지막 확인 시간 업데이트
+            const currentFilters = getFilters();
+            queryClient.invalidateQueries({ queryKey: ["/products", currentFilters] });
+            queryClient.refetchQueries({ queryKey: ["/products", currentFilters] });
+          }
         }
         
         setSearchStatus(status);
@@ -172,51 +179,24 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
 
   const refreshProductMutation = useMutation({
     mutationFn: async (productId: number) => {
-      // Start progress simulation
-      const startTime = Date.now();
-      startProgressSimulation(productId);
+      // 검색 중 상태 추가
+      setRefreshingProducts(prev => new Set(prev).add(productId));
       
       const response = await apiRequest("POST", `/products/${productId}/refresh`);
       const result = await response.json();
       
-      // 검색 완료 - 최소 3초 보장 (빠른 사용자 경험)
-      const elapsed = Date.now() - startTime;
-      const minDuration = 3000; // 3초로 단축
-      if (elapsed < minDuration) {
-        await new Promise(resolve => setTimeout(resolve, minDuration - elapsed));
-      }
-      
       return result;
     },
     onSuccess: (data, productId) => {
-      // 100% 완료 애니메이션 (부드럽게 85% → 100%)
-      let currentProgress = refreshingProducts.get(productId) || 85;
-      const animateToComplete = () => {
-        currentProgress += 5;
-        if (currentProgress >= 100) currentProgress = 100;
-        
-        setRefreshingProducts(prev => {
-          const newMap = new Map(prev);
-          newMap.set(productId, currentProgress);
-          return newMap;
-        });
-        
-        if (currentProgress < 100) {
-          setTimeout(animateToComplete, 100); // 0.1초마다
-        } else {
-          // 100% 완료 후 실제 데이터 확인 방식으로 UI 업데이트
-          verifyAndUpdateData(productId);
-        }
-      };
-      
-      animateToComplete();
+      // 실제 데이터 확인 방식으로 UI 업데이트
+      verifyAndUpdateData(productId);
     },
     onError: (error: any, productId) => {
-      // Remove progress on error
+      // 검색 중 상태 제거
       setRefreshingProducts(prev => {
-        const newMap = new Map(prev);
-        newMap.delete(productId);
-        return newMap;
+        const newSet = new Set(prev);
+        newSet.delete(productId);
+        return newSet;
       });
       
       toast({
@@ -259,17 +239,20 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
           // 주간 트렌드 캐시 무효화 (새로운 검색 결과 반영)
           queryClient.invalidateQueries({ queryKey: [`/products/${productId}/weekly-ranks`] });
           
+          // 전체 제품 목록 새로고침으로 마지막 확인 시간 업데이트
+          queryClient.invalidateQueries({ queryKey: ["/products"] });
+          
           toast({
             title: "수동 검색 완료",
             description: `순위 정보가 업데이트되었습니다. (${updatedProduct.latestTrack.globalRank ? updatedProduct.latestTrack.globalRank + '위' : '미발견'})`,
           });
           
-          // 진행률 제거
+          // 검색 중 상태 제거
           setTimeout(() => {
             setRefreshingProducts(prev => {
-              const newMap = new Map(prev);
-              newMap.delete(productId);
-              return newMap;
+              const newSet = new Set(prev);
+              newSet.delete(productId);
+              return newSet;
             });
           }, 1500);
           
@@ -287,11 +270,11 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
             variant: "destructive",
           });
           
-          // 진행률 제거
+          // 검색 중 상태 제거
           setRefreshingProducts(prev => {
-            const newMap = new Map(prev);
-            newMap.delete(productId);
-            return newMap;
+            const newSet = new Set(prev);
+            newSet.delete(productId);
+            return newSet;
           });
         }
         
@@ -308,9 +291,9 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
           });
           
           setRefreshingProducts(prev => {
-            const newMap = new Map(prev);
-            newMap.delete(productId);
-            return newMap;
+            const newSet = new Set(prev);
+            newSet.delete(productId);
+            return newSet;
           });
         }
       }
@@ -412,27 +395,6 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     },
   });
 
-  // Progress simulation - 실서버 안정성 최적화
-  const startProgressSimulation = (productId: number) => {
-    let progress = 0;
-    
-    const updateProgress = () => {
-      progress += Math.random() * 15 + 10; // 10-25% 더 빠른 증가
-      if (progress > 85) progress = 85; // 85%에서 대기
-      
-      setRefreshingProducts(prev => {
-        const newMap = new Map(prev);
-        newMap.set(productId, Math.floor(progress));
-        return newMap;
-      });
-      
-      if (progress < 85) {
-        setTimeout(updateProgress, Math.random() * 300 + 150); // 150-450ms 더 빠른 간격
-      }
-    };
-    
-    updateProgress();
-  };
 
   // Initialize Sortable when products change
   useEffect(() => {
@@ -658,7 +620,18 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
               data-testid="button-bulk-refresh"
             >
               <i className="fas fa-sync mr-2"></i>
-              {bulkRefreshInProgress ? `새로고침 중... (${bulkRefreshProgress}/${products.length})` : "전체 새로고침"}
+              <div className="flex items-center space-x-2">
+                {bulkRefreshInProgress && (
+                  <div className="animate-spin text-blue-500">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  </div>
+                )}
+                <span>
+                  {bulkRefreshInProgress ? `새로고침 중... (${bulkRefreshProgress}/${products.length})` : "전체 새로고침"}
+                </span>
+              </div>
             </button>
           </div>
         </div>
@@ -744,9 +717,9 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                           const autoSearch = searchStatus?.activeSearches?.find((s: any) => s.productId === product.id);
                           
                           if (isManualRefreshing) {
-                            // 수동 검색 중
-                            progress = refreshingProducts.get(product.id) || 0;
-                            progressText = `${Math.round(progress)}%`;
+                            // 수동 검색 중  
+                            progress = 50; // 검색 중일 때는 50%로 표시
+                            progressText = "수동";
                             progressColor = "bg-blue-500";
                           } else if (autoSearch && autoSearch.status !== 'completed') {
                             // 자동 검색 중
@@ -766,25 +739,24 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                           }
                           
                           if (progress > 0) {
+                            let statusColor = "text-blue-500";
+                            
+                            if (progressColor === "bg-green-500") statusColor = "text-green-500";
+                            else if (progressColor === "bg-yellow-500") statusColor = "text-yellow-500";
+                            else if (progressColor === "bg-red-500") statusColor = "text-red-500";
+                            
                             return (
-                              <div className="relative w-16 h-16">
-                                {/* 정사각형 라운드 배경 */}
-                                <div className="absolute inset-0 bg-gray-200 dark:bg-gray-600 rounded-lg"></div>
-                                {/* 채우기 효과 - 아래에서 위로 차오름 */}
-                                <div className="absolute inset-0 overflow-hidden rounded-lg">
-                                  <div 
-                                    className={`absolute bottom-0 left-0 right-0 ${progressColor} transition-all duration-300 ease-out rounded-lg`}
-                                    style={{ 
-                                      height: `${progress}%`
-                                    }}
-                                  ></div>
+                              <div className="flex flex-col items-center justify-center w-16 h-16 space-y-1">
+                                {/* 회전 아이콘 */}
+                                <div className={`animate-spin ${statusColor}`}>
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                  </svg>
                                 </div>
-                                {/* 텍스트 */}
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <span className="text-sm font-bold text-white drop-shadow-lg z-10">
-                                    {progressText}
-                                  </span>
-                                </div>
+                                {/* 상태 텍스트 */}
+                                <span className={`text-xs font-medium ${statusColor}`}>
+                                  {progressText}
+                                </span>
                               </div>
                             );
                           } else {
