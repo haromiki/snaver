@@ -5,6 +5,70 @@ import StatisticsModal from "./StatisticsModal";
 import WeeklyTrendChart from "./WeeklyTrendChart";
 import { useToast } from "@/hooks/use-toast";
 
+function RankChangeIndicator({ productId }: { productId: number }) {
+  const { data: weeklyData } = useQuery({
+    queryKey: [`/products/${productId}/weekly-ranks`],
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/products/${productId}/weekly-ranks`);
+      return await response.json();
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
+
+  if (!weeklyData?.dailyRanks) {
+    return <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>;
+  }
+
+  // 순위가 있는 날짜들만 필터링
+  const ranksWithData = weeklyData.dailyRanks.filter((day: any) => day.hasData && day.rank);
+  
+  if (ranksWithData.length < 2) {
+    return <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>;
+  }
+
+  // 가장 최근 2개 순위 가져오기
+  const currentRank = ranksWithData[ranksWithData.length - 1].rank;
+  const previousRank = ranksWithData[ranksWithData.length - 2].rank;
+  
+  const rankDiff = previousRank - currentRank;
+
+  if (rankDiff > 0) {
+    // 상승
+    return (
+      <div className="flex items-center space-x-1">
+        <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414 6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+        </svg>
+        <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
+          {rankDiff}
+        </span>
+      </div>
+    );
+  } else if (rankDiff < 0) {
+    // 하락
+    return (
+      <div className="flex items-center space-x-1">
+        <svg className="w-4 h-4 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" clipRule="evenodd" />
+        </svg>
+        <span className="text-sm font-medium text-red-600 dark:text-red-400">
+          {Math.abs(rankDiff)}
+        </span>
+      </div>
+    );
+  } else {
+    // 변동없음
+    return (
+      <div className="flex items-center justify-center">
+        <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M4 10a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H4.75A.75.75 0 014 10z" clipRule="evenodd" />
+        </svg>
+      </div>
+    );
+  }
+}
+
 // 1주일 트렌드 차트를 위한 래퍼 컴포넌트
 function WeeklyTrendChartWrapper({ productId }: { productId: number }) {
   const { data: weeklyData, isLoading } = useQuery({
@@ -731,58 +795,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex items-center space-x-2">
-                            {(() => {
-                              if (!product.tracks || product.tracks.length < 2) {
-                                return <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>;
-                              }
-                              
-                              const currentRank = product.latestTrack?.globalRank;
-                              const previousTrack = product.tracks.find((t: any) => t.createdAt < product.latestTrack.createdAt);
-                              const previousRank = previousTrack?.globalRank;
-                              
-                              if (!currentRank || !previousRank) {
-                                return <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>;
-                              }
-                              
-                              const rankDiff = previousRank - currentRank;
-                              
-                              if (rankDiff > 0) {
-                                // 상승
-                                return (
-                                  <div className="flex items-center space-x-1">
-                                    <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414 6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                                    </svg>
-                                    <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                                      {rankDiff}
-                                    </span>
-                                  </div>
-                                );
-                              } else if (rankDiff < 0) {
-                                // 하락
-                                return (
-                                  <div className="flex items-center space-x-1">
-                                    <svg className="w-4 h-4 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                    </svg>
-                                    <span className="text-sm font-medium text-red-600 dark:text-red-400">
-                                      {Math.abs(rankDiff)}
-                                    </span>
-                                  </div>
-                                );
-                              } else {
-                                // 변동없음
-                                return (
-                                  <div className="flex items-center justify-center">
-                                    <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M4 10a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H4.75A.75.75 0 014 10z" clipRule="evenodd" />
-                                    </svg>
-                                  </div>
-                                );
-                              }
-                            })()}
-                          </div>
+                          <RankChangeIndicator productId={product.id} />
                         </td>
                         <td className="px-6 py-4">
                           <WeeklyTrendChartWrapper productId={product.id} />
