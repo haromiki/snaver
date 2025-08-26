@@ -242,8 +242,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(keywords)
-      .where(eq(keywords.userId, userId))
-      .orderBy(asc(keywords.keyword));
+      .where(eq(keywords.userId, userId));
   }
 
   async createKeyword(keywordData: InsertKeyword & { userId: number }): Promise<Keyword> {
