@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "./ThemeProvider";
 import ChangePasswordModal from "./ChangePasswordModal";
 import DeleteAccountModal from "./DeleteAccountModal";
+import KeywordManagerModal from "./KeywordManagerModal";
 
 interface SidebarProps {
   activeSection: string;
@@ -14,6 +15,7 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
   const { theme, toggleTheme } = useTheme();
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [showKeywordManagerModal, setShowKeywordManagerModal] = useState(false);
 
   const navItems = [
     {
@@ -57,15 +59,15 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
             </h3>
             {category.items.map((item) => (
               item.id === "keywords" ? (
-                <a
+                <button
                   key={item.id}
-                  href="/keywords"
+                  onClick={() => setShowKeywordManagerModal(true)}
                   className="w-full text-left group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                   data-testid={`nav-${item.id}`}
                 >
                   <i className={`${item.icon} mr-3 text-sm`}></i>
                   {item.label}
-                </a>
+                </button>
               ) : (
                 <button
                   key={item.id}
@@ -165,6 +167,12 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
       {showDeleteAccountModal && (
         <DeleteAccountModal onClose={() => setShowDeleteAccountModal(false)} />
       )}
+      
+      {/* 키워드 관리 모달 */}
+      <KeywordManagerModal 
+        open={showKeywordManagerModal} 
+        onOpenChange={setShowKeywordManagerModal} 
+      />
     </div>
   );
 }
