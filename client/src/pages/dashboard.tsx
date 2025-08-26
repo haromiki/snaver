@@ -19,11 +19,11 @@ export default function Dashboard() {
   const { isConnected } = useWebSocket();
   console.log('🔗 웹소켓 연결 상태:', isConnected);
 
-  // 키워드 카테고리 조회
-  const { data: keywordCategories = [] } = useQuery({
-    queryKey: ["/keywords/categories"],
+  // 키워드 목록 조회
+  const { data: keywords = [] } = useQuery({
+    queryKey: ["/keywords"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/keywords/categories");
+      const response = await apiRequest("GET", "/keywords");
       return await response.json();
     },
   });
@@ -68,9 +68,9 @@ export default function Dashboard() {
                     data-testid="filter-keyword"
                   >
                     <option value="all">전체 키워드</option>
-                    {keywordCategories.map((category: string) => (
-                      <option key={category} value={category}>
-                        {category}
+                    {keywords.map((keyword: any) => (
+                      <option key={keyword.id} value={keyword.keyword}>
+                        {keyword.keyword}
                       </option>
                     ))}
                   </select>

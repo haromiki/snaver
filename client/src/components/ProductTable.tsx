@@ -150,20 +150,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     },
   });
 
-  // 키워드-카테고리 매핑을 위한 키워드 데이터 조회
-  const { data: keywords = [] } = useQuery({
-    queryKey: ["/keywords"],
-    queryFn: async () => {
-      const response = await apiRequest("GET", "/keywords");
-      return await response.json();
-    },
-  });
-
-  // 키워드별 카테고리 매핑 생성
-  const keywordCategoryMap = keywords.reduce((acc: Record<string, string>, keyword: any) => {
-    acc[keyword.keyword] = keyword.category || "";
-    return acc;
-  }, {});
+  // 키워드 매핑이 더 이상 필요하지 않음 (직접 키워드 필터링)
 
   // 검색 및 상태 필터링
   const products = allProducts.filter((product: any) => {
@@ -191,10 +178,9 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
       if (statusFilter === "inactive" && product.active) return false;
     }
 
-    // 키워드 카테고리 필터링
+    // 키워드 필터링
     if (keywordFilter !== "all") {
-      const productKeywordCategory = keywordCategoryMap[product.keyword] || "";
-      if (productKeywordCategory !== keywordFilter) return false;
+      if (product.keyword !== keywordFilter) return false;
     }
 
     return true;
