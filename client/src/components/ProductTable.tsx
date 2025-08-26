@@ -815,8 +815,15 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                           </div>
                           {product.latestTrack && (
                             <div className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
-                              {new Date(product.latestTrack.checkedAt).toLocaleString()}
-                            </div>
+                              {new Date(product.latestTrack.checkedAt).toLocaleString('ko-KR', {
+                                timeZone: 'Asia/Seoul',
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: false
+                              }).replace(/\. /g, '.').replace(/\./g, '.').replace(' ', '/')}</div>
                           )}
                         </td>
                       </>

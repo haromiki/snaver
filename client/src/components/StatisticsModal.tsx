@@ -9,11 +9,16 @@ interface StatisticsModalProps {
 }
 
 export default function StatisticsModal({ productId, onClose }: StatisticsModalProps) {
-  // 한국시간 기준으로 날짜 계산
+  // 한국 표준 시간(KST) 기준으로 날짜 계산
   const getKSTDate = (offsetDays = 0) => {
     const now = new Date();
-    const kstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000) + (offsetDays * 24 * 60 * 60 * 1000));
-    return kstNow.toISOString().split('T')[0];
+    const kstNow = new Date(now.getTime() + (offsetDays * 24 * 60 * 60 * 1000));
+    return kstNow.toLocaleDateString('ko-KR', {
+      timeZone: 'Asia/Seoul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).replace(/\. /g, '-').replace(/\./g, '');
   };
 
   const [dateRange, setDateRange] = useState({
@@ -72,16 +77,23 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
           tracks
             .filter((track: any) => track.globalRank)
             .forEach((track: any) => {
-              // 한국시간 기준 날짜 추출
+              // 한국 표준 시간(KST) 기준 날짜 추출
               const trackDate = new Date(track.checkedAt);
-              const kstDate = new Date(trackDate.getTime() + (9 * 60 * 60 * 1000));
-              const dateKey = kstDate.toISOString().split('T')[0];
+              const dateKey = trackDate.toLocaleDateString('ko-KR', {
+                timeZone: 'Asia/Seoul',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+              }).replace(/\. /g, '-').replace(/\./g, '');
               
               if (!dateGroups.has(dateKey)) {
                 dateGroups.set(dateKey, []);
               }
               dateGroups.get(dateKey).push({
-                x: kstDate.toLocaleString('ko-KR'),
+                x: trackDate.toLocaleString('ko-KR', {
+                  timeZone: 'Asia/Seoul',
+                  hour12: false
+                }),
                 y: track.globalRank
               });
             });
