@@ -168,7 +168,7 @@ export default function KeywordManagerModal({ open, onOpenChange }: KeywordManag
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Tag className="h-5 w-5" />
@@ -193,7 +193,7 @@ export default function KeywordManagerModal({ open, onOpenChange }: KeywordManag
 
             {/* 검색 */}
             <div className="flex gap-4">
-              <div className="flex-1">
+              <div className="flex-1 ml-1 mr-1">
                 <Input
                   placeholder="키워드 검색..."
                   value={searchQuery}
@@ -229,8 +229,8 @@ export default function KeywordManagerModal({ open, onOpenChange }: KeywordManag
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-medium">{keyword.keyword}</h3>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-medium leading-[30px]">{keyword.keyword}</h3>
                             </div>
                           </div>
                           <div className="flex gap-1 ml-4">
