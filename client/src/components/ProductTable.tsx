@@ -48,7 +48,7 @@ function UpdateStatusText({ products }: { products: any[] }) {
 
   return (
     <span className="text-sm text-gray-500 dark:text-gray-400" data-testid="text-update-status">
-      | 최근 업데이트: {products.length}개 중 {recentlyUpdated.length}개 {timeText} 업데이트
+      | 최근 업데이트: {products.length}개 중 {recentlyUpdated.length}개 {timeText} 
     </span>
   );
 }
