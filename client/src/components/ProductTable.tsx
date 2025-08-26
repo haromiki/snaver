@@ -35,16 +35,16 @@ function UpdateStatusText({ products }: { products: any[] }) {
 
   const lastUpdateTime = new Date(mostRecentUpdate.latestTrack.checkedAt);
   
-  // 한국 시간으로 변환
-  const kstTime = new Date(lastUpdateTime.getTime() + (9 * 60 * 60 * 1000));
-  
-  const year = kstTime.getFullYear();
-  const month = String(kstTime.getMonth() + 1).padStart(2, '0');
-  const day = String(kstTime.getDate()).padStart(2, '0');
-  const hours = String(kstTime.getHours()).padStart(2, '0');
-  const minutes = String(kstTime.getMinutes()).padStart(2, '0');
-  
-  const timeText = `${year}.${month}.${day}/${hours}:${minutes}`;
+  // 한국 표준 시간(KST)으로 변환 - UTC+9
+  const timeText = lastUpdateTime.toLocaleString('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).replace(/\. /g, '.').replace(/\./g, '.').replace(' ', '/').replace(/:/g, ':');
 
   return (
     <span className="text-sm text-gray-500 dark:text-gray-400" data-testid="text-update-status">

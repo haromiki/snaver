@@ -122,6 +122,9 @@ POST /api/rank/ad
 - Preferred language: Korean (한국어) - 모든 커뮤니케이션은 한국어로 진행
 - 모든 응답, 설명, 안내사항은 반드시 한국어로 작성
 - 기술적 용어도 한국어로 번역하여 설명
+- **시간 표시 기준: 항상 한국 표준 시간(KST) 사용** (2025-08-26 추가)
+  - 모든 시간 표시는 Asia/Seoul 타임존 기준
+  - 형식: "2025.08.26/10:05" (년.월.일/시:분)
 
 ## Critical Code Preservation Rules
 **NEVER MODIFY** the following server-only code sections:
