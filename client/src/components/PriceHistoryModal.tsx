@@ -70,7 +70,6 @@ export default function PriceHistoryModal({ productId, productName, isOpen, onCl
           {/* 기간 선택 버튼 */}
           <div className="flex flex-wrap gap-2">
             {[
-              { key: '1week', label: '1주일' },
               { key: '1month', label: '1개월' },
               { key: '3months', label: '3개월' },
               { key: '6months', label: '6개월' },

@@ -671,9 +671,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let fromDate: Date;
       
       switch (range) {
-        case '1week':
-          fromDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          break;
         case '1month':
           fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
           break;
