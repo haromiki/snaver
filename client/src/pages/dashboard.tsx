@@ -7,7 +7,6 @@ import { apiRequest } from "@/lib/api";
 // 웹소켓 제거 - 검색 완료 시에만 폴링으로 새로고침
 
 export default function Dashboard() {
-  console.log('[DEBUG] Dashboard component is rendering!');
   const [activeSection, setActiveSection] = useState("organic-tracking");
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
