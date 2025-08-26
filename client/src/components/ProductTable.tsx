@@ -716,6 +716,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">제품 가격</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">현재 순위</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">가격 변동</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">순위 변동</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">1주일 그래프</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">마지막 확인</th>
                   </>
@@ -812,8 +813,19 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            순위변동 컬럼 제거됨
+                          <div className="flex items-center space-x-2">
+                            {rankDisplay.trendIcon && (
+                              <span className={`text-lg font-bold ${
+                                rankDisplay.trendIcon === '▲' 
+                                  ? 'text-blue-600 dark:text-blue-400' 
+                                  : 'text-red-600 dark:text-red-400'
+                              }`}>
+                                {rankDisplay.trendIcon}
+                              </span>
+                            )}
+                            {!rankDisplay.trendIcon && (
+                              <span className="text-gray-400 dark:text-gray-500">-</span>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4">
