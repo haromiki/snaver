@@ -71,59 +71,33 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
             chart.destroy();
           }
 
-          // 한국시간 기준으로 날짜별 데이터 그룹화 (24:00마다 새로운 선)
-          const dateGroups = new Map();
-          
-          tracks
+          // 모든 데이터를 하나의 연속된 선으로 만들기
+          const chartData = tracks
             .filter((track: any) => track.globalRank)
-            .forEach((track: any) => {
-              // 한국 표준 시간(KST) 기준 날짜 추출
+            .map((track: any) => {
               const trackDate = new Date(track.checkedAt);
-              const dateKey = trackDate.toLocaleDateString('ko-KR', {
-                timeZone: 'Asia/Seoul',
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit'
-              }).replace(/\. /g, '-').replace(/\./g, '');
-              
-              if (!dateGroups.has(dateKey)) {
-                dateGroups.set(dateKey, []);
-              }
-              dateGroups.get(dateKey).push({
+              return {
                 x: trackDate.toLocaleString('ko-KR', {
                   timeZone: 'Asia/Seoul',
                   hour12: false
                 }),
-                y: track.globalRank
-              });
-            });
-
-          // 일별로 다른 색상의 dataset 생성
-          const colors = [
-            { border: '#3B82F6', bg: 'rgba(59, 130, 246, 0.1)' },
-            { border: '#10B981', bg: 'rgba(16, 185, 129, 0.1)' },
-            { border: '#F59E0B', bg: 'rgba(245, 158, 11, 0.1)' },
-            { border: '#EF4444', bg: 'rgba(239, 68, 68, 0.1)' },
-            { border: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.1)' },
-            { border: '#06B6D4', bg: 'rgba(6, 182, 212, 0.1)' },
-            { border: '#F97316', bg: 'rgba(249, 115, 22, 0.1)' }
-          ];
-
-          const datasets = Array.from(dateGroups.entries())
-            .sort(([a], [b]) => a.localeCompare(b))
-            .map(([date, data], index) => {
-              const color = colors[index % colors.length];
-              return {
-                label: `${date} (${data.length}건)`,
-                data: data.sort((a: any, b: any) => new Date(a.x).getTime() - new Date(b.x).getTime()),
-                borderColor: color.border,
-                backgroundColor: color.bg,
-                tension: 0.3,
-                fill: false,
-                pointRadius: 3,
-                pointHoverRadius: 5,
+                y: track.globalRank,
+                timestamp: trackDate.getTime() // 정렬용
               };
-            });
+            })
+            .sort((a, b) => a.timestamp - b.timestamp); // 시간순 정렬
+
+          const datasets = [{
+            label: `순위 변화 (${chartData.length}개 데이터)`,
+            data: chartData,
+            borderColor: '#3B82F6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            tension: 0.3,
+            fill: false,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            borderWidth: 2,
+          }];
 
           // 다크모드 감지
           const isDarkMode = document.documentElement.classList.contains('dark');
