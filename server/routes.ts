@@ -660,6 +660,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 가격 히스토리 조회 API
+  app.get("/api/products/:id/price-history", authenticateToken, async (req, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+      const { range = '1year' } = req.query;
+      
+      // 날짜 범위 계산
+      const now = new Date();
+      let fromDate: Date;
+      
+      switch (range) {
+        case '1week':
+          fromDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case '1month':
+          fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        case '3months':
+          fromDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+          break;
+        case '6months':
+          fromDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+          break;
+        case '2years':
+          fromDate = new Date(now.getTime() - 2 * 365 * 24 * 60 * 60 * 1000);
+          break;
+        default: // '1year'
+          fromDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+          break;
+      }
+      
+      // 가격 데이터가 있는 트랙들만 조회
+      const tracks = await storage.getTracks(productId, fromDate, now);
+      const tracksWithPrice = tracks.filter(track => track.priceKrw && track.priceKrw > 0);
+      
+      if (tracksWithPrice.length === 0) {
+        return res.json({
+          data: [],
+          stats: {
+            current: 0,
+            highest: 0,
+            lowest: 0,
+            average: 0
+          }
+        });
+      }
+      
+      // 주간별로 데이터 그룹화 (같은 주의 데이터는 평균 가격 사용)
+      const weeklyData = new Map<string, { prices: number[], date: string }>();
+      
+      tracksWithPrice.forEach(track => {
+        const trackDate = new Date(track.checkedAt);
+        // 월요일 시작하는 주의 시작일 계산
+        const dayOfWeek = trackDate.getDay();
+        const diff = trackDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+        const weekStart = new Date(trackDate.setDate(diff));
+        const weekKey = weekStart.toISOString().split('T')[0];
+        
+        if (!weeklyData.has(weekKey)) {
+          weeklyData.set(weekKey, { 
+            prices: [], 
+            date: weekKey // ISO 날짜 문자열 사용 (YYYY-MM-DD)
+          });
+        }
+        
+        weeklyData.get(weekKey)!.prices.push(track.priceKrw!);
+      });
+      
+      // 주간 평균 가격 계산
+      const chartData = Array.from(weeklyData.entries())
+        .map(([date, data]) => ({
+          date: data.date,
+          price: Math.round(data.prices.reduce((sum, price) => sum + price, 0) / data.prices.length)
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date)); // 문자열 정렬로 변경
+      
+      // 통계 계산
+      const allPrices = tracksWithPrice.map(t => t.priceKrw!);
+      const stats = {
+        current: tracksWithPrice[tracksWithPrice.length - 1]?.priceKrw || 0,
+        highest: Math.max(...allPrices),
+        lowest: Math.min(...allPrices),
+        average: Math.round(allPrices.reduce((sum, price) => sum + price, 0) / allPrices.length)
+      };
+      
+      res.json({
+        data: chartData,
+        stats
+      });
+      
+    } catch (error) {
+      console.error("가격 히스토리 조회 오류:", error);
+      res.status(500).json({ message: "가격 히스토리를 가져오는데 실패했습니다" });
+    }
+  });
+
   // 광고 순위 조회 - Puppeteer 사용 (테스트용 인증 제거)
   app.post("/api/rank/ad", async (req, res) => {
     try {

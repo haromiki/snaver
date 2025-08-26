@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
 import StatisticsModal from "./StatisticsModal";
 import WeeklyTrendChart from "./WeeklyTrendChart";
+import PriceHistoryModal from "./PriceHistoryModal";
 import { useToast } from "@/hooks/use-toast";
 // 웹소켓 제거 - 폴링으로 대체
 
@@ -75,7 +76,7 @@ function RankChangeIndicator({ productId }: { productId: number }) {
     return <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>;
   }
 
-  // 가장 최근 2개 순위 가져오기
+  // 가장 최근 2개 순위 가져기
   const currentRank = ranksWithData[ranksWithData.length - 1].rank;
   const previousRank = ranksWithData[ranksWithData.length - 2].rank;
   
@@ -107,6 +108,71 @@ function RankChangeIndicator({ productId }: { productId: number }) {
     );
   } else {
     // 변동없음
+    return (
+      <div className="flex items-center justify-center">
+        <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M4 10a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H4.75A.75.75 0 014 10z" clipRule="evenodd" />
+        </svg>
+      </div>
+    );
+  }
+}
+
+// 가격 변동 아이콘 컴포넌트
+function PriceChangeIndicator({ product }: { product: any }) {
+  // product의 tracks 데이터에서 가격 변동 계산
+  if (!product.tracks || product.tracks.length < 2) {
+    return (
+      <div className="flex items-center justify-center">
+        <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M4 10a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H4.75A.75.75 0 014 10z" clipRule="evenodd" />
+        </svg>
+      </div>
+    );
+  }
+
+  // 최신 순으로 정렬 (최신이 첫번째)
+  const sortedTracks = [...product.tracks].sort((a, b) => 
+    new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime()
+  );
+  
+  const currentTrack = sortedTracks[0]; // 최신 트랙
+  const previousTrack = sortedTracks[1]; // 이전 트랙
+  
+  if (!currentTrack.priceKrw || !previousTrack.priceKrw) {
+    return (
+      <div className="flex items-center justify-center">
+        <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M4 10a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H4.75A.75.75 0 014 10z" clipRule="evenodd" />
+        </svg>
+      </div>
+    );
+  }
+  
+  const currentPrice = currentTrack.priceKrw;
+  const previousPrice = previousTrack.priceKrw;
+  const priceDiff = currentPrice - previousPrice;
+  
+  if (priceDiff > 0) {
+    // 가격 상승 - 빨간색 상승 아이콘
+    return (
+      <div className="flex items-center justify-center">
+        <svg className="w-4 h-4 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414 6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+        </svg>
+      </div>
+    );
+  } else if (priceDiff < 0) {
+    // 가격 하락 - 파란색 하락 아이콘
+    return (
+      <div className="flex items-center justify-center">
+        <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" clipRule="evenodd" />
+        </svg>
+      </div>
+    );
+  } else {
+    // 변동없음 - 회색 가로선
     return (
       <div className="flex items-center justify-center">
         <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20">
@@ -164,6 +230,7 @@ interface ProductTableProps {
 
 export default function ProductTable({ section, searchQuery = "", statusFilter = "all", keywordFilter = "all", onAddProduct, onEditProduct }: ProductTableProps) {
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [priceHistoryProduct, setPriceHistoryProduct] = useState<{id: number, name: string} | null>(null);
   const [sortableList, setSortableList] = useState<any>(null);
   const [refreshingProducts, setRefreshingProducts] = useState<Set<number>>(new Set()); // 간단한 Set으로 변경
   const [bulkRefreshInProgress, setBulkRefreshInProgress] = useState(false);
@@ -781,14 +848,21 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                             <div className="text-sm font-medium text-gray-900 dark:text-gray-100" data-testid={`text-price-${product.id}`}>
                               {formatPrice(product.latestTrack?.priceKrw)}
                             </div>
-                            {rankDisplay.trendIcon && (
-                              <span className={`text-sm font-bold ${
-                                rankDisplay.trendIcon === '▲' 
-                                  ? 'text-blue-600 dark:text-blue-400' 
-                                  : 'text-red-600 dark:text-red-400'
-                              }`}>
-                                {rankDisplay.trendIcon}
-                              </span>
+                            <PriceChangeIndicator product={product} />
+                            {product.latestTrack?.priceKrw && (
+                              <button
+                                onClick={() => setPriceHistoryProduct({
+                                  id: product.id,
+                                  name: product.productName
+                                })}
+                                className="p-1 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 rounded"
+                                title="가격 변동 그래프 보기"
+                                data-testid={`button-price-history-${product.id}`}
+                              >
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                                </svg>
+                              </button>
                             )}
                           </div>
                         </td>
@@ -949,6 +1023,15 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         <StatisticsModal 
           productId={selectedProductId}
           onClose={() => setSelectedProductId(null)}
+        />
+      )}
+
+      {priceHistoryProduct && (
+        <PriceHistoryModal 
+          productId={priceHistoryProduct.id}
+          productName={priceHistoryProduct.name}
+          isOpen={!!priceHistoryProduct}
+          onClose={() => setPriceHistoryProduct(null)}
         />
       )}
     </>
