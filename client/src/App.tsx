@@ -103,7 +103,14 @@ function RouterWithRoutes() {
 
       {/* 루트: 로그인 상태에 따라 분기 */}
       <Route path="/">
-        {user ? <Dashboard /> : <Redirect to="/login" />}
+        {user ? (
+          <div>
+            <div style={{position: 'fixed', top: 0, left: 0, background: 'red', color: 'white', padding: '10px', zIndex: 9999}}>
+              DASHBOARD SHOULD RENDER - User: {user.username}
+            </div>
+            <Dashboard />
+          </div>
+        ) : <Redirect to="/login" />}
       </Route>
 
       {/* 없는 경로 */}
