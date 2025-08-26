@@ -2,8 +2,6 @@ import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -19,7 +17,6 @@ interface KeywordManagerModalProps {
 interface Keyword {
   id: number;
   keyword: string;
-  category: string;
 }
 
 interface AddKeywordModalProps {
@@ -32,7 +29,6 @@ interface AddKeywordModalProps {
 function AddKeywordModal({ open, onOpenChange, keyword, onSuccess }: AddKeywordModalProps) {
   const [formData, setFormData] = useState({
     keyword: keyword?.keyword || "",
-    category: keyword?.category || "",
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -46,14 +42,13 @@ function AddKeywordModal({ open, onOpenChange, keyword, onSuccess }: AddKeywordM
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/keywords"] });
-      queryClient.invalidateQueries({ queryKey: ["/keywords/categories"] });
       toast({
         title: keyword ? "키워드 수정 완료" : "키워드 추가 완료",
         description: `"${formData.keyword}" 키워드가 ${keyword ? "수정" : "추가"}되었습니다.`,
       });
       onSuccess();
       onOpenChange(false);
-      setFormData({ keyword: "", category: "" });
+      setFormData({ keyword: "" });
     },
     onError: (error: any) => {
       toast({
@@ -101,19 +96,6 @@ function AddKeywordModal({ open, onOpenChange, keyword, onSuccess }: AddKeywordM
             />
           </div>
 
-          <div className="space-y-2">
-            <label htmlFor="category" className="text-sm font-medium">
-              카테고리
-            </label>
-            <Input
-              id="category"
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              placeholder="키워드 분류 (예: 전자제품, 의류, 도서)"
-            />
-          </div>
-
-
           <div className="flex justify-end gap-2 pt-4">
             <Button
               type="button"
@@ -133,7 +115,6 @@ function AddKeywordModal({ open, onOpenChange, keyword, onSuccess }: AddKeywordM
 }
 
 export default function KeywordManagerModal({ open, onOpenChange }: KeywordManagerModalProps) {
-  const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editingKeyword, setEditingKeyword] = useState<Keyword | undefined>();
@@ -149,22 +130,12 @@ export default function KeywordManagerModal({ open, onOpenChange }: KeywordManag
     enabled: open,
   });
 
-  const { data: categories = [] } = useQuery({
-    queryKey: ["/keywords/categories"],
-    queryFn: async () => {
-      const response = await apiRequest("GET", "/keywords/categories");
-      return await response.json();
-    },
-    enabled: open,
-  });
-
   const deleteMutation = useMutation({
     mutationFn: async (keywordId: number) => {
       await apiRequest("DELETE", `/keywords/${keywordId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/keywords"] });
-      queryClient.invalidateQueries({ queryKey: ["/keywords/categories"] });
       toast({
         title: "키워드 삭제 완료",
         description: "키워드가 성공적으로 삭제되었습니다.",
@@ -181,18 +152,9 @@ export default function KeywordManagerModal({ open, onOpenChange }: KeywordManag
 
   // 필터링된 키워드
   const filteredKeywords = keywords.filter((keyword: Keyword) => {
-    const matchesCategory = selectedCategory === "all" || keyword.category === selectedCategory;
-    const matchesSearch = keyword.keyword.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         keyword.category.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+    const matchesSearch = keyword.keyword.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
   });
-
-  // 카테고리별 통계
-  const categoryStats = keywords.reduce((acc: Record<string, number>, keyword: Keyword) => {
-    const category = keyword.category || "미분류";
-    acc[category] = (acc[category] || 0) + 1;
-    return acc;
-  }, {});
 
   const handleEdit = (keyword: Keyword) => {
     setEditingKeyword(keyword);
@@ -219,7 +181,6 @@ export default function KeywordManagerModal({ open, onOpenChange }: KeywordManag
             <div className="flex justify-between items-center">
               <div className="flex gap-4 text-sm text-muted-foreground">
                 <span>전체 키워드: {keywords.length}개</span>
-                <span>카테고리: {categories.length}개</span>
               </div>
               <Button 
                 onClick={() => setAddModalOpen(true)}
@@ -230,7 +191,7 @@ export default function KeywordManagerModal({ open, onOpenChange }: KeywordManag
               </Button>
             </div>
 
-            {/* 필터 및 검색 */}
+            {/* 검색 */}
             <div className="flex gap-4">
               <div className="flex-1">
                 <Input
@@ -239,19 +200,6 @@ export default function KeywordManagerModal({ open, onOpenChange }: KeywordManag
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="카테고리 선택" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">전체 카테고리</SelectItem>
-                  {categories.map((category: string) => (
-                    <SelectItem key={category} value={category}>
-                      {category} ({categoryStats[category] || 0})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
 
             {/* 키워드 목록 */}
@@ -264,7 +212,7 @@ export default function KeywordManagerModal({ open, onOpenChange }: KeywordManag
                 <div className="text-center py-8">
                   <Tag className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                   <p className="text-muted-foreground mb-2">
-                    {searchQuery || selectedCategory !== "all" 
+                    {searchQuery 
                       ? "검색 결과가 없습니다" 
                       : "등록된 키워드가 없습니다"
                     }
@@ -283,17 +231,7 @@ export default function KeywordManagerModal({ open, onOpenChange }: KeywordManag
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
                               <h3 className="font-medium">{keyword.keyword}</h3>
-                              {keyword.category && (
-                                <Badge variant="secondary" className="text-xs">
-                                  {keyword.category}
-                                </Badge>
-                              )}
                             </div>
-                            {keyword.description && (
-                              <p className="text-sm text-muted-foreground">
-                                {keyword.description}
-                              </p>
-                            )}
                           </div>
                           <div className="flex gap-1 ml-4">
                             <Button

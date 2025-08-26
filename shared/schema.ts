@@ -28,8 +28,6 @@ export const keywords = pgTable("keywords", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
   userId: bigint("user_id", { mode: "number" }).notNull().references(() => users.id, { onDelete: "cascade" }),
   keyword: varchar("keyword", { length: 255 }).notNull(),
-  category: varchar("category", { length: 100 }), // 키워드 분류 (예: 자동차용품, 반려동물용품 등)
-  description: text("description"), // 키워드 설명
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
@@ -113,8 +111,6 @@ export const insertKeywordSchema = createInsertSchema(keywords).omit({
   createdAt: true,
 }).extend({
   keyword: z.string().min(1, "키워드를 입력하세요").max(255, "키워드는 최대 255자까지 가능합니다"),
-  category: z.string().max(100, "카테고리는 최대 100자까지 가능합니다").optional(),
-  description: z.string().max(500, "설명은 최대 500자까지 가능합니다").optional(),
 });
 
 export const insertProductSchema = createInsertSchema(products).omit({

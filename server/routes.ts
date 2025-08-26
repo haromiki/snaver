@@ -817,16 +817,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get keyword categories
-  app.get("/api/keywords/categories", authenticateToken, async (req, res) => {
-    try {
-      const categories = await storage.getKeywordCategories(req.userId!);
-      res.json(categories);
-    } catch (error) {
-      console.error("키워드 카테고리 조회 오류:", error);
-      res.status(500).json({ message: "키워드 카테고리를 불러오는데 실패했습니다" });
-    }
-  });
 
   const httpServer = createServer(app);
   

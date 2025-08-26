@@ -43,7 +43,6 @@ export interface IStorage {
   createKeyword(keywordData: InsertKeyword & { userId: number }): Promise<Keyword>;
   updateKeyword(keywordId: number, userId: number, updateData: Partial<InsertKeyword>): Promise<Keyword | null>;
   deleteKeyword(keywordId: number, userId: number): Promise<boolean>;
-  getKeywordCategories(userId: number): Promise<string[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -244,7 +243,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(keywords)
       .where(eq(keywords.userId, userId))
-      .orderBy(asc(keywords.category), asc(keywords.keyword));
+      .orderBy(asc(keywords.keyword));
   }
 
   async createKeyword(keywordData: InsertKeyword & { userId: number }): Promise<Keyword> {
@@ -284,19 +283,6 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getKeywordCategories(userId: number): Promise<string[]> {
-    const result = await db
-      .selectDistinct({ category: keywords.category })
-      .from(keywords)
-      .where(and(
-        eq(keywords.userId, userId),
-        // Only include non-null and non-empty categories
-        eq(keywords.category, keywords.category)
-      ))
-      .orderBy(asc(keywords.category));
-    
-    return result.map(r => r.category).filter((cat): cat is string => cat !== null && cat !== '');
-  }
 }
 
 export const storage = new DatabaseStorage();
