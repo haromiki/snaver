@@ -755,7 +755,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get user keywords
   app.get("/api/keywords", authenticateToken, async (req, res) => {
     try {
-      const keywords = await storage.getUserKeywords(req.user.id);
+      const keywords = await storage.getUserKeywords(req.userId!);
       res.json(keywords);
     } catch (error) {
       console.error("키워드 조회 오류:", error);
@@ -770,7 +770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const newKeyword = await storage.createKeyword({
         ...validatedData,
-        userId: req.user.id,
+        userId: req.userId!,
       });
       
       res.status(201).json(newKeyword);
@@ -786,7 +786,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const keywordId = parseInt(req.params.id);
       const validatedData = insertKeywordSchema.partial().parse(req.body);
       
-      const updatedKeyword = await storage.updateKeyword(keywordId, req.user.id, validatedData);
+      const updatedKeyword = await storage.updateKeyword(keywordId, req.userId!, validatedData);
       
       if (!updatedKeyword) {
         return res.status(404).json({ message: "키워드를 찾을 수 없습니다" });
@@ -804,7 +804,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const keywordId = parseInt(req.params.id);
       
-      const deleted = await storage.deleteKeyword(keywordId, req.user.id);
+      const deleted = await storage.deleteKeyword(keywordId, req.userId!);
       
       if (!deleted) {
         return res.status(404).json({ message: "키워드를 찾을 수 없습니다" });
@@ -820,7 +820,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get keyword categories
   app.get("/api/keywords/categories", authenticateToken, async (req, res) => {
     try {
-      const categories = await storage.getKeywordCategories(req.user.id);
+      const categories = await storage.getKeywordCategories(req.userId!);
       res.json(categories);
     } catch (error) {
       console.error("키워드 카테고리 조회 오류:", error);

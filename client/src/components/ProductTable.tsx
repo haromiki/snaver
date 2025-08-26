@@ -152,9 +152,9 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
 
   // 키워드-카테고리 매핑을 위한 키워드 데이터 조회
   const { data: keywords = [] } = useQuery({
-    queryKey: ["/api/keywords"],
+    queryKey: ["/keywords"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/keywords");
+      const response = await apiRequest("GET", "/keywords");
       return await response.json();
     },
   });

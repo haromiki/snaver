@@ -24,9 +24,9 @@ export default function KeywordDropdown({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const { data: keywords = [] } = useQuery({
-    queryKey: ["/api/keywords"],
+    queryKey: ["/keywords"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/keywords");
+      const response = await apiRequest("GET", "/keywords");
       return await response.json();
     },
   });

@@ -21,9 +21,9 @@ export default function Dashboard() {
 
   // 키워드 카테고리 조회
   const { data: keywordCategories = [] } = useQuery({
-    queryKey: ["/api/keywords/categories"],
+    queryKey: ["/keywords/categories"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/keywords/categories");
+      const response = await apiRequest("GET", "/keywords/categories");
       return await response.json();
     },
   });

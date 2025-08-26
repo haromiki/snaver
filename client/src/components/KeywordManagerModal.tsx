@@ -20,7 +20,6 @@ interface Keyword {
   id: number;
   keyword: string;
   category: string;
-  description?: string;
 }
 
 interface AddKeywordModalProps {
@@ -34,28 +33,27 @@ function AddKeywordModal({ open, onOpenChange, keyword, onSuccess }: AddKeywordM
   const [formData, setFormData] = useState({
     keyword: keyword?.keyword || "",
     category: keyword?.category || "",
-    description: keyword?.description || "",
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const url = keyword ? `/api/keywords/${keyword.id}` : "/api/keywords";
+      const url = keyword ? `/keywords/${keyword.id}` : "/keywords";
       const method = keyword ? "PATCH" : "POST";
       const response = await apiRequest(method, url, data);
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/keywords"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/keywords/categories"] });
+      queryClient.invalidateQueries({ queryKey: ["/keywords"] });
+      queryClient.invalidateQueries({ queryKey: ["/keywords/categories"] });
       toast({
         title: keyword ? "키워드 수정 완료" : "키워드 추가 완료",
         description: `"${formData.keyword}" 키워드가 ${keyword ? "수정" : "추가"}되었습니다.`,
       });
       onSuccess();
       onOpenChange(false);
-      setFormData({ keyword: "", category: "", description: "" });
+      setFormData({ keyword: "", category: "" });
     },
     onError: (error: any) => {
       toast({
@@ -115,18 +113,6 @@ function AddKeywordModal({ open, onOpenChange, keyword, onSuccess }: AddKeywordM
             />
           </div>
 
-          <div className="space-y-2">
-            <label htmlFor="description" className="text-sm font-medium">
-              설명
-            </label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="키워드에 대한 추가 설명 (선택사항)"
-              rows={3}
-            />
-          </div>
 
           <div className="flex justify-end gap-2 pt-4">
             <Button
@@ -155,18 +141,18 @@ export default function KeywordManagerModal({ open, onOpenChange }: KeywordManag
   const queryClient = useQueryClient();
 
   const { data: keywords = [], isLoading } = useQuery({
-    queryKey: ["/api/keywords"],
+    queryKey: ["/keywords"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/keywords");
+      const response = await apiRequest("GET", "/keywords");
       return await response.json();
     },
     enabled: open,
   });
 
   const { data: categories = [] } = useQuery({
-    queryKey: ["/api/keywords/categories"],
+    queryKey: ["/keywords/categories"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/keywords/categories");
+      const response = await apiRequest("GET", "/keywords/categories");
       return await response.json();
     },
     enabled: open,
@@ -174,11 +160,11 @@ export default function KeywordManagerModal({ open, onOpenChange }: KeywordManag
 
   const deleteMutation = useMutation({
     mutationFn: async (keywordId: number) => {
-      await apiRequest("DELETE", `/api/keywords/${keywordId}`);
+      await apiRequest("DELETE", `/keywords/${keywordId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/keywords"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/keywords/categories"] });
+      queryClient.invalidateQueries({ queryKey: ["/keywords"] });
+      queryClient.invalidateQueries({ queryKey: ["/keywords/categories"] });
       toast({
         title: "키워드 삭제 완료",
         description: "키워드가 성공적으로 삭제되었습니다.",
