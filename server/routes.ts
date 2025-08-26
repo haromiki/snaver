@@ -592,6 +592,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 제품별 3개월 가격 변동 데이터
+  app.get("/api/products/:id/price-history", authenticateToken, async (req, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+      
+      // 3개월 전 날짜 계산
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+      
+      const tracks = await storage.getProductTracksInRange(
+        productId, 
+        req.userId!, 
+        threeMonthsAgo.toISOString(), 
+        new Date().toISOString()
+      );
+      
+      // 가격 데이터만 필터링하고 날짜별로 그룹화
+      const priceData = tracks
+        .filter(track => track.priceKrw !== null)
+        .map(track => ({
+          date: track.checkedAt,
+          price: track.priceKrw
+        }))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      
+      res.json({ priceHistory: priceData });
+    } catch (error: any) {
+      console.error("가격 히스토리 조회 오류:", error);
+      res.status(400).json({ message: "가격 히스토리 조회에 실패했습니다" });
+    }
+  });
+
   // 1주일 순위 트렌드 데이터 API
   app.get("/api/products/:id/weekly-ranks", authenticateToken, async (req, res) => {
     try {
