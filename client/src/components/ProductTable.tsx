@@ -196,7 +196,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
       return await response.json();
     },
     staleTime: 1000 * 30, // 30초 캐시
-    refetchInterval: 5000, // 5초마다 체크하여 자동검색 완료 시 새로고침
+    refetchInterval: 5000, // 5초마다 폴링 (순위, 스토어명, 제품가격 실시간 업데이트)
   });
 
   // 키워드 매핑이 더 이상 필요하지 않음 (직접 키워드 필터링)
@@ -558,9 +558,8 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
       color = "text-error";
     }
 
-    // 이전 순위와 비교하여 변동량 계산
-    let change = "";
-    let changeColor = "text-gray-500 dark:text-gray-400";
+    // 이전 순위와 비교하여 상승/하락 아이콘 결정
+    let trendIcon = null;
     
     // 제품의 모든 트랙 데이터에서 이전 순위 찾기
     if (product.tracks && product.tracks.length >= 2) {
@@ -578,23 +577,18 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         const rankDiff = previousRank - currentRank; // 이전 순위 - 현재 순위
         
         if (rankDiff > 0) {
-          // 순위 상승 (숫자가 작아짐)
-          change = `${rankDiff}`;
-          changeColor = "text-blue-600 dark:text-blue-400";
+          // 순위 상승 (숫자가 작아짐) - 상승 아이콘
+          trendIcon = "▲"; // 상승 삼각형
         } else if (rankDiff < 0) {
-          // 순위 하락 (숫자가 커짐)
-          change = `${Math.abs(rankDiff)}`;
-          changeColor = "text-red-600 dark:text-red-400";
-        } else {
-          // 순위 변동 없음
-          change = "";
-          changeColor = "text-gray-500 dark:text-gray-400";
+          // 순위 하락 (숫자가 커짐) - 하락 아이콘
+          trendIcon = "▼"; // 하락 삼각형
         }
+        // 변동 없음이면 아이콘 없음
       }
     }
 
-    return { rank, page: <span className="relative top-1">{page}페이지</span>, change, color,changeColor 
-    };
+    return { rank, page: <span className="relative top-1">{page}페이지</span>, trendIcon, color };
+  };
   };
 
   const formatPrice = (priceKrw: number | null) => {
@@ -784,8 +778,19 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100" data-testid={`text-price-${product.id}`}>
-                            {formatPrice(product.latestTrack?.priceKrw)}
+                          <div className="flex items-center space-x-2">
+                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100" data-testid={`text-price-${product.id}`}>
+                              {formatPrice(product.latestTrack?.priceKrw)}
+                            </div>
+                            {rankDisplay.trendIcon && (
+                              <span className={`text-sm font-bold ${
+                                rankDisplay.trendIcon === '▲' 
+                                  ? 'text-blue-600 dark:text-blue-400' 
+                                  : 'text-red-600 dark:text-red-400'
+                              }`}>
+                                {rankDisplay.trendIcon}
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -839,7 +844,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                               title="수동 검색"
                               data-testid={`button-refresh-${product.id}`}
                             >
-                              <i className={`fas fa-sync text-sm ${refreshingProducts.has(product.id) ? 'animate-spin' : ''}`}></i>
+                              <i className={`fas fa-sync text-sm ${refreshingProducts.has(product.id) ? 'animate-spin text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}></i>
                             </button>
                             <button 
                               onClick={() => setSelectedProductId(product.id)}

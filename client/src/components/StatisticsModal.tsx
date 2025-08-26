@@ -85,7 +85,7 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
                 timestamp: trackDate.getTime() // 정렬용
               };
             })
-            .sort((a, b) => a.timestamp - b.timestamp); // 시간순 정렬
+            .sort((a: any, b: any) => a.timestamp - b.timestamp); // 시간순 정렬
 
           const datasets = [{
             label: `순위 변화 (${chartData.length}개 데이터)`,
@@ -242,7 +242,7 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2" data-testid="statistics-modal">
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-[95vw] max-w-[1200px] max-h-[95vh] overflow-hidden border border-gray-200 dark:border-gray-700 flex flex-col">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-[80vw] max-w-[850px] max-h-[95vh] overflow-hidden border border-gray-200 dark:border-gray-700 flex flex-col">
         <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div>
             <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">순위 통계</h3>
