@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
-import { Keyword } from "@shared/schema";
+// Remove shared schema import since it's not available
 
 interface KeywordDropdownProps {
   value: string;
@@ -32,19 +32,9 @@ export default function KeywordDropdown({
   });
 
   // 입력값과 매칭되는 키워드 필터링
-  const filteredKeywords = keywords.filter((keyword: Keyword) =>
+  const filteredKeywords = keywords.filter((keyword: any) =>
     keyword.keyword.toLowerCase().includes(inputValue.toLowerCase())
   );
-
-  // 카테고리별로 그룹화
-  const keywordsByCategory = filteredKeywords.reduce((acc: Record<string, Keyword[]>, keyword: Keyword) => {
-    const category = keyword.category || "미분류";
-    if (!acc[category]) {
-      acc[category] = [];
-    }
-    acc[category].push(keyword);
-    return acc;
-  }, {});
 
   useEffect(() => {
     setInputValue(value);
@@ -111,33 +101,19 @@ export default function KeywordDropdown({
           className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-64 overflow-y-auto z-50"
           data-testid="keyword-dropdown-options"
         >
-          {Object.entries(keywordsByCategory).map(([category, categoryKeywords]) => (
-            <div key={category}>
-              <div className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-                {category}
-              </div>
-              {categoryKeywords.map((keyword: Keyword) => (
-                <button
-                  key={keyword.id}
-                  onClick={() => handleKeywordSelect(keyword.keyword)}
-                  className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700"
-                  data-testid={`keyword-option-${keyword.id}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{keyword.keyword}</span>
-                    {keyword.description && (
-                      <span className="text-xs text-gray-500 dark:text-gray-400 truncate ml-2 max-w-32">
-                        {keyword.description}
-                      </span>
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
+          {filteredKeywords.map((keyword: any) => (
+            <button
+              key={keyword.id}
+              onClick={() => handleKeywordSelect(keyword.keyword)}
+              className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700"
+              data-testid={`keyword-option-${keyword.id}`}
+            >
+              <span className="font-medium">{keyword.keyword}</span>
+            </button>
           ))}
           
           {/* 입력값이 기존 키워드와 정확히 일치하지 않을 때 새 키워드로 추가 옵션 표시 */}
-          {inputValue && !keywords.some((k: Keyword) => k.keyword.toLowerCase() === inputValue.toLowerCase()) && (
+          {inputValue && !keywords.some((k: any) => k.keyword.toLowerCase() === inputValue.toLowerCase()) && (
             <div className="border-t border-gray-200 dark:border-gray-600">
               <button
                 onClick={() => handleKeywordSelect(inputValue)}
