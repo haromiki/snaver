@@ -3,9 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
 import StatisticsModal from "./StatisticsModal";
 import WeeklyTrendChart from "./WeeklyTrendChart";
-import PriceHistoryModal from "./PriceHistoryModal";
 import { useToast } from "@/hooks/use-toast";
-import { Eye } from "lucide-react";
 // 웹소켓 제거 - 폴링으로 대체
 
 // 업데이트 상태 표시 컴포넌트
@@ -55,60 +53,65 @@ function UpdateStatusText({ products }: { products: any[] }) {
   );
 }
 
-function PriceChangeIndicator({ productId }: { productId: number }) {
-  const { data: priceHistory } = useQuery({
-    queryKey: [`/products/${productId}/price-history`],
+function RankChangeIndicator({ productId }: { productId: number }) {
+  const { data: weeklyData } = useQuery({
+    queryKey: [`/products/${productId}/weekly-ranks`],
     queryFn: async () => {
-      const response = await apiRequest("GET", `/products/${productId}/price-history`);
+      const response = await apiRequest("GET", `/products/${productId}/weekly-ranks`);
       return await response.json();
     },
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
   });
 
-  if (!priceHistory?.priceHistory || priceHistory.priceHistory.length < 2) {
+  if (!weeklyData?.dailyRanks) {
     return <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>;
   }
 
-  // 가장 최근 2개 가격 가져오기
-  const prices = priceHistory.priceHistory;
-  const currentPrice = prices[prices.length - 1].price;
-  const previousPrice = prices[prices.length - 2].price;
+  // 순위가 있는 날짜들만 필터링
+  const ranksWithData = weeklyData.dailyRanks.filter((day: any) => day.hasData && day.rank);
   
-  const priceDiff = currentPrice - previousPrice;
+  if (ranksWithData.length < 2) {
+    return <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>;
+  }
 
-  if (priceDiff > 0) {
-    // 가격 상승
+  // 가장 최근 2개 순위 가져오기
+  const currentRank = ranksWithData[ranksWithData.length - 1].rank;
+  const previousRank = ranksWithData[ranksWithData.length - 2].rank;
+  
+  const rankDiff = previousRank - currentRank;
+
+  if (rankDiff > 0) {
+    // 상승
     return (
       <div className="flex items-center space-x-1">
-        <svg className="w-4 h-4 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
+        <svg className="w-7 h-7 text-blue-600 dark:text-blue-400 mt-3" fill="currentColor" viewBox="0 0 20 20">
           <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414 6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
         </svg>
-        <span className="text-sm font-bold text-red-600 dark:text-red-400">
-          +{new Intl.NumberFormat('ko-KR').format(priceDiff)}원
+        <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+          {rankDiff}
         </span>
       </div>
     );
-  } else if (priceDiff < 0) {
-    // 가격 하락
+  } else if (rankDiff < 0) {
+    // 하락
     return (
       <div className="flex items-center space-x-1">
-        <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+        <svg className="w-7 h-7 text-red-600 dark:text-red-400 mb-1" fill="currentColor" viewBox="0 0 20 20">
           <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" clipRule="evenodd" />
         </svg>
-        <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
-          {new Intl.NumberFormat('ko-KR').format(priceDiff)}원
+        <span className="text-lg font-bold text-red-600 dark:text-red-400">
+          {Math.abs(rankDiff)}
         </span>
       </div>
     );
   } else {
     // 변동없음
     return (
-      <div className="flex items-center space-x-1">
+      <div className="flex items-center justify-center">
         <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20">
           <path fillRule="evenodd" d="M4 10a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H4.75A.75.75 0 014 10z" clipRule="evenodd" />
         </svg>
-        <span className="text-sm text-gray-500 dark:text-gray-400">변동없음</span>
       </div>
     );
   }
@@ -167,8 +170,6 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
   const [bulkRefreshProgress, setBulkRefreshProgress] = useState(0);
   const [searchStatus, setSearchStatus] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState(new Date()); // 실시간 시간 업데이트용
-  const [priceModalOpen, setPriceModalOpen] = useState(false);
-  const [selectedPriceProduct, setSelectedPriceProduct] = useState<any>(null);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -715,7 +716,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">스토어명</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">제품 가격</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">현재 순위</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">가격 변동</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">순위 변동</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">1주일 그래프</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">마지막 확인</th>
                   </>
@@ -780,19 +781,14 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                             <div className="text-sm font-medium text-gray-900 dark:text-gray-100" data-testid={`text-price-${product.id}`}>
                               {formatPrice(product.latestTrack?.priceKrw)}
                             </div>
-                            <PriceChangeIndicator productId={product.id} />
-                            {product.latestTrack?.priceKrw && (
-                              <button
-                                onClick={() => {
-                                  setSelectedPriceProduct(product);
-                                  setPriceModalOpen(true);
-                                }}
-                                className="p-1 text-gray-400 hover:text-primary rounded"
-                                title="가격 변동 그래프 보기"
-                                data-testid={`button-price-history-${product.id}`}
-                              >
-                                <Eye className="w-4 h-4" />
-                              </button>
+                            {rankDisplay.trendIcon && (
+                              <span className={`text-sm font-bold ${
+                                rankDisplay.trendIcon === '▲' 
+                                  ? 'text-blue-600 dark:text-blue-400' 
+                                  : 'text-red-600 dark:text-red-400'
+                              }`}>
+                                {rankDisplay.trendIcon}
+                              </span>
                             )}
                           </div>
                         </td>
@@ -812,9 +808,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            순위변동 컬럼 제거됨
-                          </div>
+                          <RankChangeIndicator productId={product.id} />
                         </td>
                         <td className="px-6 py-4">
                           <WeeklyTrendChartWrapper productId={product.id} />
@@ -955,18 +949,6 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         <StatisticsModal 
           productId={selectedProductId}
           onClose={() => setSelectedProductId(null)}
-        />
-      )}
-      
-      {priceModalOpen && selectedPriceProduct && (
-        <PriceHistoryModal
-          productId={selectedPriceProduct.id}
-          productName={selectedPriceProduct.productName}
-          isOpen={priceModalOpen}
-          onClose={() => {
-            setPriceModalOpen(false);
-            setSelectedPriceProduct(null);
-          }}
         />
       )}
     </>
