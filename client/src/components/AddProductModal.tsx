@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import KeywordDropdown from "./KeywordDropdown";
+import KeywordManagerModal from "./KeywordManagerModal";
+import { Settings } from "lucide-react";
 
 interface AddProductModalProps {
   onClose: () => void;
@@ -21,6 +23,7 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
     type: product?.type || "organic",
     intervalMin: product?.intervalMin || 60,  // 기본값 1시간(60분)으로 수정
   });
+  const [keywordModalOpen, setKeywordModalOpen] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -96,7 +99,20 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
           </div>
 
           <div>
-            <Label htmlFor="keyword" className="text-gray-700 dark:text-gray-300">검색 키워드</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="keyword" className="text-gray-700 dark:text-gray-300">검색 키워드</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setKeywordModalOpen(true)}
+                className="text-xs text-primary hover:text-primary-dark"
+                data-testid="button-manage-keywords"
+              >
+                <Settings className="h-3 w-3 mr-1" />
+                키워드 관리
+              </Button>
+            </div>
             <div className="mt-1">
               <KeywordDropdown
                 value={formData.keyword}
@@ -158,6 +174,11 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
           </div>
         </form>
       </div>
+      
+      <KeywordManagerModal
+        open={keywordModalOpen}
+        onOpenChange={setKeywordModalOpen}
+      />
     </div>
   );
 }

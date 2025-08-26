@@ -29,6 +29,8 @@ export default function KeywordDropdown({
       const response = await apiRequest("GET", "/keywords");
       return await response.json();
     },
+    staleTime: 0, // 즉시 새로고침 가능
+    refetchOnWindowFocus: true, // 창 포커스 시 새로고침
   });
 
   // 입력값과 매칭되는 키워드 필터링
