@@ -815,6 +815,15 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                                 </span>
                               )}
                             </span>
+                            {rankDisplay.trendIcon && (
+                              <span className={`text-lg font-bold ${
+                                rankDisplay.trendIcon === '▲' 
+                                  ? 'text-blue-600 dark:text-blue-400' 
+                                  : 'text-red-600 dark:text-red-400'
+                              }`}>
+                                {rankDisplay.trendIcon}
+                              </span>
+                            )}
                             <div className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
                               <div>{rankDisplay.page}</div>
                             </div>
