@@ -84,11 +84,15 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUser(userId: number): Promise<void> {
     // 사용자의 모든 제품의 트랙 데이터 삭제
-    await db.delete(tracks).where(
-      tracks.productId.in(
-        db.select({ id: products.id }).from(products).where(eq(products.userId, userId))
-      )
-    );
+    const userProductIds = await db.select({ id: products.id }).from(products).where(eq(products.userId, userId));
+    const productIds = userProductIds.map(p => p.id);
+    if (productIds.length > 0) {
+      await db.delete(tracks).where(
+        productIds.length === 1 
+          ? eq(tracks.productId, productIds[0])
+          : or(...productIds.map(id => eq(tracks.productId, id)))
+      );
+    }
     
     // 사용자의 모든 제품 삭제
     await db.delete(products).where(eq(products.userId, userId));

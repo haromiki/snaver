@@ -1,8 +1,8 @@
 import cron from "node-cron";
-import { storage } from "../storage.js";
+import { storage } from "../storage.ts";
 import { crawlProduct } from "../crawler/shoppingCrawler.js";
 import { fetchOrganicRank } from "../crawler/naverOrganic.ts";
-import { broadcastToClients } from "../websocket.js";
+import { broadcastToClients } from "../websocket.ts";
 
 let isRunning = false;
 let searchQueue = []; // 순차 검색 큐

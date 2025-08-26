@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/api";
 // 웹소켓 제거 - 검색 완료 시에만 폴링으로 새로고침
 
 export default function Dashboard() {
+  console.log('[DEBUG] Dashboard component is rendering!');
   const [activeSection, setActiveSection] = useState("organic-tracking");
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
@@ -29,7 +30,7 @@ export default function Dashboard() {
   // 검색 상태는 웹소켓을 통해 실시간 업데이트됨 (폴링 제거)
 
   return (
-    <div className="flex h-screen bg-white dark:bg-gray-900" style={{ width: '1920px', maxWidth: '1920px' }}>
+    <div className="flex h-screen bg-white dark:bg-gray-900 w-full">
       <Sidebar 
         activeSection={activeSection} 
         onSectionChange={setActiveSection}
