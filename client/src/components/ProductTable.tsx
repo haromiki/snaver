@@ -589,7 +589,6 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
 
     return { rank, page: <span className="relative top-1">{page}페이지</span>, trendIcon, color };
   };
-  };
 
   const formatPrice = (priceKrw: number | null) => {
     if (!priceKrw) return "-";
