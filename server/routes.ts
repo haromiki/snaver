@@ -597,23 +597,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const productId = parseInt(req.params.id);
       
-      // 3개월 전 날짜 계산
-      const threeMonthsAgo = new Date();
-      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+      // 1년 전 날짜 계산
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
       
       const tracks = await storage.getProductTracksInRange(
         productId, 
         req.userId!, 
-        threeMonthsAgo.toISOString(), 
+        oneYearAgo.toISOString(), 
         new Date().toISOString()
       );
       
-      // 가격 데이터만 필터링하고 날짜별로 그룹화
-      const priceData = tracks
+      // 가격 데이터를 주 단위로 그룹화
+      const priceDataByWeek = new Map<string, number[]>();
+      
+      tracks
         .filter(track => track.priceKrw !== null)
-        .map(track => ({
-          date: track.checkedAt,
-          price: track.priceKrw
+        .forEach(track => {
+          const date = new Date(track.checkedAt!);
+          // 한국 시간 기준 주의 시작일(월요일) 계산
+          const kstDate = new Date(date.getTime() + (9 * 60 * 60 * 1000));
+          const dayOfWeek = kstDate.getDay(); // 0=일요일, 1=월요일
+          const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+          const weekStart = new Date(kstDate);
+          weekStart.setDate(kstDate.getDate() - daysFromMonday);
+          weekStart.setHours(0, 0, 0, 0);
+          
+          const weekKey = weekStart.toISOString().split('T')[0]; // YYYY-MM-DD 형식
+          
+          if (!priceDataByWeek.has(weekKey)) {
+            priceDataByWeek.set(weekKey, []);
+          }
+          priceDataByWeek.get(weekKey)!.push(track.priceKrw!);
+        });
+      
+      // 주별 평균 가격 계산
+      const priceData = Array.from(priceDataByWeek.entries())
+        .map(([weekStart, prices]) => ({
+          date: weekStart,
+          price: Math.round(prices.reduce((sum, price) => sum + price, 0) / prices.length)
         }))
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       

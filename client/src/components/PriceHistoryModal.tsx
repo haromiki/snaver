@@ -22,27 +22,30 @@ export default function PriceHistoryModal({ productId, productName, isOpen, onCl
     refetchOnWindowFocus: false,
   });
 
-  // 차트 데이터 변환
-  const chartData = priceHistory?.priceHistory?.map((item: { date: string; price: number }) => ({
-    date: new Date(item.date).toLocaleDateString('ko-KR', { 
-      month: 'short', 
-      day: 'numeric' 
-    }),
-    fullDate: new Date(item.date).toLocaleDateString('ko-KR'),
-    price: item.price,
-    formattedPrice: new Intl.NumberFormat('ko-KR', {
-      style: 'currency',
-      currency: 'KRW',
-      minimumFractionDigits: 0,
-    }).format(item.price)
-  })) || [];
+  // 차트 데이터 변환 - 주별 표시
+  const chartData = priceHistory?.priceHistory?.map((item: { date: string; price: number }) => {
+    const weekStart = new Date(item.date);
+    return {
+      date: weekStart.toLocaleDateString('ko-KR', { 
+        month: 'short', 
+        day: 'numeric' 
+      }) + '주',
+      fullDate: weekStart.toLocaleDateString('ko-KR') + ' 주간',
+      price: item.price,
+      formattedPrice: new Intl.NumberFormat('ko-KR', {
+        style: 'currency',
+        currency: 'KRW',
+        minimumFractionDigits: 0,
+      }).format(item.price)
+    };
+  }) || [];
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto" data-testid="dialog-price-history">
         <DialogHeader>
           <DialogTitle data-testid="text-modal-title">
-            {productName} - 3개월 가격 변동
+            {productName} - 1년 가격 변동 (주별)
           </DialogTitle>
         </DialogHeader>
         
