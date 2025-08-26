@@ -12,8 +12,8 @@ function UpdateStatusText({ products }: { products: any[] }) {
   
   // 최근 업데이트된 제품 찾기 (24시간 내)
   const recentlyUpdated = products.filter(product => {
-    if (!product.latestTrack?.createdAt) return false;
-    const updatedAt = new Date(product.latestTrack.createdAt);
+    if (!product.latestTrack?.checkedAt) return false;
+    const updatedAt = new Date(product.latestTrack.checkedAt);
     const hoursDiff = (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60);
     return hoursDiff <= 24;
   });
@@ -28,12 +28,12 @@ function UpdateStatusText({ products }: { products: any[] }) {
 
   // 가장 최근 업데이트 시간 찾기
   const mostRecentUpdate = recentlyUpdated.reduce((latest, product) => {
-    const currentTime = new Date(product.latestTrack.createdAt);
-    const latestTime = new Date(latest.latestTrack.createdAt);
+    const currentTime = new Date(product.latestTrack.checkedAt);
+    const latestTime = new Date(latest.latestTrack.checkedAt);
     return currentTime > latestTime ? product : latest;
   });
 
-  const lastUpdateTime = new Date(mostRecentUpdate.latestTrack.createdAt);
+  const lastUpdateTime = new Date(mostRecentUpdate.latestTrack.checkedAt);
   const minutesAgo = Math.floor((now.getTime() - lastUpdateTime.getTime()) / (1000 * 60));
   
   let timeText;
