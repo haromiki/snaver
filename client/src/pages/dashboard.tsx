@@ -4,7 +4,7 @@ import Sidebar from "@/components/Sidebar";
 import ProductTable from "@/components/ProductTable";
 import AddProductModal from "@/components/AddProductModal";
 import { apiRequest } from "@/lib/api";
-import { useWebSocket } from "@/hooks/useWebSocket";
+// 웹소켓 제거 - 검색 완료 시에만 폴링으로 새로고침
 
 export default function Dashboard() {
   const [activeSection, setActiveSection] = useState("organic-tracking");
@@ -15,9 +15,7 @@ export default function Dashboard() {
   const [keywordFilter, setKeywordFilter] = useState("all");
   const [searchStatus, setSearchStatus] = useState<any>(null);
 
-  // 웹소켓 실시간 연결 및 업데이트
-  const { isConnected } = useWebSocket();
-  console.log('🔗 웹소켓 연결 상태:', isConnected);
+  // 웹소켓 제거 - 안정성을 위해 폴링으로 대체
 
   // 키워드 목록 조회
   const { data: keywords = [] } = useQuery({

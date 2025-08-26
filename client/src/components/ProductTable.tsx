@@ -4,7 +4,54 @@ import { apiRequest } from "@/lib/api";
 import StatisticsModal from "./StatisticsModal";
 import WeeklyTrendChart from "./WeeklyTrendChart";
 import { useToast } from "@/hooks/use-toast";
-import { useWebSocket } from "@/hooks/useWebSocket";
+// 웹소켓 제거 - 폴링으로 대체
+
+// 업데이트 상태 표시 컴포넌트
+function UpdateStatusText({ products }: { products: any[] }) {
+  const now = new Date();
+  
+  // 최근 업데이트된 제품 찾기 (24시간 내)
+  const recentlyUpdated = products.filter(product => {
+    if (!product.latestTrack?.createdAt) return false;
+    const updatedAt = new Date(product.latestTrack.createdAt);
+    const hoursDiff = (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60);
+    return hoursDiff <= 24;
+  });
+
+  if (recentlyUpdated.length === 0) {
+    return (
+      <span className="text-sm text-gray-500 dark:text-gray-400" data-testid="text-update-status">
+        | 최근 업데이트: 없음
+      </span>
+    );
+  }
+
+  // 가장 최근 업데이트 시간 찾기
+  const mostRecentUpdate = recentlyUpdated.reduce((latest, product) => {
+    const currentTime = new Date(product.latestTrack.createdAt);
+    const latestTime = new Date(latest.latestTrack.createdAt);
+    return currentTime > latestTime ? product : latest;
+  });
+
+  const lastUpdateTime = new Date(mostRecentUpdate.latestTrack.createdAt);
+  const minutesAgo = Math.floor((now.getTime() - lastUpdateTime.getTime()) / (1000 * 60));
+  
+  let timeText;
+  if (minutesAgo < 1) {
+    timeText = "방금 전";
+  } else if (minutesAgo < 60) {
+    timeText = `${minutesAgo}분 전`;
+  } else {
+    const hoursAgo = Math.floor(minutesAgo / 60);
+    timeText = `${hoursAgo}시간 전`;
+  }
+
+  return (
+    <span className="text-sm text-gray-500 dark:text-gray-400" data-testid="text-update-status">
+      | 최근 업데이트: {products.length}개 중 {recentlyUpdated.length}개 {timeText} 업데이트
+    </span>
+  );
+}
 
 function RankChangeIndicator({ productId }: { productId: number }) {
   const { data: weeklyData } = useQuery({
@@ -128,7 +175,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
   const queryClient = useQueryClient();
   
   // 웹소켓 연결 (폴링 대체)
-  const { isConnected } = useWebSocket();
+  // 웹소켓 제거됨 - 폴링으로 대체
 
   // Determine filters based on section
   const getFilters = () => {
@@ -148,6 +195,8 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
       const response = await apiRequest("GET", `/products?${params}`);
       return await response.json();
     },
+    staleTime: 1000 * 30, // 30초 캐시
+    refetchInterval: 5000, // 5초마다 체크하여 자동검색 완료 시 새로고침
   });
 
   // 키워드 매핑이 더 이상 필요하지 않음 (직접 키워드 필터링)
@@ -626,9 +675,12 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               {section.includes("tracking") ? "추적 중인 제품" : "관리 제품"}
             </h3>
-            <span className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-400 dark:text-gray-500" data-testid="text-product-count">
+            <span className="text-sm text-gray-500 dark:text-gray-400" data-testid="text-product-count">
               {products.length}개 제품
             </span>
+            {section.includes("tracking") && (
+              <UpdateStatusText products={products} />
+            )}
           </div>
           <div className="flex items-center space-x-3">
             {/* <button className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-100 px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">
