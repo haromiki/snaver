@@ -115,7 +115,6 @@ function AddKeywordModal({ open, onOpenChange, keyword, onSuccess }: AddKeywordM
 }
 
 export default function KeywordManagerModal({ open, onOpenChange }: KeywordManagerModalProps) {
-  const [searchQuery, setSearchQuery] = useState("");
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editingKeyword, setEditingKeyword] = useState<Keyword | undefined>();
   const { toast } = useToast();
@@ -150,11 +149,8 @@ export default function KeywordManagerModal({ open, onOpenChange }: KeywordManag
     },
   });
 
-  // 필터링된 키워드
-  const filteredKeywords = keywords.filter((keyword: Keyword) => {
-    const matchesSearch = keyword.keyword.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
-  });
+  // 모든 키워드 표시
+  const filteredKeywords = keywords;
 
   const handleEdit = (keyword: Keyword) => {
     setEditingKeyword(keyword);
@@ -191,16 +187,6 @@ export default function KeywordManagerModal({ open, onOpenChange }: KeywordManag
               </Button>
             </div>
 
-            {/* 검색 */}
-            <div className="flex gap-4">
-              <div className="flex-1 ml-1 mr-1">
-                <Input
-                  placeholder="키워드 검색..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-            </div>
 
             {/* 키워드 목록 */}
             <div className="flex-1 overflow-auto">
@@ -212,10 +198,7 @@ export default function KeywordManagerModal({ open, onOpenChange }: KeywordManag
                 <div className="text-center py-8">
                   <Tag className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                   <p className="text-muted-foreground mb-2">
-                    {searchQuery 
-                      ? "검색 결과가 없습니다" 
-                      : "등록된 키워드가 없습니다"
-                    }
+                    등록된 키워드가 없습니다
                   </p>
                   <Button onClick={() => setAddModalOpen(true)} variant="outline">
                     <Plus className="h-4 w-4 mr-2" />
