@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import KeywordDropdown from "./KeywordDropdown";
 
 interface AddProductModalProps {
   onClose: () => void;
@@ -96,16 +97,14 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
 
           <div>
             <Label htmlFor="keyword" className="text-gray-700 dark:text-gray-300">검색 키워드</Label>
-            <Input
-              id="keyword"
-              type="text"
-              placeholder="추적할 키워드를 입력하세요"
-              value={formData.keyword}
-              onChange={(e) => setFormData({ ...formData, keyword: e.target.value })}
-              required
-              data-testid="input-keyword"
-              className="mt-1 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
-            />
+            <div className="mt-1">
+              <KeywordDropdown
+                value={formData.keyword}
+                onChange={(value) => setFormData({ ...formData, keyword: value })}
+                placeholder="등록된 키워드 선택 또는 새 키워드 입력"
+                data-testid="input-keyword"
+              />
+            </div>
           </div>
 
           <div>

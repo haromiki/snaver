@@ -110,11 +110,12 @@ interface ProductTableProps {
   section: string;
   searchQuery?: string;
   statusFilter?: string;
+  keywordFilter?: string;
   onAddProduct: () => void;
   onEditProduct?: (product: any) => void;
 }
 
-export default function ProductTable({ section, searchQuery = "", statusFilter = "all", onAddProduct, onEditProduct }: ProductTableProps) {
+export default function ProductTable({ section, searchQuery = "", statusFilter = "all", keywordFilter = "all", onAddProduct, onEditProduct }: ProductTableProps) {
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [sortableList, setSortableList] = useState<any>(null);
   const [refreshingProducts, setRefreshingProducts] = useState<Set<number>>(new Set()); // 간단한 Set으로 변경
@@ -149,6 +150,21 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     },
   });
 
+  // 키워드-카테고리 매핑을 위한 키워드 데이터 조회
+  const { data: keywords = [] } = useQuery({
+    queryKey: ["/api/keywords"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/keywords");
+      return await response.json();
+    },
+  });
+
+  // 키워드별 카테고리 매핑 생성
+  const keywordCategoryMap = keywords.reduce((acc: Record<string, string>, keyword: any) => {
+    acc[keyword.keyword] = keyword.category || "";
+    return acc;
+  }, {});
+
   // 검색 및 상태 필터링
   const products = allProducts.filter((product: any) => {
     // 광고 타입 제품 완전히 제외
@@ -173,6 +189,12 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     if (statusFilter !== "all") {
       if (statusFilter === "active" && !product.active) return false;
       if (statusFilter === "inactive" && product.active) return false;
+    }
+
+    // 키워드 카테고리 필터링
+    if (keywordFilter !== "all") {
+      const productKeywordCategory = keywordCategoryMap[product.keyword] || "";
+      if (productKeywordCategory !== keywordFilter) return false;
     }
 
     return true;

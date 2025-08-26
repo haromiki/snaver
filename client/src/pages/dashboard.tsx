@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Sidebar from "@/components/Sidebar";
 import ProductTable from "@/components/ProductTable";
 import AddProductModal from "@/components/AddProductModal";
@@ -11,11 +12,21 @@ export default function Dashboard() {
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [keywordFilter, setKeywordFilter] = useState("all");
   const [searchStatus, setSearchStatus] = useState<any>(null);
 
   // 웹소켓 실시간 연결 및 업데이트
   const { isConnected } = useWebSocket();
   console.log('🔗 웹소켓 연결 상태:', isConnected);
+
+  // 키워드 카테고리 조회
+  const { data: keywordCategories = [] } = useQuery({
+    queryKey: ["/api/keywords/categories"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/keywords/categories");
+      return await response.json();
+    },
+  });
 
   // 검색 상태는 웹소켓을 통해 실시간 업데이트됨 (폴링 제거)
 
@@ -49,6 +60,23 @@ export default function Dashboard() {
             
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <select 
+                    className="appearance-none bg-white dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-md px-4 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    value={keywordFilter}
+                    onChange={(e) => setKeywordFilter(e.target.value)}
+                    data-testid="filter-keyword"
+                  >
+                    <option value="all">전체 키워드</option>
+                    {keywordCategories.map((category: string) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs"></i>
+                </div>
+
                 <div className="relative">
                   <select 
                     className="appearance-none bg-white dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-md px-4 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -94,6 +122,7 @@ export default function Dashboard() {
             section={activeSection}
             searchQuery={searchQuery}
             statusFilter={statusFilter}
+            keywordFilter={keywordFilter}
             onAddProduct={() => setShowAddModal(true)}
             onEditProduct={(product) => setEditingProduct(product)}
           />

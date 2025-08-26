@@ -23,6 +23,16 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
+// Keywords table - 자주 사용하는 키워드 관리
+export const keywords = pgTable("keywords", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  userId: bigint("user_id", { mode: "number" }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  keyword: varchar("keyword", { length: 255 }).notNull(),
+  category: varchar("category", { length: 100 }), // 키워드 분류 (예: 자동차용품, 반려동물용품 등)
+  description: text("description"), // 키워드 설명
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
 // Product type enum
 export const productTypeEnum = pgEnum("product_type", ["ad", "organic"]);
 
@@ -61,6 +71,14 @@ export const tracks = pgTable("tracks", {
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   products: many(products),
+  keywords: many(keywords),
+}));
+
+export const keywordsRelations = relations(keywords, ({ one }) => ({
+  user: one(users, {
+    fields: [keywords.userId],
+    references: [users.id],
+  }),
 }));
 
 export const productsRelations = relations(products, ({ one, many }) => ({
@@ -87,6 +105,16 @@ export const insertUserSchema = createInsertSchema(users).omit({
   password: z.string().min(6, "비밀번호는 최소 6자 이상이어야 합니다"),
   username: z.string().min(3, "사용자명은 최소 3자 이상이어야 합니다").max(50, "사용자명은 최대 50자까지 가능합니다"),
   email: z.string().email("올바른 이메일 주소를 입력하세요").optional(), // 이메일은 이제 옵셔널
+});
+
+export const insertKeywordSchema = createInsertSchema(keywords).omit({
+  id: true,
+  userId: true,
+  createdAt: true,
+}).extend({
+  keyword: z.string().min(1, "키워드를 입력하세요").max(255, "키워드는 최대 255자까지 가능합니다"),
+  category: z.string().max(100, "카테고리는 최대 100자까지 가능합니다").optional(),
+  description: z.string().max(500, "설명은 최대 500자까지 가능합니다").optional(),
 });
 
 export const insertProductSchema = createInsertSchema(products).omit({
@@ -124,6 +152,8 @@ export const rankResultSchema = z.object({
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type Keyword = typeof keywords.$inferSelect;
+export type InsertKeyword = z.infer<typeof insertKeywordSchema>;
 export type Product = typeof products.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Track = typeof tracks.$inferSelect;

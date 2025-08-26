@@ -28,6 +28,7 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
       items: [
         // { id: "ad-management", label: "광고 제품 관리", icon: "fas fa-ad" },
         { id: "organic-management", label: "일반 제품 관리", icon: "fas fa-cogs" },
+        { id: "keywords", label: "키워드 관리", icon: "fas fa-tags" },
       ]
     }
   ];
@@ -55,19 +56,31 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
               {category.category}
             </h3>
             {category.items.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => onSectionChange(item.id)}
-                className={`w-full text-left group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                  activeSection === item.id
-                    ? "bg-primary text-white"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                }`}
-                data-testid={`nav-${item.id}`}
-              >
-                <i className={`${item.icon} mr-3 text-sm`}></i>
-                {item.label}
-              </button>
+              item.id === "keywords" ? (
+                <a
+                  key={item.id}
+                  href="/keywords"
+                  className="w-full text-left group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  data-testid={`nav-${item.id}`}
+                >
+                  <i className={`${item.icon} mr-3 text-sm`}></i>
+                  {item.label}
+                </a>
+              ) : (
+                <button
+                  key={item.id}
+                  onClick={() => onSectionChange(item.id)}
+                  className={`w-full text-left group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    activeSection === item.id
+                      ? "bg-primary text-white"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  }`}
+                  data-testid={`nav-${item.id}`}
+                >
+                  <i className={`${item.icon} mr-3 text-sm`}></i>
+                  {item.label}
+                </button>
+              )
             ))}
           </div>
         ))}

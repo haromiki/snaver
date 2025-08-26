@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import NotFound from "@/pages/not-found";
+import KeywordManager from "@/pages/KeywordManager";
 import { useEffect } from "react";
 
 // 👇️ DO NOT MODIFY BELOW: Server-specific routing fix (snaver base)
@@ -96,6 +97,11 @@ function RouterWithRoutes() {
       {/* /dashboard: 로그인 했을 때만 접근 가능 */}
       <Route path="/dashboard">
         {user ? <Dashboard /> : <Redirect to="/login" />}
+      </Route>
+
+      {/* /keywords: 키워드 관리 페이지 */}
+      <Route path="/keywords">
+        {user ? <KeywordManager /> : <Redirect to="/login" />}
       </Route>
 
       {/* 루트: 로그인 상태에 따라 분기 */}

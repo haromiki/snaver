@@ -2,11 +2,14 @@ import {
   users, 
   products, 
   tracks,
+  keywords,
   type User, 
   type InsertUser,
   type Product,
   type InsertProduct,
-  type Track
+  type Track,
+  type Keyword,
+  type InsertKeyword
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, gte, lte, or } from "drizzle-orm";
@@ -34,6 +37,13 @@ export interface IStorage {
   createTrack(track: Omit<Track, 'id' | 'checkedAt'>): Promise<Track>;
   getLatestTrack(productId: number): Promise<Track | undefined>;
   getProductTracksInRange(productId: number, userId: number, fromDate: string, toDate: string): Promise<Track[]>;
+
+  // Keywords operations
+  getUserKeywords(userId: number): Promise<Keyword[]>;
+  createKeyword(keywordData: InsertKeyword & { userId: number }): Promise<Keyword>;
+  updateKeyword(keywordId: number, userId: number, updateData: Partial<InsertKeyword>): Promise<Keyword | null>;
+  deleteKeyword(keywordId: number, userId: number): Promise<boolean>;
+  getKeywordCategories(userId: number): Promise<string[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -226,6 +236,66 @@ export class DatabaseStorage implements IStorage {
     .orderBy(asc(tracks.checkedAt));
     
     return result;
+  }
+
+  // Keywords methods
+  async getUserKeywords(userId: number): Promise<Keyword[]> {
+    return await db
+      .select()
+      .from(keywords)
+      .where(eq(keywords.userId, userId))
+      .orderBy(asc(keywords.category), asc(keywords.keyword));
+  }
+
+  async createKeyword(keywordData: InsertKeyword & { userId: number }): Promise<Keyword> {
+    const [result] = await db
+      .insert(keywords)
+      .values(keywordData)
+      .returning();
+    
+    return result;
+  }
+
+  async updateKeyword(keywordId: number, userId: number, updateData: Partial<InsertKeyword>): Promise<Keyword | null> {
+    const [result] = await db
+      .update(keywords)
+      .set(updateData)
+      .where(and(
+        eq(keywords.id, keywordId),
+        eq(keywords.userId, userId)
+      ))
+      .returning();
+    
+    return result || null;
+  }
+
+  async deleteKeyword(keywordId: number, userId: number): Promise<boolean> {
+    try {
+      await db
+        .delete(keywords)
+        .where(and(
+          eq(keywords.id, keywordId),
+          eq(keywords.userId, userId)
+        ));
+      
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async getKeywordCategories(userId: number): Promise<string[]> {
+    const result = await db
+      .selectDistinct({ category: keywords.category })
+      .from(keywords)
+      .where(and(
+        eq(keywords.userId, userId),
+        // Only include non-null and non-empty categories
+        eq(keywords.category, keywords.category)
+      ))
+      .orderBy(asc(keywords.category));
+    
+    return result.map(r => r.category).filter((cat): cat is string => cat !== null && cat !== '');
   }
 }
 

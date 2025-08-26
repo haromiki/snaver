@@ -2,7 +2,7 @@
 import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertProductSchema, loginSchema, rankQuerySchema, type RankQuery, type RankResult } from "@shared/schema";
+import { insertUserSchema, insertProductSchema, insertKeywordSchema, loginSchema, rankQuerySchema, type RankQuery, type RankResult } from "@shared/schema";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { authenticateToken } from "./middleware/auth.ts";
@@ -748,6 +748,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("회원탈퇴 오류:", error);
       res.status(500).json({ message: "계정 삭제에 실패했습니다" });
+    }
+  });
+
+  // Keywords API endpoints
+  // Get user keywords
+  app.get("/api/keywords", authenticateToken, async (req, res) => {
+    try {
+      const keywords = await storage.getUserKeywords(req.user.id);
+      res.json(keywords);
+    } catch (error) {
+      console.error("키워드 조회 오류:", error);
+      res.status(500).json({ message: "키워드를 불러오는데 실패했습니다" });
+    }
+  });
+
+  // Create new keyword
+  app.post("/api/keywords", authenticateToken, async (req, res) => {
+    try {
+      const validatedData = insertKeywordSchema.parse(req.body);
+      
+      const newKeyword = await storage.createKeyword({
+        ...validatedData,
+        userId: req.user.id,
+      });
+      
+      res.status(201).json(newKeyword);
+    } catch (error) {
+      console.error("키워드 생성 오류:", error);
+      res.status(400).json({ message: "키워드 생성에 실패했습니다" });
+    }
+  });
+
+  // Update keyword
+  app.patch("/api/keywords/:id", authenticateToken, async (req, res) => {
+    try {
+      const keywordId = parseInt(req.params.id);
+      const validatedData = insertKeywordSchema.partial().parse(req.body);
+      
+      const updatedKeyword = await storage.updateKeyword(keywordId, req.user.id, validatedData);
+      
+      if (!updatedKeyword) {
+        return res.status(404).json({ message: "키워드를 찾을 수 없습니다" });
+      }
+      
+      res.json(updatedKeyword);
+    } catch (error) {
+      console.error("키워드 수정 오류:", error);
+      res.status(400).json({ message: "키워드 수정에 실패했습니다" });
+    }
+  });
+
+  // Delete keyword
+  app.delete("/api/keywords/:id", authenticateToken, async (req, res) => {
+    try {
+      const keywordId = parseInt(req.params.id);
+      
+      const deleted = await storage.deleteKeyword(keywordId, req.user.id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "키워드를 찾을 수 없습니다" });
+      }
+      
+      res.json({ message: "키워드가 삭제되었습니다" });
+    } catch (error) {
+      console.error("키워드 삭제 오류:", error);
+      res.status(500).json({ message: "키워드 삭제에 실패했습니다" });
+    }
+  });
+
+  // Get keyword categories
+  app.get("/api/keywords/categories", authenticateToken, async (req, res) => {
+    try {
+      const categories = await storage.getKeywordCategories(req.user.id);
+      res.json(categories);
+    } catch (error) {
+      console.error("키워드 카테고리 조회 오류:", error);
+      res.status(500).json({ message: "키워드 카테고리를 불러오는데 실패했습니다" });
     }
   });
 
