@@ -112,8 +112,8 @@ function RankChangeIndicator({ productId }: { productId: number }) {
       </div>
     );
   } else {
-    // 변화 없음 - 아무것도 표시하지 않음 (이전 상태 유지)
-    return <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>;
+    // 변화 없음 - 아무것도 표시하지 않음
+    return <div className="w-7 h-7"></div>;
   }
 }
 
