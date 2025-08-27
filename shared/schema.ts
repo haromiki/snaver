@@ -166,7 +166,7 @@ export const insertProductSchema = createInsertSchema(products).omit({
   createdAt: true,
 }).extend({
   productName: z.string().min(1, "제품명을 입력하세요").max(200, "제품명은 최대 200자까지 가능합니다"),
-  intervalMin: z.number().refine(val => [60, 360, 720, 1440].includes(val), "추적 주기는 1, 6, 12, 24시간 중 선택해야 합니다"),
+  intervalMin: z.number().default(60), // 1시간 고정
 });
 
 export const loginSchema = z.object({

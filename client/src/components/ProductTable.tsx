@@ -751,6 +751,15 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div className="flex items-center space-x-4">
+            {section.includes("tracking") && (
+              <div className="flex items-center space-x-2">
+                <div className="relative">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <div className="absolute top-0 left-0 w-2 h-2 bg-green-400 rounded-full animate-ping opacity-75"></div>
+                </div>
+                <span className="text-sm text-green-600 dark:text-green-400 font-medium">자동 추적중</span>
+              </div>
+            )}
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               {section.includes("tracking") ? "추적 중인 제품" : "관리 제품"}
             </h3>
@@ -796,7 +805,6 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   <i className="fas fa-grip-vertical mr-2 text-gray-400 dark:text-gray-500"></i>제품 정보
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">추적 주기</th>
                 {section.includes("tracking") && (
                   <>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">스토어명</th>
@@ -849,11 +857,6 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                           )}
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
-                        {product.intervalMin}분
-                      </span>
                     </td>
                     {section.includes("tracking") && (
                       <>

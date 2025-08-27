@@ -89,12 +89,12 @@ export class DatabaseStorage implements IStorage {
   async deleteUser(userId: number): Promise<void> {
     // 사용자의 모든 제품의 트랙 데이터 삭제
     const userProductIds = await db.select({ id: products.id }).from(products).where(eq(products.userId, userId));
-    const productIds = userProductIds.map(p => p.id);
+    const productIds = userProductIds.map((p: any) => p.id);
     if (productIds.length > 0) {
       await db.delete(tracks).where(
         productIds.length === 1 
           ? eq(tracks.productId, productIds[0])
-          : or(...productIds.map(id => eq(tracks.productId, id)))
+          : or(...productIds.map((id: any) => eq(tracks.productId, id)))
       );
     }
     
@@ -362,20 +362,20 @@ export class DatabaseStorage implements IStorage {
       return null;
     }
 
-    const rankedTracks = tracksInPeriod.filter(t => t.globalRank !== null);
-    const tracksWithPrice = tracksInPeriod.filter(t => t.priceKrw !== null && t.priceKrw > 0);
+    const rankedTracks = tracksInPeriod.filter((t: any) => t.globalRank !== null);
+    const tracksWithPrice = tracksInPeriod.filter((t: any) => t.priceKrw !== null && t.priceKrw > 0);
 
     return {
       productId,
       type,
       periodStart,
       periodEnd,
-      bestRank: rankedTracks.length > 0 ? Math.min(...rankedTracks.map(t => t.globalRank!)) : null,
-      worstRank: rankedTracks.length > 0 ? Math.max(...rankedTracks.map(t => t.globalRank!)) : null,
-      averageRank: rankedTracks.length > 0 ? Math.round(rankedTracks.reduce((sum, t) => sum + t.globalRank!, 0) / rankedTracks.length) : null,
+      bestRank: rankedTracks.length > 0 ? Math.min(...rankedTracks.map((t: any) => t.globalRank!)) : null,
+      worstRank: rankedTracks.length > 0 ? Math.max(...rankedTracks.map((t: any) => t.globalRank!)) : null,
+      averageRank: rankedTracks.length > 0 ? Math.round(rankedTracks.reduce((sum: any, t: any) => sum + t.globalRank!, 0) / rankedTracks.length) : null,
       foundRate: Math.round((rankedTracks.length / tracksInPeriod.length) * 100),
       totalChecks: tracksInPeriod.length,
-      avgPrice: tracksWithPrice.length > 0 ? Math.round(tracksWithPrice.reduce((sum, t) => sum + (t.priceKrw || 0), 0) / tracksWithPrice.length) : null
+      avgPrice: tracksWithPrice.length > 0 ? Math.round(tracksWithPrice.reduce((sum: any, t: any) => sum + (t.priceKrw || 0), 0) / tracksWithPrice.length) : null
     };
   }
 

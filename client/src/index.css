@@ -27,6 +27,15 @@ html, body {
   position: relative !important;
   background: white !important;
   z-index: 1 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* React 앱 강제 표시 */
+#root > * {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 :root {

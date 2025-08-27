@@ -21,7 +21,7 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
     productNo: product?.productNo || "",
     keyword: product?.keyword || "",
     type: product?.type || "organic",
-    intervalMin: product?.intervalMin || 60,  // 기본값 1시간(60분)으로 수정
+    intervalMin: 60,  // 1시간 고정
   });
   const [keywordModalOpen, setKeywordModalOpen] = useState(false);
 
@@ -137,21 +137,6 @@ export default function AddProductModal({ onClose, product }: AddProductModalPro
             </select>
           </div>
 
-          <div>
-            <Label htmlFor="intervalMin" className="text-gray-700 dark:text-gray-300">추적 주기</Label>
-            <select 
-              id="intervalMin"
-              className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              value={formData.intervalMin}
-              onChange={(e) => setFormData({ ...formData, intervalMin: parseInt(e.target.value) })}
-              data-testid="select-interval"
-            >
-              <option value={60}>1시간</option>
-              <option value={360}>6시간</option>
-              <option value={720}>12시간</option>
-              <option value={1440}>24시간</option>
-            </select>
-          </div>
 
           <div className="flex items-center space-x-3 pt-4">
             <Button 
