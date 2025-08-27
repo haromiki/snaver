@@ -88,7 +88,7 @@ function RankChangeIndicator({ productId }: { productId: number }) {
   const rankDiff = previousRank - currentRank;
 
   if (rankDiff > 0) {
-    // 상승
+    // 상승만 표시
     return (
       <div className="flex items-center space-x-1">
         <svg className="w-7 h-7 text-blue-600 dark:text-blue-400 mt-3" fill="currentColor" viewBox="0 0 20 20">
@@ -100,7 +100,7 @@ function RankChangeIndicator({ productId }: { productId: number }) {
       </div>
     );
   } else if (rankDiff < 0) {
-    // 하락
+    // 하락만 표시
     return (
       <div className="flex items-center space-x-1">
         <svg className="w-7 h-7 text-red-600 dark:text-red-400 mb-1" fill="currentColor" viewBox="0 0 20 20">
@@ -112,14 +112,8 @@ function RankChangeIndicator({ productId }: { productId: number }) {
       </div>
     );
   } else {
-    // 변동없음
-    return (
-      <div className="flex items-center justify-center">
-        <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M4 10a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H4.75A.75.75 0 014 10z" clipRule="evenodd" />
-        </svg>
-      </div>
-    );
+    // 변화 없음 - 아무것도 표시하지 않음 (이전 상태 유지)
+    return <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>;
   }
 }
 
