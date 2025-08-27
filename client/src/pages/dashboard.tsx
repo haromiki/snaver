@@ -29,7 +29,7 @@ export default function Dashboard() {
   // 검색 상태는 웹소켓을 통해 실시간 업데이트됨 (폴링 제거)
 
   return (
-    <div className="flex h-screen bg-white dark:bg-gray-900 w-full">
+    <div className="flex h-screen bg-white dark:bg-gray-900" style={{ minWidth: '1920px', width: '1920px' }}>
       <Sidebar 
         activeSection={activeSection} 
         onSectionChange={setActiveSection}

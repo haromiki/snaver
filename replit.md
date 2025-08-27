@@ -126,6 +126,12 @@ POST /api/rank/ad
   - 모든 시간 표시는 Asia/Seoul 타임존 기준
   - 형식: "2025.08.26/10:05" (년.월.일/시:분)
 
+## **뷰포트 설정 요구사항** (2025-08-27 추가)
+- **대시보드 화면**: 고정폭 데스크탑 뷰포트 (1920x1080 기준)
+- **로그인/회원가입 화면**: 반응형 데스크탑 뷰포트
+- **모바일에서도 PC 브라우저처럼 고정폭으로 표시**
+- 스마트폰에서 반응형 모바일 레이아웃 사용 금지
+
 ## Critical Code Preservation Rules
 **NEVER MODIFY** the following server-only code sections:
 
