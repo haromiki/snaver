@@ -592,71 +592,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // 1주일 순위 트렌드 데이터 API
+  // 순위 통계 트렌드 데이터 API (기간별 적응형 그룹화 적용)
   app.get("/api/products/:id/weekly-ranks", authenticateToken, async (req, res) => {
     try {
       const productId = parseInt(req.params.id);
+      const { range = '1week' } = req.query;
       
-      // 한국 시간(KST, UTC+9) 기준으로 이번 주 시작일 계산
+      // 날짜 범위 계산
       const now = new Date();
-      // 한국 시간으로 변환 (UTC+9)
-      const kstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000));
-      const dayOfWeek = kstNow.getDay(); // 0=일요일, 1=월요일, ..., 6=토요일
-      const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 일요일이면 6일 전, 아니면 현재요일-1
+      let fromDate: Date;
       
-      // 한국 시간 기준 이번 주 월요일 00:00
-      const thisWeekMonday = new Date(kstNow.getTime() - (daysFromMonday * 24 * 60 * 60 * 1000));
-      thisWeekMonday.setHours(0, 0, 0, 0);
+      switch (range) {
+        case '1month':
+          fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        case '3months':
+          fromDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+          break;
+        case '6months':
+          fromDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+          break;
+        case '2years':
+          fromDate = new Date(now.getTime() - 2 * 365 * 24 * 60 * 60 * 1000);
+          break;
+        default: // '1week' and '1year'
+          if (range === '1year') {
+            fromDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+          } else {
+            fromDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          }
+          break;
+      }
       
-      // 다음 주 월요일 00:00
-      const nextWeekMonday = new Date(thisWeekMonday);
-      nextWeekMonday.setDate(thisWeekMonday.getDate() + 7);
+      const tracks = await storage.getTracks(productId, fromDate, now);
+      const tracksWithRank = tracks.filter(track => track.globalRank && track.globalRank > 0);
       
-      // 이번 주 데이터 조회 (월요일 00:00 ~ 다음주 월요일 00:00 전까지)
-      const weeklyRanks = await storage.getProductTracksInRange(
-        productId, 
-        req.userId!,
-        thisWeekMonday.toISOString(),
-        nextWeekMonday.toISOString()
-      );
-      
-      // 요일별 최신 순위 데이터로 정리 (7일간)
-      const dailyRanks = [];
-      for (let i = 0; i < 7; i++) {
-        const targetDate = new Date(thisWeekMonday);
-        targetDate.setDate(thisWeekMonday.getDate() + i);
-        
-        const dayName = ['월', '화', '수', '목', '금', '토', '일'][i];
-        
-        // 해당 날짜의 트랙 데이터 중 가장 최근 것 (한국 시간 기준)
-        const dayTracks = weeklyRanks.filter((track: any) => {
-          const trackDate = new Date(track.checkedAt);
-          // 한국 시간으로 변환하여 날짜 비교
-          const kstTrackDate = new Date(trackDate.getTime() + (9 * 60 * 60 * 1000));
-          const kstTargetDate = new Date(targetDate.getTime() + (9 * 60 * 60 * 1000));
-          return kstTrackDate.toDateString() === kstTargetDate.toDateString();
-        });
-        
-        const latestTrack = dayTracks.length > 0 ? 
-          dayTracks.sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime())[0] : null;
-        
-        dailyRanks.push({
-          day: dayName,
-          date: targetDate.toISOString().split('T')[0],
-          rank: latestTrack?.globalRank || null,
-          hasData: !!latestTrack
+      if (tracksWithRank.length === 0) {
+        return res.json({
+          productId,
+          data: [],
+          stats: { current: 0, best: 0, worst: 0, average: 0 }
         });
       }
       
+      // 기간별 적응형 그룹화 로직
+      const rangeDays = Math.ceil((now.getTime() - fromDate.getTime()) / (24 * 60 * 60 * 1000));
+      let groupingMethod: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly';
+      
+      if (rangeDays <= 30) {
+        groupingMethod = 'daily';
+      } else if (rangeDays <= 90) {
+        groupingMethod = 'weekly';
+      } else if (rangeDays <= 180) {
+        groupingMethod = 'biweekly';
+      } else if (rangeDays <= 365) {
+        groupingMethod = 'monthly';
+      } else {
+        groupingMethod = 'quarterly';
+      }
+
+      const groupedData = new Map<string, { ranks: number[], date: string }>();
+      
+      tracksWithRank.forEach(track => {
+        // 한국 시간으로 변환
+        const trackDate = new Date(track.checkedAt);
+        const kstDate = new Date(trackDate.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
+        
+        let groupKey: string;
+        let displayDate: string;
+        
+        switch (groupingMethod) {
+          case 'daily':
+            groupKey = kstDate.toISOString().split('T')[0];
+            displayDate = groupKey;
+            break;
+          case 'weekly':
+            // 월요일 기준 주간 그룹화
+            const dayOfWeek = kstDate.getDay();
+            const diff = kstDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+            const weekStart = new Date(kstDate);
+            weekStart.setDate(diff);
+            groupKey = weekStart.toISOString().split('T')[0];
+            displayDate = groupKey;
+            break;
+          case 'biweekly':
+            // 2주별 그룹화 (월 1일, 15일 기준)
+            const biweeklyPeriod = kstDate.getDate() <= 15 ? '01' : '15';
+            groupKey = `${kstDate.getFullYear()}-${String(kstDate.getMonth() + 1).padStart(2, '0')}-${biweeklyPeriod}`;
+            displayDate = groupKey;
+            break;
+          case 'monthly':
+            // 월별 그룹화
+            groupKey = `${kstDate.getFullYear()}-${String(kstDate.getMonth() + 1).padStart(2, '0')}-01`;
+            displayDate = groupKey;
+            break;
+          case 'quarterly':
+            // 분기별 그룹화
+            const quarter = Math.ceil((kstDate.getMonth() + 1) / 3);
+            const quarterStart = `${kstDate.getFullYear()}-${String((quarter - 1) * 3 + 1).padStart(2, '0')}-01`;
+            groupKey = quarterStart;
+            displayDate = quarterStart;
+            break;
+        }
+        
+        if (!groupedData.has(groupKey)) {
+          groupedData.set(groupKey, { 
+            ranks: [], 
+            date: displayDate
+          });
+        }
+        
+        groupedData.get(groupKey)!.ranks.push(track.globalRank!);
+      });
+      
+      // 그룹별 평균 순위 계산 (기존 형식 유지)
+      const dailyRanks = Array.from(groupedData.entries())
+        .map(([_, data]) => ({
+          date: data.date,
+          rank: Math.round(data.ranks.reduce((sum, rank) => sum + rank, 0) / data.ranks.length)
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+      
       res.json({
         productId,
-        weekStart: thisWeekMonday.toISOString().split('T')[0],
+        weekStart: fromDate.toISOString().split('T')[0],
         dailyRanks
       });
       
     } catch (error) {
-      console.error("1주일 순위 데이터 조회 오류:", error);
-      res.status(500).json({ message: "1주일 순위 데이터를 가져오는데 실패했습니다" });
+      console.error("순위 데이터 조회 오류:", error);
+      res.status(500).json({ message: "순위 데이터를 가져오는데 실패했습니다" });
     }
   });
 
@@ -704,34 +769,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // 주간별로 데이터 그룹화 (같은 주의 데이터는 평균 가격 사용)
-      const weeklyData = new Map<string, { prices: number[], date: string }>();
+      // 기간별 적응형 그룹화 로직
+      const rangeDays = Math.ceil((now.getTime() - fromDate.getTime()) / (24 * 60 * 60 * 1000));
+      let groupingMethod: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly';
+      
+      if (rangeDays <= 30) {
+        groupingMethod = 'daily';
+      } else if (rangeDays <= 90) {
+        groupingMethod = 'weekly';
+      } else if (rangeDays <= 180) {
+        groupingMethod = 'biweekly';
+      } else if (rangeDays <= 365) {
+        groupingMethod = 'monthly';
+      } else {
+        groupingMethod = 'quarterly';
+      }
+
+      const groupedData = new Map<string, { prices: number[], date: string }>();
       
       tracksWithPrice.forEach(track => {
+        // 한국 시간으로 변환
         const trackDate = new Date(track.checkedAt);
-        // 월요일 시작하는 주의 시작일 계산
-        const dayOfWeek = trackDate.getDay();
-        const diff = trackDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-        const weekStart = new Date(trackDate.setDate(diff));
-        const weekKey = weekStart.toISOString().split('T')[0];
+        const kstDate = new Date(trackDate.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
         
-        if (!weeklyData.has(weekKey)) {
-          weeklyData.set(weekKey, { 
+        let groupKey: string;
+        let displayDate: string;
+        
+        switch (groupingMethod) {
+          case 'daily':
+            groupKey = kstDate.toISOString().split('T')[0];
+            displayDate = groupKey;
+            break;
+          case 'weekly':
+            // 월요일 기준 주간 그룹화
+            const dayOfWeek = kstDate.getDay();
+            const diff = kstDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+            const weekStart = new Date(kstDate);
+            weekStart.setDate(diff);
+            groupKey = weekStart.toISOString().split('T')[0];
+            displayDate = groupKey;
+            break;
+          case 'biweekly':
+            // 2주별 그룹화 (월 1일, 15일 기준)
+            const biweeklyPeriod = kstDate.getDate() <= 15 ? '01' : '15';
+            groupKey = `${kstDate.getFullYear()}-${String(kstDate.getMonth() + 1).padStart(2, '0')}-${biweeklyPeriod}`;
+            displayDate = groupKey;
+            break;
+          case 'monthly':
+            // 월별 그룹화
+            groupKey = `${kstDate.getFullYear()}-${String(kstDate.getMonth() + 1).padStart(2, '0')}-01`;
+            displayDate = groupKey;
+            break;
+          case 'quarterly':
+            // 분기별 그룹화
+            const quarter = Math.ceil((kstDate.getMonth() + 1) / 3);
+            const quarterStart = `${kstDate.getFullYear()}-${String((quarter - 1) * 3 + 1).padStart(2, '0')}-01`;
+            groupKey = quarterStart;
+            displayDate = quarterStart;
+            break;
+        }
+        
+        if (!groupedData.has(groupKey)) {
+          groupedData.set(groupKey, { 
             prices: [], 
-            date: weekKey // ISO 날짜 문자열 사용 (YYYY-MM-DD)
+            date: displayDate
           });
         }
         
-        weeklyData.get(weekKey)!.prices.push(track.priceKrw!);
+        groupedData.get(groupKey)!.prices.push(track.priceKrw!);
       });
       
-      // 주간 평균 가격 계산
-      const chartData = Array.from(weeklyData.entries())
-        .map(([date, data]) => ({
+      // 그룹별 평균 가격 계산
+      const chartData = Array.from(groupedData.entries())
+        .map(([_, data]) => ({
           date: data.date,
           price: Math.round(data.prices.reduce((sum, price) => sum + price, 0) / data.prices.length)
         }))
-        .sort((a, b) => a.date.localeCompare(b.date)); // 문자열 정렬로 변경
+        .sort((a, b) => a.date.localeCompare(b.date));
       
       // 통계 계산
       const allPrices = tracksWithPrice.map(t => t.priceKrw!);
