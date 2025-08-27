@@ -598,60 +598,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const productId = parseInt(req.params.id);
       const { range = '1week' } = req.query;
       
-      // 날짜 범위 계산 (한국 시간 기준)
+      // 날짜 범위 계산
       const now = new Date();
-      const kstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // 한국 시간으로 변환
       let fromDate: Date;
       
       switch (range) {
         case '1month':
-          fromDate = new Date(kstNow.getTime() - 30 * 24 * 60 * 60 * 1000);
+          fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
           break;
         case '3months':
-          fromDate = new Date(kstNow.getTime() - 90 * 24 * 60 * 60 * 1000);
+          fromDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
           break;
         case '6months':
-          fromDate = new Date(kstNow.getTime() - 180 * 24 * 60 * 60 * 1000);
+          fromDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
           break;
         case '2years':
-          fromDate = new Date(kstNow.getTime() - 2 * 365 * 24 * 60 * 60 * 1000);
+          fromDate = new Date(now.getTime() - 2 * 365 * 24 * 60 * 60 * 1000);
           break;
         default: // '1week' and '1year'
           if (range === '1year') {
-            fromDate = new Date(kstNow.getTime() - 365 * 24 * 60 * 60 * 1000);
+            fromDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
           } else {
-            fromDate = new Date(kstNow.getTime() - 7 * 24 * 60 * 60 * 1000);
+            fromDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
           }
           break;
       }
       
-      // UTC로 다시 변환하여 데이터베이스 조회용으로 사용
-      fromDate = new Date(fromDate.getTime() - (9 * 60 * 60 * 1000));
-      const endDate = new Date(now.getTime());
-      
-      const tracks = await storage.getTracks(productId, fromDate, endDate);
+      const tracks = await storage.getTracks(productId, fromDate, now);
       const tracksWithRank = tracks.filter(track => track.globalRank && track.globalRank > 0);
       
-      // 실제 조회 범위 내의 트랙만 필터링 (한국 시간 기준)
-      const filteredTracks = tracksWithRank.filter(track => {
-        const trackDate = new Date(track.checkedAt);
-        const kstTrackDate = new Date(trackDate.getTime() + (9 * 60 * 60 * 1000));
-        const kstFromDate = new Date(fromDate.getTime() + (9 * 60 * 60 * 1000));
-        const kstEndDate = new Date(endDate.getTime() + (9 * 60 * 60 * 1000));
-        return kstTrackDate >= kstFromDate && kstTrackDate <= kstEndDate;
-      });
-      
-      if (filteredTracks.length === 0) {
+      if (tracksWithRank.length === 0) {
         return res.json({
           productId,
           data: [],
-          stats: { current: 0, best: 0, worst: 0, average: 0 },
-          dailyRanks: [] // 1주일 미니그래프용
+          stats: { current: 0, best: 0, worst: 0, average: 0 }
         });
       }
       
       // 기간별 적응형 그룹화 로직
-      const rangeDays = Math.ceil((endDate.getTime() - fromDate.getTime()) / (24 * 60 * 60 * 1000));
+      const rangeDays = Math.ceil((now.getTime() - fromDate.getTime()) / (24 * 60 * 60 * 1000));
       let groupingMethod: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly';
       
       if (rangeDays <= 30) {
@@ -668,7 +653,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const groupedData = new Map<string, { ranks: number[], date: string }>();
       
-      filteredTracks.forEach(track => {
+      tracksWithRank.forEach(track => {
         // 한국 시간으로 변환
         const trackDate = new Date(track.checkedAt);
         const kstDate = new Date(trackDate.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
@@ -728,21 +713,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }))
         .sort((a, b) => a.date.localeCompare(b.date));
       
-      // 통계 계산
-      const allRanks = filteredTracks.map(t => t.globalRank!);
-      const stats = {
-        current: filteredTracks[filteredTracks.length - 1]?.globalRank || 0,
-        best: Math.min(...allRanks), // 순위는 낮을수록 좋음
-        worst: Math.max(...allRanks),
-        average: Math.round(allRanks.reduce((sum, rank) => sum + rank, 0) / allRanks.length)
-      };
-      
       res.json({
         productId,
         weekStart: fromDate.toISOString().split('T')[0],
-        dailyRanks, // 1주일 미니그래프용 (기존 형식 유지)
-        data: dailyRanks, // 통계 모달용 (새로운 형식)
-        stats // 통계 정보
+        dailyRanks
       });
       
     } catch (error) {
@@ -757,47 +731,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const productId = parseInt(req.params.id);
       const { range = '1year' } = req.query;
       
-      // 날짜 범위 계산 (한국 시간 기준)
+      // 날짜 범위 계산
       const now = new Date();
-      const kstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // 한국 시간으로 변환
       let fromDate: Date;
       
       switch (range) {
         case '1month':
-          fromDate = new Date(kstNow.getTime() - 30 * 24 * 60 * 60 * 1000);
+          fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
           break;
         case '3months':
-          fromDate = new Date(kstNow.getTime() - 90 * 24 * 60 * 60 * 1000);
+          fromDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
           break;
         case '6months':
-          fromDate = new Date(kstNow.getTime() - 180 * 24 * 60 * 60 * 1000);
+          fromDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
           break;
         case '2years':
-          fromDate = new Date(kstNow.getTime() - 2 * 365 * 24 * 60 * 60 * 1000);
+          fromDate = new Date(now.getTime() - 2 * 365 * 24 * 60 * 60 * 1000);
           break;
         default: // '1year'
-          fromDate = new Date(kstNow.getTime() - 365 * 24 * 60 * 60 * 1000);
+          fromDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
           break;
       }
       
-      // UTC로 다시 변환하여 데이터베이스 조회용으로 사용
-      fromDate = new Date(fromDate.getTime() - (9 * 60 * 60 * 1000));
-      const endDate = new Date(now.getTime());
-      
       // 가격 데이터가 있는 트랙들만 조회
-      const tracks = await storage.getTracks(productId, fromDate, endDate);
+      const tracks = await storage.getTracks(productId, fromDate, now);
       const tracksWithPrice = tracks.filter(track => track.priceKrw && track.priceKrw > 0);
       
-      // 실제 조회 범위 내의 트랙만 필터링 (한국 시간 기준)
-      const filteredTracks = tracksWithPrice.filter(track => {
-        const trackDate = new Date(track.checkedAt);
-        const kstTrackDate = new Date(trackDate.getTime() + (9 * 60 * 60 * 1000));
-        const kstFromDate = new Date(fromDate.getTime() + (9 * 60 * 60 * 1000));
-        const kstEndDate = new Date(endDate.getTime() + (9 * 60 * 60 * 1000));
-        return kstTrackDate >= kstFromDate && kstTrackDate <= kstEndDate;
-      });
-      
-      if (filteredTracks.length === 0) {
+      if (tracksWithPrice.length === 0) {
         return res.json({
           data: [],
           stats: {
@@ -810,7 +770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // 기간별 적응형 그룹화 로직
-      const rangeDays = Math.ceil((endDate.getTime() - fromDate.getTime()) / (24 * 60 * 60 * 1000));
+      const rangeDays = Math.ceil((now.getTime() - fromDate.getTime()) / (24 * 60 * 60 * 1000));
       let groupingMethod: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly';
       
       if (rangeDays <= 30) {
@@ -827,7 +787,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const groupedData = new Map<string, { prices: number[], date: string }>();
       
-      filteredTracks.forEach(track => {
+      tracksWithPrice.forEach(track => {
         // 한국 시간으로 변환
         const trackDate = new Date(track.checkedAt);
         const kstDate = new Date(trackDate.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
@@ -888,9 +848,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .sort((a, b) => a.date.localeCompare(b.date));
       
       // 통계 계산
-      const allPrices = filteredTracks.map(t => t.priceKrw!);
+      const allPrices = tracksWithPrice.map(t => t.priceKrw!);
       const stats = {
-        current: filteredTracks[filteredTracks.length - 1]?.priceKrw || 0,
+        current: tracksWithPrice[tracksWithPrice.length - 1]?.priceKrw || 0,
         highest: Math.max(...allPrices),
         lowest: Math.min(...allPrices),
         average: Math.round(allPrices.reduce((sum, price) => sum + price, 0) / allPrices.length)

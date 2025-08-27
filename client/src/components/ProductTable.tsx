@@ -56,9 +56,9 @@ function UpdateStatusText({ products }: { products: any[] }) {
 
 function RankChangeIndicator({ productId }: { productId: number }) {
   const { data: weeklyData } = useQuery({
-    queryKey: [`/products/${productId}/weekly-ranks`, '1week'],
+    queryKey: [`/products/${productId}/weekly-ranks`],
     queryFn: async () => {
-      const response = await apiRequest("GET", `/products/${productId}/weekly-ranks?range=1week`);
+      const response = await apiRequest("GET", `/products/${productId}/weekly-ranks`);
       return await response.json();
     },
     staleTime: 1000 * 60 * 5,
@@ -186,9 +186,9 @@ function PriceChangeIndicator({ product }: { product: any }) {
 // 1주일 트렌드 차트를 위한 래퍼 컴포넌트
 function WeeklyTrendChartWrapper({ productId }: { productId: number }) {
   const { data: weeklyData, isLoading } = useQuery({
-    queryKey: [`/products/${productId}/weekly-ranks`, '1week'],
+    queryKey: [`/products/${productId}/weekly-ranks`],
     queryFn: async () => {
-      const response = await apiRequest("GET", `/products/${productId}/weekly-ranks?range=1week`);
+      const response = await apiRequest("GET", `/products/${productId}/weekly-ranks`);
       return await response.json();
     },
     staleTime: 1000 * 60 * 5, // 5분 캐시 (수동/자동 검색 시 즉시 무효화됨)
@@ -362,7 +362,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
           queryClient.setQueryData(["/products", currentFilters], freshData);
           
           // 주간 트렌드 캐시 무효화 (새로운 검색 결과 반영)
-          queryClient.invalidateQueries({ queryKey: [`/products/${productId}/weekly-ranks`, '1week'] });
+          queryClient.invalidateQueries({ queryKey: [`/products/${productId}/weekly-ranks`] });
           
           // 전체 제품 목록 새로고침으로 마지막 확인 시간 업데이트
           queryClient.invalidateQueries({ queryKey: ["/products"] });
