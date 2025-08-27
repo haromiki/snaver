@@ -57,6 +57,138 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
     },
   });
 
+  // 기간별 적응형 그룹화 함수 (메모리 저장된 기준 적용)
+  const getAdaptiveGroupedData = (tracks: any[], fromDate: string, toDate: string) => {
+    if (tracks.length === 0) return [];
+
+    const from = new Date(fromDate);
+    const to = new Date(toDate);
+    const diffInDays = Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
+
+    // 한국 시간 기준으로 데이터 필터링 및 변환
+    const kstTracks = tracks
+      .filter((track: any) => track.globalRank)
+      .map((track: any) => {
+        const kstDate = new Date(track.checkedAt);
+        return {
+          ...track,
+          kstDate,
+          rank: track.globalRank
+        };
+      })
+      .sort((a, b) => a.kstDate.getTime() - b.kstDate.getTime());
+
+    let groupedData: any[] = [];
+
+    if (diffInDays <= 30) {
+      // 1개월 이하: 일별 평균
+      const dailyGroups = new Map();
+      kstTracks.forEach(track => {
+        const dayKey = track.kstDate.toISOString().split('T')[0];
+        if (!dailyGroups.has(dayKey)) {
+          dailyGroups.set(dayKey, []);
+        }
+        dailyGroups.get(dayKey).push(track.rank);
+      });
+
+      groupedData = Array.from(dailyGroups.entries()).map(([date, ranks]) => ({
+        label: new Date(date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }),
+        value: Math.round(ranks.reduce((sum: number, rank: number) => sum + rank, 0) / ranks.length),
+        date
+      }));
+
+    } else if (diffInDays <= 90) {
+      // 3개월 이하: 주별 평균 (월요일 기준)
+      const weeklyGroups = new Map();
+      kstTracks.forEach(track => {
+        const date = track.kstDate;
+        const dayOfWeek = date.getDay();
+        const diff = date.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+        const weekStart = new Date(date);
+        weekStart.setDate(diff);
+        const weekKey = weekStart.toISOString().split('T')[0];
+        
+        if (!weeklyGroups.has(weekKey)) {
+          weeklyGroups.set(weekKey, []);
+        }
+        weeklyGroups.get(weekKey).push(track.rank);
+      });
+
+      groupedData = Array.from(weeklyGroups.entries()).map(([date, ranks]) => ({
+        label: new Date(date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }),
+        value: Math.round(ranks.reduce((sum: number, rank: number) => sum + rank, 0) / ranks.length),
+        date
+      }));
+
+    } else if (diffInDays <= 180) {
+      // 6개월 이하: 2주별 평균
+      const biweeklyGroups = new Map();
+      kstTracks.forEach(track => {
+        const date = track.kstDate;
+        const weekNumber = Math.floor(date.getDate() / 14);
+        const biweeklyKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${weekNumber}`;
+        
+        if (!biweeklyGroups.has(biweeklyKey)) {
+          biweeklyGroups.set(biweeklyKey, []);
+        }
+        biweeklyGroups.get(biweeklyKey).push(track.rank);
+      });
+
+      groupedData = Array.from(biweeklyGroups.entries()).map(([key, ranks]) => {
+        const [year, month] = key.split('-');
+        return {
+          label: `${month}월`,
+          value: Math.round(ranks.reduce((sum: number, rank: number) => sum + rank, 0) / ranks.length),
+          date: key
+        };
+      });
+
+    } else if (diffInDays <= 365) {
+      // 1년 이하: 월별 평균
+      const monthlyGroups = new Map();
+      kstTracks.forEach(track => {
+        const date = track.kstDate;
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        
+        if (!monthlyGroups.has(monthKey)) {
+          monthlyGroups.set(monthKey, []);
+        }
+        monthlyGroups.get(monthKey).push(track.rank);
+      });
+
+      groupedData = Array.from(monthlyGroups.entries()).map(([date, ranks]) => {
+        const [year, month] = date.split('-');
+        return {
+          label: `${year}.${month}`,
+          value: Math.round(ranks.reduce((sum: number, rank: number) => sum + rank, 0) / ranks.length),
+          date
+        };
+      });
+
+    } else {
+      // 2년: 분기별 평균
+      const quarterlyGroups = new Map();
+      kstTracks.forEach(track => {
+        const date = track.kstDate;
+        const quarter = Math.floor(date.getMonth() / 3) + 1;
+        const quarterKey = `${date.getFullYear()}-Q${quarter}`;
+        
+        if (!quarterlyGroups.has(quarterKey)) {
+          quarterlyGroups.set(quarterKey, []);
+        }
+        quarterlyGroups.get(quarterKey).push(track.rank);
+      });
+
+      groupedData = Array.from(quarterlyGroups.entries()).map(([date, ranks]) => ({
+        label: date,
+        value: Math.round(ranks.reduce((sum: number, rank: number) => sum + rank, 0) / ranks.length),
+        date
+      }));
+    }
+
+    return groupedData.sort((a, b) => a.date.localeCompare(b.date));
+  };
+
   // Initialize chart when tracks change
   useEffect(() => {
     const initChart = async () => {
@@ -71,112 +203,109 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
             chart.destroy();
           }
 
-          // 모든 데이터를 하나의 연속된 선으로 만들기
-          const chartData = tracks
-            .filter((track: any) => track.globalRank)
-            .map((track: any) => {
-              const trackDate = new Date(track.checkedAt);
-              return {
-                x: trackDate.toLocaleString('ko-KR', {
-                  timeZone: 'Asia/Seoul',
-                  hour12: false
-                }),
-                y: track.globalRank,
-                timestamp: trackDate.getTime() // 정렬용
-              };
-            })
-            .sort((a: any, b: any) => a.timestamp - b.timestamp); // 시간순 정렬
+          // 기간별 적응형 그룹화 적용
+          const groupedData = getAdaptiveGroupedData(tracks, dateRange.from, dateRange.to);
+          
+          if (groupedData.length === 0) {
+            setChart(null);
+            return;
+          }
+
+          const labels = groupedData.map(item => item.label);
+          const data = groupedData.map(item => item.value);
 
           const datasets = [{
-            label: `순위 변화 (${chartData.length}개 데이터)`,
-            data: chartData,
-            borderColor: '#3B82F6',
+            label: `순위 변화`,
+            data: data,
+            borderColor: '#3B82F6', // 파란색 선 (요청사항)
             backgroundColor: 'rgba(59, 130, 246, 0.1)',
-            tension: 0.3,
+            tension: 0.4, // 부드러운 곡선
             fill: false,
-            pointRadius: 3,
-            pointHoverRadius: 5,
+            pointRadius: 4,
+            pointHoverRadius: 6,
             borderWidth: 2,
+            pointBackgroundColor: '#3B82F6',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2,
           }];
-
-          // 다크모드 감지
-          const isDarkMode = document.documentElement.classList.contains('dark');
-          const textColor = isDarkMode ? '#e5e7eb' : '#374151';
-          const gridColor = isDarkMode ? '#4b5563' : '#e5e7eb';
 
           const newChart = new Chart(ctx, {
             type: "line",
             data: {
+              labels,
               datasets
             },
             options: {
               responsive: true,
               maintainAspectRatio: false,
+              interaction: {
+                intersect: false,
+                mode: 'index',
+              },
               scales: {
                 y: {
-                  reverse: true, // Lower rank numbers appear higher
+                  reverse: true, // 낮은 순위가 위쪽에 표시
                   beginAtZero: false,
-                  min: 1,
-                  max: 200,
-                  title: {
-                    display: true,
-                    text: "순위 (낮을수록 상위)",
-                    color: textColor,
-                    font: {
-                      size: 12
-                    }
+                  grid: {
+                    color: 'rgba(229, 231, 235, 0.3)',
+                    lineWidth: 1
                   },
                   ticks: {
-                    color: textColor
+                    display: true,
+                    color: '#9CA3AF',
+                    font: {
+                      size: 11
+                    },
+                    callback: function(value: any) {
+                      return value + '위';
+                    }
                   },
-                  grid: {
-                    color: gridColor
+                  title: {
+                    display: false
                   }
                 },
                 x: {
-                  title: {
-                    display: true,
-                    text: "날짜",
-                    color: textColor,
-                    font: {
-                      size: 12
-                    }
+                  grid: {
+                    display: false
                   },
                   ticks: {
-                    color: textColor
+                    color: '#9CA3AF',
+                    font: {
+                      size: 11
+                    },
+                    maxRotation: 0
                   },
-                  grid: {
-                    color: gridColor
+                  title: {
+                    display: false
                   }
                 }
               },
               plugins: {
                 legend: {
-                  display: true,
-                  position: 'top',
-                  labels: {
-                    boxWidth: 12,
-                    padding: 15,
-                    color: textColor,
-                    font: {
-                      size: 11
-                    }
-                  }
+                  display: false
                 },
                 tooltip: {
-                  backgroundColor: isDarkMode ? '#1f2937' : '#ffffff',
-                  titleColor: textColor,
-                  bodyColor: textColor,
-                  borderColor: isDarkMode ? '#4b5563' : '#e5e7eb',
+                  enabled: true,
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                  titleColor: '#374151',
+                  bodyColor: '#374151',
+                  borderColor: '#E5E7EB',
                   borderWidth: 1,
+                  cornerRadius: 8,
+                  displayColors: false,
                   callbacks: {
                     title: function(context: any) {
-                      return context[0].dataset.label;
+                      return context[0].label;
                     },
                     label: function(context: any) {
                       return `순위: ${context.parsed.y}위`;
                     }
                   }
+                }
+              },
+              elements: {
+                point: {
+                  hoverBorderWidth: 2
                 }
               }
             }
@@ -184,6 +313,8 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
           
           setChart(newChart);
         }
+      } else {
+        setChart(null);
       }
     };
 
@@ -194,7 +325,7 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
         chart.destroy();
       }
     };
-  }, [tracks]);
+  }, [tracks, dateRange]);
 
   // Calculate statistics
   const ranks = tracks.filter((t: any) => t.globalRank).map((t: any) => t.globalRank);
