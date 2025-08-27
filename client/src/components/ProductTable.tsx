@@ -85,25 +85,17 @@ function RankChangeIndicator({ productId }: { productId: number }) {
   // 현재 순위
   const currentRank = validTracks[0].globalRank;
   
-  // 현재와 다른 순위를 가진 이전 데이터 찾기
+  // 현재와 다른 순위를 가진 이전 데이터를 무한 검색
   let previousRank = null;
-  console.log(`🔍 제품 ${productId} 순위 변동 체크:`, {
-    currentRank,
-    totalTracks: validTracks.length,
-    ranks: validTracks.slice(0, 10).map(t => ({ rank: t.globalRank, time: t.checkedAt }))
-  });
-  
   for (let i = 1; i < validTracks.length; i++) {
     if (validTracks[i].globalRank !== currentRank) {
       previousRank = validTracks[i].globalRank;
-      console.log(`✅ 제품 ${productId} 이전 순위 발견:`, { previousRank, currentRank, diff: previousRank - currentRank });
       break;
     }
   }
   
   // 다른 순위를 찾지 못한 경우 빈 공간
   if (previousRank === null) {
-    console.log(`❌ 제품 ${productId} 이전 순위 없음 - 모든 데이터가 ${currentRank}위 동일`);
     return <div className="w-7 h-7"></div>;
   }
   
