@@ -55,31 +55,36 @@ function UpdateStatusText({ products }: { products: any[] }) {
 }
 
 function RankChangeIndicator({ productId }: { productId: number }) {
-  const { data: weeklyData } = useQuery({
-    queryKey: [`/products/${productId}/weekly-ranks`],
+  const { data: products } = useQuery({
+    queryKey: ["/products", {}],
     queryFn: async () => {
-      const response = await apiRequest("GET", `/products/${productId}/weekly-ranks`);
+      const params = new URLSearchParams();
+      const response = await apiRequest("GET", `/products?${params}`);
       return await response.json();
     },
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 30,
     refetchOnWindowFocus: false,
   });
 
-  if (!weeklyData?.dailyRanks) {
+  // 해당 제품 찾기
+  const product = products?.find((p: any) => p.id === productId);
+  
+  if (!product?.tracks || product.tracks.length < 2) {
     return <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>;
   }
 
-  // 순위가 있는 날짜들만 필터링
-  const ranksWithData = weeklyData.dailyRanks.filter((day: any) => day.hasData && day.rank);
+  // globalRank가 있는 트랙만 필터링하고 최신 순으로 정렬 (ProductTable과 동일한 로직)
+  const validTracks = product.tracks
+    .filter((track: any) => track.globalRank && track.globalRank > 0)
+    .sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
   
-  if (ranksWithData.length < 2) {
+  if (validTracks.length < 2) {
     return <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>;
   }
 
-  // 가장 최근 2개 순위 가져기
-  const currentRank = ranksWithData[ranksWithData.length - 1].rank;
-  const previousRank = ranksWithData[ranksWithData.length - 2].rank;
-  
+  // 최신 2개 트랙으로 순위 변화 계산
+  const currentRank = validTracks[0].globalRank;
+  const previousRank = validTracks[1].globalRank;
   const rankDiff = previousRank - currentRank;
 
   if (rankDiff > 0) {
