@@ -634,6 +634,19 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         const previousRank = previousTrack.globalRank;
         const rankDiff = previousRank - currentRank; // 이전 순위 - 현재 순위
         
+        // 임시 디버깅: 레제로만
+        if (product.productName === '레제로') {
+          console.log('🔍 순위 변화 디버깅:', {
+            productName: product.productName,
+            현재순위: currentRank,
+            현재시간: currentTrack.checkedAt,
+            이전순위: previousRank,
+            이전시간: previousTrack.checkedAt,
+            순위차이: rankDiff,
+            전체트랙수: validTracks.length
+          });
+        }
+        
         
         if (rankDiff > 0) {
           // 순위 상승 (숫자가 작아짐) - 파란색
