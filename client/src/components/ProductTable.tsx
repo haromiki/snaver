@@ -619,17 +619,17 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     let color = "text-gray-900 dark:text-gray-100"; // 기본 색상 (변화 없음 또는 첫 검색)
     let trendIcon = null;
     
-    // 제품의 모든 트랙 데이터에서 이전 순위 찾기
-    if (product.tracks && product.tracks.length >= 2) {
-      // 최신 순으로 정렬 (최신이 첫번째)
-      const sortedTracks = [...product.tracks].sort((a, b) => 
-        new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime()
-      );
+    // 제품의 모든 트랙 데이터에서 이전 순위 찾기 (globalRank가 있는 것만)
+    if (product.tracks && product.tracks.length >= 1) {
+      // globalRank가 있는 트랙만 필터링하고 최신 순으로 정렬
+      const validTracks = product.tracks
+        .filter(track => track.globalRank && track.globalRank > 0)
+        .sort((a, b) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
       
-      const currentTrack = sortedTracks[0]; // 최신 트랙
-      const previousTrack = sortedTracks[1]; // 이전 트랙
-      
-      if (currentTrack.globalRank && previousTrack.globalRank) {
+      if (validTracks.length >= 2) {
+        const currentTrack = validTracks[0]; // 최신 유효 트랙
+        const previousTrack = validTracks[1]; // 이전 유효 트랙
+        
         const currentRank = currentTrack.globalRank;
         const previousRank = previousTrack.globalRank;
         const rankDiff = previousRank - currentRank; // 이전 순위 - 현재 순위
