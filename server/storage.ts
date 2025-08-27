@@ -122,7 +122,7 @@ export class DatabaseStorage implements IStorage {
     const productsWithTracks = await Promise.all(
       productList.map(async (product: Product) => {
         const latestTrack = await this.getLatestTrack(product.id);
-        const recentTracks = await this.getRecentTracks(product.id, 999999);
+        const recentTracks = await this.getRecentTracks(product.id, 5000);
         return {
           ...product,
           latestTrack,
