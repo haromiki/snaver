@@ -615,17 +615,8 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     const rank = latestTrack.globalRank;
     const page = Math.ceil(rank / 40);
     
-    // 기본 순위 색상 (순위 값 자체에 따른 색상)
-    let color = "text-gray-900 dark:text-gray-100";
-    if (rank <= 10) {
-      color = "text-success";
-    } else if (rank <= 30) {
-      color = "text-warning";
-    } else {
-      color = "text-error";
-    }
-
-    // 이전 순위와 비교하여 상승/하락 아이콘 결정
+    // 이전 순위와 비교하여 순위 색상 결정
+    let color = "text-gray-900 dark:text-gray-100"; // 기본 색상 (변화 없음 또는 첫 검색)
     let trendIcon = null;
     
     // 제품의 모든 트랙 데이터에서 이전 순위 찾기
@@ -644,13 +635,17 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         const rankDiff = previousRank - currentRank; // 이전 순위 - 현재 순위
         
         if (rankDiff > 0) {
-          // 순위 상승 (숫자가 작아짐) - 상승 아이콘
+          // 순위 상승 (숫자가 작아짐) - 파란색
+          color = "text-blue-600 dark:text-blue-400";
           trendIcon = "▲"; // 상승 삼각형
         } else if (rankDiff < 0) {
-          // 순위 하락 (숫자가 커짐) - 하락 아이콘
+          // 순위 하락 (숫자가 커짐) - 빨간색
+          color = "text-red-600 dark:text-red-400";
           trendIcon = "▼"; // 하락 삼각형
+        } else {
+          // 순위 변화 없음 - 검정색
+          color = "text-gray-900 dark:text-gray-100";
         }
-        // 변동 없음이면 아이콘 없음
       }
     }
 
