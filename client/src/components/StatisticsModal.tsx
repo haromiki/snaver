@@ -342,6 +342,15 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
     const toDate = new Date(dateRange.to + 'T09:00:00.000Z'); // 한국시간으로 변환
     const diffInDays = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24));
     
+    if (diffInDays < 2) {
+      toast({
+        title: "기간 설정 오류",
+        description: "순위 통계는 최소 2일 이상의 기간을 선택해야 합니다.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (diffInDays > 1095) { // 3년 = 365 * 3 = 1095일
       toast({
         title: "기간 설정 오류",
@@ -469,7 +478,7 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
               </div>
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400 ml-8">
-              💡 통계 검색 기간은 최대 3년(1095일)까지 설정 가능합니다.
+              💡 순위 통계는 최소 2일 이상, 최대 3년(1095일)까지 설정 가능합니다.
             </div>
           </div>
 
