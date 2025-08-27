@@ -82,9 +82,23 @@ function RankChangeIndicator({ productId }: { productId: number }) {
     return <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>;
   }
 
-  // 최신 2개 트랙으로 순위 변화 계산
+  // 현재 순위
   const currentRank = validTracks[0].globalRank;
-  const previousRank = validTracks[1].globalRank;
+  
+  // 현재와 다른 순위를 가진 이전 데이터 찾기
+  let previousRank = null;
+  for (let i = 1; i < validTracks.length; i++) {
+    if (validTracks[i].globalRank !== currentRank) {
+      previousRank = validTracks[i].globalRank;
+      break;
+    }
+  }
+  
+  // 다른 순위를 찾지 못한 경우 빈 공간
+  if (previousRank === null) {
+    return <div className="w-7 h-7"></div>;
+  }
+  
   const rankDiff = previousRank - currentRank;
 
   if (rankDiff > 0) {
@@ -112,8 +126,17 @@ function RankChangeIndicator({ productId }: { productId: number }) {
       </div>
     );
   } else {
-    // 변화 없음 - 아무것도 표시하지 않음
-    return <div className="w-7 h-7"></div>;
+    // 하락만 표시
+    return (
+      <div className="flex items-center space-x-1">
+        <svg className="w-7 h-7 text-red-600 dark:text-red-400 mb-1" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" clipRule="evenodd" />
+        </svg>
+        <span className="text-lg font-bold text-red-600 dark:text-red-400">
+          {Math.abs(rankDiff)}
+        </span>
+      </div>
+    );
   }
 }
 
