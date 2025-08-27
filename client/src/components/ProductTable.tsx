@@ -623,8 +623,8 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     if (product.tracks && product.tracks.length >= 1) {
       // globalRank가 있는 트랙만 필터링하고 최신 순으로 정렬
       const validTracks = product.tracks
-        .filter(track => track.globalRank && track.globalRank > 0)
-        .sort((a, b) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
+        .filter((track: any) => track.globalRank && track.globalRank > 0)
+        .sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
       
       if (validTracks.length >= 2) {
         const currentTrack = validTracks[0]; // 최신 유효 트랙
@@ -633,6 +633,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         const currentRank = currentTrack.globalRank;
         const previousRank = previousTrack.globalRank;
         const rankDiff = previousRank - currentRank; // 이전 순위 - 현재 순위
+        
         
         if (rankDiff > 0) {
           // 순위 상승 (숫자가 작아짐) - 파란색
