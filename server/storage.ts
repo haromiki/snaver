@@ -286,13 +286,13 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // 3년 이상 된 순위 추적 데이터만 자동 정리 (회원 계정, 키워드, 제품 데이터는 영구 보관)
+  // 3년 이상 된 순위 추적 및 가격 데이터 자동 정리 (회원 계정, 키워드, 제품 데이터는 영구 보관)
   async cleanupOldData(): Promise<{ deletedTracks: number }> {
     const threeYearsAgo = new Date();
     threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
     
     try {
-      // 3년 이상 된 순위 추적 데이터만 삭제
+      // 3년 이상 된 순위 추적 데이터 삭제 (가격 정보 포함)
       const deletedTracksResult = await db
         .delete(tracks)
         .where(lte(tracks.checkedAt, threeYearsAgo));
@@ -301,7 +301,7 @@ export class DatabaseStorage implements IStorage {
         deletedTracks: deletedTracksResult.rowCount || 0
       };
 
-      console.log(`🗑️ 3년 이상 된 순위 추적 데이터 정리 완료:`, result);
+      console.log(`🗑️ 3년 이상 된 순위 추적 및 가격 데이터 정리 완료:`, result);
       return result;
     } catch (error) {
       console.error('데이터 정리 중 오류:', error);
