@@ -261,6 +261,17 @@ async function processSearchQueue() {
 
 console.log("🚀 실서버 최적화 스케줄러 시작 - 매분 실행, OpenAPI 우선 사용, 순차 처리");
 
+// 매일 자정에 3년 이상 된 데이터 자동 정리 (회원 계정 제외)
+cron.schedule("0 0 * * *", async () => {
+  try {
+    console.log("🗑️ 3년 이상 된 데이터 자동 정리 시작...");
+    const result = await storage.cleanupOldData();
+    console.log("✅ 데이터 정리 완료:", result);
+  } catch (error) {
+    console.error("❌ 데이터 정리 중 오류:", error);
+  }
+});
+
 // 진행상태 조회 함수 (routes.ts에서 사용)
 export function getSearchStatus() {
   const statusArray = Array.from(searchStatus.values());

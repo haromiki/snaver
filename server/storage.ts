@@ -286,6 +286,41 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  // 3년 이상 된 데이터 자동 정리 (회원 계정 제외)
+  async cleanupOldData(): Promise<{ deletedTracks: number; deletedProducts: number; deletedKeywords: number }> {
+    const threeYearsAgo = new Date();
+    threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
+    
+    try {
+      // 3년 이상 된 트랙 데이터 삭제
+      const deletedTracksResult = await db
+        .delete(tracks)
+        .where(lte(tracks.checkedAt, threeYearsAgo));
+      
+      // 3년 이상 된 제품 데이터 삭제 (createdAt 기준)
+      const deletedProductsResult = await db
+        .delete(products)
+        .where(lte(products.createdAt, threeYearsAgo));
+        
+      // 3년 이상 된 키워드 데이터 삭제 (createdAt 기준)  
+      const deletedKeywordsResult = await db
+        .delete(keywords)
+        .where(lte(keywords.createdAt, threeYearsAgo));
+
+      const result = {
+        deletedTracks: deletedTracksResult.rowCount || 0,
+        deletedProducts: deletedProductsResult.rowCount || 0,
+        deletedKeywords: deletedKeywordsResult.rowCount || 0
+      };
+
+      console.log(`🗑️ 3년 이상 된 데이터 정리 완료:`, result);
+      return result;
+    } catch (error) {
+      console.error('데이터 정리 중 오류:', error);
+      return { deletedTracks: 0, deletedProducts: 0, deletedKeywords: 0 };
+    }
+  }
+
 }
 
 export const storage = new DatabaseStorage();
