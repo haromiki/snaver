@@ -69,6 +69,17 @@ export const tracks = pgTable("tracks", {
 // Statistics table - 통계 데이터 3년 보관
 export const statisticsTypeEnum = pgEnum("statistics_type", ["daily", "weekly", "monthly", "yearly"]);
 
+// Weekly mini charts table - 1주일 미니 그래프 스냅샷 3년 보관
+export const weeklyCharts = pgTable("weekly_charts", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  productId: bigint("product_id", { mode: "number" }).notNull().references(() => products.id, { onDelete: "cascade" }),
+  weekStart: timestamp("week_start", { withTimezone: true }).notNull(), // 한국시간 기준 주 시작일
+  chartData: text("chart_data").notNull(), // JSON 형태의 일주일 순위 데이터
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  productWeekIndex: index("idx_weekly_charts_product_week").on(table.productId, table.weekStart),
+}));
+
 export const statistics = pgTable("statistics", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
   productId: bigint("product_id", { mode: "number" }).notNull().references(() => products.id, { onDelete: "cascade" }),
@@ -106,6 +117,7 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   }),
   tracks: many(tracks),
   statistics: many(statistics),
+  weeklyCharts: many(weeklyCharts),
 }));
 
 export const tracksRelations = relations(tracks, ({ one }) => ({
@@ -118,6 +130,13 @@ export const tracksRelations = relations(tracks, ({ one }) => ({
 export const statisticsRelations = relations(statistics, ({ one }) => ({
   product: one(products, {
     fields: [statistics.productId],
+    references: [products.id],
+  }),
+}));
+
+export const weeklyChartsRelations = relations(weeklyCharts, ({ one }) => ({
+  product: one(products, {
+    fields: [weeklyCharts.productId],
     references: [products.id],
   }),
 }));
@@ -182,6 +201,7 @@ export type Product = typeof products.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Track = typeof tracks.$inferSelect;
 export type Statistic = typeof statistics.$inferSelect;
+export type WeeklyChart = typeof weeklyCharts.$inferSelect;
 export type LoginRequest = z.infer<typeof loginSchema>;
 
 // 새로운 랭킹 시스템 타입들

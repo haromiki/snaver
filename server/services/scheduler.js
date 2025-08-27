@@ -271,6 +271,10 @@ cron.schedule("0 0 * * *", async () => {
     console.log("📊 일간 통계 업데이트 시작...");
     await updateDailyStatistics();
     console.log("✅ 일간 통계 업데이트 완료");
+
+    console.log("📊 주간 차트 스냅샷 생성 시작...");
+    await createWeeklyChartSnapshots();
+    console.log("✅ 주간 차트 스냅샷 생성 완료");
   } catch (error) {
     console.error("❌ 자정 작업 중 오류:", error);
   }
@@ -394,6 +398,76 @@ async function updateYearlyStatistics() {
       }
     } catch (error) {
       console.error(`❌ 연간 통계 계산 실패 - 제품 ${productId}:`, error);
+    }
+  }
+}
+
+// 주간 차트 스냅샷 생성 함수 (매일 자정 실행)
+async function createWeeklyChartSnapshots() {
+  const allUsers = await getAllActiveProducts();
+  const productIds = [...new Set(allUsers.map(p => p.id))];
+  
+  for (const productId of productIds) {
+    try {
+      // 현재 주간 데이터를 가져와서 스냅샷으로 저장
+      const kstNow = new Date();
+      const kstToday = new Date(kstNow.getTime() + (9 * 60 * 60 * 1000));
+      const dayOfWeek = kstToday.getDay();
+      const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      
+      // 한국시간 기준 이번 주 월요일 00:00
+      const thisWeekMonday = new Date(kstToday.getTime() - (daysFromMonday * 24 * 60 * 60 * 1000));
+      thisWeekMonday.setHours(0, 0, 0, 0);
+      
+      // 다음 주 월요일 00:00
+      const nextWeekMonday = new Date(thisWeekMonday);
+      nextWeekMonday.setDate(thisWeekMonday.getDate() + 7);
+      
+      // 이번 주 데이터 조회
+      const weeklyRanks = await storage.getProductTracksInRange(
+        productId, 
+        allUsers.find(p => p.id === productId)?.userId || 0,
+        thisWeekMonday.toISOString(),
+        nextWeekMonday.toISOString()
+      );
+      
+      // 요일별 최신 순위 데이터로 정리
+      const dailyRanks = [];
+      for (let i = 0; i < 7; i++) {
+        const targetDate = new Date(thisWeekMonday);
+        targetDate.setDate(thisWeekMonday.getDate() + i);
+        
+        const dayName = ['월', '화', '수', '목', '금', '토', '일'][i];
+        
+        // 해당 날짜의 트랙 데이터 중 가장 최근 것
+        const dayTracks = weeklyRanks.filter((track) => {
+          const trackDate = new Date(track.checkedAt);
+          const kstTrackDate = new Date(trackDate.getTime() + (9 * 60 * 60 * 1000));
+          const kstTargetDate = new Date(targetDate.getTime() + (9 * 60 * 60 * 1000));
+          return kstTrackDate.toDateString() === kstTargetDate.toDateString();
+        });
+        
+        const latestTrack = dayTracks.length > 0 ? 
+          dayTracks.sort((a, b) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime())[0] : null;
+        
+        dailyRanks.push({
+          day: dayName,
+          date: targetDate.toISOString().split('T')[0],
+          rank: latestTrack?.globalRank || null,
+          hasData: !!latestTrack
+        });
+      }
+      
+      // 주간 차트 스냅샷 저장
+      await storage.createWeeklyChart({
+        productId,
+        weekStart: thisWeekMonday,
+        chartData: JSON.stringify(dailyRanks)
+      });
+      
+      console.log(`✅ 주간 차트 저장 - 제품 ${productId}, 주 시작: ${thisWeekMonday.toISOString().split('T')[0]}`);
+    } catch (error) {
+      console.error(`❌ 주간 차트 생성 실패 - 제품 ${productId}:`, error);
     }
   }
 }

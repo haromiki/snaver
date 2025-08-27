@@ -4,6 +4,7 @@ import {
   tracks,
   keywords,
   statistics,
+  weeklyCharts,
   type User, 
   type InsertUser,
   type Product,
@@ -11,7 +12,8 @@ import {
   type Track,
   type Keyword,
   type InsertKeyword,
-  type Statistic
+  type Statistic,
+  type WeeklyChart
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, gte, lte, or } from "drizzle-orm";
@@ -288,6 +290,33 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  // 주간 차트 스냅샷 저장 및 조회
+  async createWeeklyChart(chartData: Omit<WeeklyChart, 'id' | 'createdAt'>): Promise<WeeklyChart> {
+    const [result] = await db.insert(weeklyCharts).values(chartData).returning();
+    return result;
+  }
+
+  async getWeeklyCharts(productId: number, fromDate?: Date, toDate?: Date): Promise<WeeklyChart[]> {
+    let query = db.select().from(weeklyCharts)
+      .where(eq(weeklyCharts.productId, productId));
+
+    if (fromDate && toDate) {
+      query = query.where(and(
+        eq(weeklyCharts.productId, productId),
+        gte(weeklyCharts.weekStart, fromDate),
+        lte(weeklyCharts.weekStart, toDate)
+      ));
+    }
+
+    return await query.orderBy(desc(weeklyCharts.weekStart));
+  }
+
+  async deleteOldWeeklyCharts(threeYearsAgo: Date): Promise<number> {
+    const result = await db.delete(weeklyCharts)
+      .where(lte(weeklyCharts.createdAt, threeYearsAgo));
+    return result.rowCount || 0;
+  }
+
   // 통계 데이터 저장 및 조회
   async createStatistic(statData: Omit<Statistic, 'id' | 'createdAt'>): Promise<Statistic> {
     const [result] = await db.insert(statistics).values(statData).returning();
@@ -350,8 +379,8 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  // 3년 이상 된 순위 추적, 가격 데이터, 통계 데이터 자동 정리 (회원 계정, 키워드, 제품 데이터는 영구 보관)
-  async cleanupOldData(): Promise<{ deletedTracks: number; deletedStatistics: number }> {
+  // 3년 이상 된 순위 추적, 가격 데이터, 통계 데이터, 주간 차트 자동 정리 (회원 계정, 키워드, 제품 데이터는 영구 보관)
+  async cleanupOldData(): Promise<{ deletedTracks: number; deletedStatistics: number; deletedWeeklyCharts: number }> {
     const threeYearsAgo = new Date();
     threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
     
@@ -361,19 +390,23 @@ export class DatabaseStorage implements IStorage {
         .delete(tracks)
         .where(lte(tracks.checkedAt, threeYearsAgo));
 
-      // 3년 이상 된 통계 데이터도 삭제
+      // 3년 이상 된 통계 데이터 삭제
       const deletedStatisticsResult = await this.deleteOldStatistics(threeYearsAgo);
+
+      // 3년 이상 된 주간 차트 데이터 삭제
+      const deletedWeeklyChartsResult = await this.deleteOldWeeklyCharts(threeYearsAgo);
 
       const result = {
         deletedTracks: deletedTracksResult.rowCount || 0,
-        deletedStatistics: deletedStatisticsResult
+        deletedStatistics: deletedStatisticsResult,
+        deletedWeeklyCharts: deletedWeeklyChartsResult
       };
 
-      console.log(`🗑️ 3년 이상 된 순위 추적, 가격, 통계 데이터 정리 완료:`, result);
+      console.log(`🗑️ 3년 이상 된 순위 추적, 가격, 통계, 주간 차트 데이터 정리 완료:`, result);
       return result;
     } catch (error) {
       console.error('데이터 정리 중 오류:', error);
-      return { deletedTracks: 0, deletedStatistics: 0 };
+      return { deletedTracks: 0, deletedStatistics: 0, deletedWeeklyCharts: 0 };
     }
   }
 
