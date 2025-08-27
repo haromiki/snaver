@@ -3,13 +3,15 @@ import {
   products, 
   tracks,
   keywords,
+  statistics,
   type User, 
   type InsertUser,
   type Product,
   type InsertProduct,
   type Track,
   type Keyword,
-  type InsertKeyword
+  type InsertKeyword,
+  type Statistic
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, gte, lte, or } from "drizzle-orm";
@@ -286,8 +288,70 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // 3년 이상 된 순위 추적 및 가격 데이터 자동 정리 (회원 계정, 키워드, 제품 데이터는 영구 보관)
-  async cleanupOldData(): Promise<{ deletedTracks: number }> {
+  // 통계 데이터 저장 및 조회
+  async createStatistic(statData: Omit<Statistic, 'id' | 'createdAt'>): Promise<Statistic> {
+    const [result] = await db.insert(statistics).values(statData).returning();
+    return result;
+  }
+
+  async getStatistics(productId: number, type: 'daily' | 'weekly' | 'monthly' | 'yearly', fromDate?: Date, toDate?: Date): Promise<Statistic[]> {
+    let query = db.select().from(statistics)
+      .where(and(
+        eq(statistics.productId, productId),
+        eq(statistics.type, type)
+      ));
+
+    if (fromDate && toDate) {
+      query = query.where(and(
+        eq(statistics.productId, productId),
+        eq(statistics.type, type),
+        gte(statistics.periodStart, fromDate),
+        lte(statistics.periodEnd, toDate)
+      ));
+    }
+
+    return await query.orderBy(asc(statistics.periodStart));
+  }
+
+  async deleteOldStatistics(threeYearsAgo: Date): Promise<number> {
+    const result = await db.delete(statistics)
+      .where(lte(statistics.createdAt, threeYearsAgo));
+    return result.rowCount || 0;
+  }
+
+  // 통계 계산 함수
+  async calculateStatistics(productId: number, type: 'daily' | 'weekly' | 'monthly' | 'yearly', periodStart: Date, periodEnd: Date): Promise<Omit<Statistic, 'id' | 'createdAt'> | null> {
+    const tracksInPeriod = await db.select().from(tracks)
+      .where(and(
+        eq(tracks.productId, productId),
+        gte(tracks.checkedAt, periodStart),
+        lte(tracks.checkedAt, periodEnd)
+      ))
+      .orderBy(asc(tracks.checkedAt));
+
+    if (tracksInPeriod.length === 0) {
+      return null;
+    }
+
+    const rankedTracks = tracksInPeriod.filter(t => t.globalRank !== null);
+    const tracksWithPrice = tracksInPeriod.filter(t => t.priceKrw !== null && t.priceKrw > 0);
+
+    return {
+      productId,
+      type,
+      periodStart,
+      periodEnd,
+      bestRank: rankedTracks.length > 0 ? Math.min(...rankedTracks.map(t => t.globalRank!)) : null,
+      worstRank: rankedTracks.length > 0 ? Math.max(...rankedTracks.map(t => t.globalRank!)) : null,
+      averageRank: rankedTracks.length > 0 ? Math.round(rankedTracks.reduce((sum, t) => sum + t.globalRank!, 0) / rankedTracks.length) : null,
+      foundRate: Math.round((rankedTracks.length / tracksInPeriod.length) * 100),
+      totalChecks: tracksInPeriod.length,
+      avgPrice: tracksWithPrice.length > 0 ? Math.round(tracksWithPrice.reduce((sum, t) => sum + (t.priceKrw || 0), 0) / tracksWithPrice.length) : null
+    };
+  }
+
+  // 3년 이상 된 순위 추적, 가격 데이터, 통계 데이터 자동 정리 (회원 계정, 키워드, 제품 데이터는 영구 보관)
+  async cleanupOldData(): Promise<{ deletedTracks: number; deletedStatistics: number }> {
     const threeYearsAgo = new Date();
     threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
     
@@ -297,15 +361,19 @@ export class DatabaseStorage implements IStorage {
         .delete(tracks)
         .where(lte(tracks.checkedAt, threeYearsAgo));
 
+      // 3년 이상 된 통계 데이터도 삭제
+      const deletedStatisticsResult = await this.deleteOldStatistics(threeYearsAgo);
+
       const result = {
-        deletedTracks: deletedTracksResult.rowCount || 0
+        deletedTracks: deletedTracksResult.rowCount || 0,
+        deletedStatistics: deletedStatisticsResult
       };
 
-      console.log(`🗑️ 3년 이상 된 순위 추적 및 가격 데이터 정리 완료:`, result);
+      console.log(`🗑️ 3년 이상 된 순위 추적, 가격, 통계 데이터 정리 완료:`, result);
       return result;
     } catch (error) {
       console.error('데이터 정리 중 오류:', error);
-      return { deletedTracks: 0 };
+      return { deletedTracks: 0, deletedStatistics: 0 };
     }
   }
 

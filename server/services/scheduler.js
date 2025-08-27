@@ -261,16 +261,151 @@ async function processSearchQueue() {
 
 console.log("🚀 실서버 최적화 스케줄러 시작 - 매분 실행, OpenAPI 우선 사용, 순차 처리");
 
-// 매일 자정에 3년 이상 된 데이터 자동 정리 (회원 계정 제외)
+// 매일 자정 (한국시간) - 일간 통계 업데이트 및 데이터 정리
 cron.schedule("0 0 * * *", async () => {
   try {
     console.log("🗑️ 3년 이상 된 데이터 자동 정리 시작...");
-    const result = await storage.cleanupOldData();
-    console.log("✅ 데이터 정리 완료:", result);
+    const cleanupResult = await storage.cleanupOldData();
+    console.log("✅ 데이터 정리 완료:", cleanupResult);
+
+    console.log("📊 일간 통계 업데이트 시작...");
+    await updateDailyStatistics();
+    console.log("✅ 일간 통계 업데이트 완료");
   } catch (error) {
-    console.error("❌ 데이터 정리 중 오류:", error);
+    console.error("❌ 자정 작업 중 오류:", error);
   }
+}, {
+  timezone: "Asia/Seoul"
 });
+
+// 매주 월요일 자정 (한국시간) - 주간 통계 갱신
+cron.schedule("0 0 * * 1", async () => {
+  try {
+    console.log("📊 주간 통계 갱신 시작...");
+    await updateWeeklyStatistics();
+    console.log("✅ 주간 통계 갱신 완료");
+  } catch (error) {
+    console.error("❌ 주간 통계 갱신 중 오류:", error);
+  }
+}, {
+  timezone: "Asia/Seoul"
+});
+
+// 매월 1일 자정 (한국시간) - 월간 통계 재계산
+cron.schedule("0 0 1 * *", async () => {
+  try {
+    console.log("📊 월간 통계 재계산 시작...");
+    await updateMonthlyStatistics();
+    console.log("✅ 월간 통계 재계산 완료");
+  } catch (error) {
+    console.error("❌ 월간 통계 재계산 중 오류:", error);
+  }
+}, {
+  timezone: "Asia/Seoul"
+});
+
+// 매년 1월 1일 자정 (한국시간) - 연간 통계 재계산
+cron.schedule("0 0 1 1 *", async () => {
+  try {
+    console.log("📊 연간 통계 재계산 시작...");
+    await updateYearlyStatistics();
+    console.log("✅ 연간 통계 재계산 완료");
+  } catch (error) {
+    console.error("❌ 연간 통계 재계산 중 오류:", error);
+  }
+}, {
+  timezone: "Asia/Seoul"
+});
+
+// 통계 업데이트 함수들
+async function updateDailyStatistics() {
+  const allUsers = await getAllActiveProducts();
+  const productIds = [...new Set(allUsers.map(p => p.id))];
+  
+  const yesterday = getKSTDate(-1);
+  const todayStart = getKSTDate(0);
+  
+  for (const productId of productIds) {
+    try {
+      const statData = await storage.calculateStatistics(productId, 'daily', yesterday, todayStart);
+      if (statData) {
+        await storage.createStatistic(statData);
+        console.log(`✅ 일간 통계 저장 - 제품 ${productId}`);
+      }
+    } catch (error) {
+      console.error(`❌ 일간 통계 계산 실패 - 제품 ${productId}:`, error);
+    }
+  }
+}
+
+async function updateWeeklyStatistics() {
+  const allUsers = await getAllActiveProducts();
+  const productIds = [...new Set(allUsers.map(p => p.id))];
+  
+  const lastWeekStart = getKSTDate(-7);
+  const thisWeekStart = getKSTDate(0);
+  
+  for (const productId of productIds) {
+    try {
+      const statData = await storage.calculateStatistics(productId, 'weekly', lastWeekStart, thisWeekStart);
+      if (statData) {
+        await storage.createStatistic(statData);
+        console.log(`✅ 주간 통계 저장 - 제품 ${productId}`);
+      }
+    } catch (error) {
+      console.error(`❌ 주간 통계 계산 실패 - 제품 ${productId}:`, error);
+    }
+  }
+}
+
+async function updateMonthlyStatistics() {
+  const allUsers = await getAllActiveProducts();
+  const productIds = [...new Set(allUsers.map(p => p.id))];
+  
+  const lastMonthStart = getKSTDate(-30);
+  const thisMonthStart = getKSTDate(0);
+  
+  for (const productId of productIds) {
+    try {
+      const statData = await storage.calculateStatistics(productId, 'monthly', lastMonthStart, thisMonthStart);
+      if (statData) {
+        await storage.createStatistic(statData);
+        console.log(`✅ 월간 통계 저장 - 제품 ${productId}`);
+      }
+    } catch (error) {
+      console.error(`❌ 월간 통계 계산 실패 - 제품 ${productId}:`, error);
+    }
+  }
+}
+
+async function updateYearlyStatistics() {
+  const allUsers = await getAllActiveProducts();
+  const productIds = [...new Set(allUsers.map(p => p.id))];
+  
+  const lastYearStart = getKSTDate(-365);
+  const thisYearStart = getKSTDate(0);
+  
+  for (const productId of productIds) {
+    try {
+      const statData = await storage.calculateStatistics(productId, 'yearly', lastYearStart, thisYearStart);
+      if (statData) {
+        await storage.createStatistic(statData);
+        console.log(`✅ 연간 통계 저장 - 제품 ${productId}`);
+      }
+    } catch (error) {
+      console.error(`❌ 연간 통계 계산 실패 - 제품 ${productId}:`, error);
+    }
+  }
+}
+
+// 한국시간 기준 날짜 계산 함수
+function getKSTDate(daysOffset = 0) {
+  const now = new Date();
+  const kstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
+  kstNow.setDate(kstNow.getDate() + daysOffset);
+  kstNow.setHours(0, 0, 0, 0); // 자정으로 설정
+  return kstNow;
+}
 
 // 진행상태 조회 함수 (routes.ts에서 사용)
 export function getSearchStatus() {

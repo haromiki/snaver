@@ -66,6 +66,26 @@ export const tracks = pgTable("tracks", {
   productTimeIndex: index("idx_tracks_product_time").on(table.productId, table.checkedAt),
 }));
 
+// Statistics table - 통계 데이터 3년 보관
+export const statisticsTypeEnum = pgEnum("statistics_type", ["daily", "weekly", "monthly", "yearly"]);
+
+export const statistics = pgTable("statistics", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  productId: bigint("product_id", { mode: "number" }).notNull().references(() => products.id, { onDelete: "cascade" }),
+  type: statisticsTypeEnum("type").notNull(),
+  periodStart: timestamp("period_start", { withTimezone: true }).notNull(),
+  periodEnd: timestamp("period_end", { withTimezone: true }).notNull(),
+  bestRank: integer("best_rank"),
+  worstRank: integer("worst_rank"),
+  averageRank: integer("average_rank"),
+  foundRate: integer("found_rate"), // 발견율 (%)
+  totalChecks: integer("total_checks").notNull().default(0),
+  avgPrice: bigint("avg_price", { mode: "number" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  productPeriodIndex: index("idx_statistics_product_period").on(table.productId, table.type, table.periodStart),
+}));
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   products: many(products),
@@ -85,11 +105,19 @@ export const productsRelations = relations(products, ({ one, many }) => ({
     references: [users.id],
   }),
   tracks: many(tracks),
+  statistics: many(statistics),
 }));
 
 export const tracksRelations = relations(tracks, ({ one }) => ({
   product: one(products, {
     fields: [tracks.productId],
+    references: [products.id],
+  }),
+}));
+
+export const statisticsRelations = relations(statistics, ({ one }) => ({
+  product: one(products, {
+    fields: [statistics.productId],
     references: [products.id],
   }),
 }));
@@ -153,6 +181,7 @@ export type InsertKeyword = z.infer<typeof insertKeywordSchema>;
 export type Product = typeof products.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Track = typeof tracks.$inferSelect;
+export type Statistic = typeof statistics.$inferSelect;
 export type LoginRequest = z.infer<typeof loginSchema>;
 
 // 새로운 랭킹 시스템 타입들
