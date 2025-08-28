@@ -678,6 +678,10 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
           }
           // rankDiff === 0은 변동 없음이므로 showRank = false (숨김)
         }
+      } else if (validTracks.length === 1) {
+        // 최초 발견 (이전 데이터 없음) - 검은색으로 표시
+        color = "text-gray-900 dark:text-gray-100";
+        showRank = true;
       }
     }
 
