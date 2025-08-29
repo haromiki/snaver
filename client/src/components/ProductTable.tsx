@@ -631,61 +631,49 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
 
   const getRankDisplay = (latestTrack: any, product: any) => {
     if (!latestTrack || !latestTrack.globalRank) {
-      return { rank: "-", page: "미발견", change: "", color: "text-gray-400 dark:text-gray-500", changeColor: "text-gray-500 dark:text-gray-400", showRank: true };
+      return { rank: "-", page: "미발견", change: "", color: "text-gray-400 dark:text-gray-500", changeColor: "text-gray-500 dark:text-gray-400" };
     }
 
     const rank = latestTrack.globalRank;
     const page = Math.ceil(rank / 40);
     
     // 이전 순위와 비교하여 순위 색상 결정
-    let color = "text-gray-900 dark:text-gray-100"; // 기본 색상 (변화 없음)
+    let color = "text-gray-900 dark:text-gray-100"; // 기본 색상 (변화 없음 또는 첫 검색)
     let trendIcon = null;
-    let showRank = false; // 변동 없으면 숫자 숨김
     
     // 제품의 모든 트랙 데이터에서 이전 순위 찾기 (globalRank가 있는 것만)
     if (product.tracks && product.tracks.length >= 1) {
-      // globalRank가 있는 트랙만 필터링하고 최신 순으로 정렬 (최근 5000개 검색)
+      // globalRank가 있는 트랙만 필터링하고 최신 순으로 정렬
       const validTracks = product.tracks
         .filter((track: any) => track.globalRank && track.globalRank > 0)
-        .sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime())
-        .slice(0, 5000); // 최근 5000개로 제한
+        .sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
       
       if (validTracks.length >= 2) {
-        const currentRank = validTracks[0].globalRank;
+        const currentTrack = validTracks[0]; // 최신 유효 트랙
+        const previousTrack = validTracks[1]; // 이전 유효 트랙
         
-        // 현재 순위와 다른 순위를 가진 이전 데이터를 무한 검색 (5000개 내에서)
-        let previousRank = null;
-        for (let i = 1; i < validTracks.length; i++) {
-          if (validTracks[i].globalRank !== currentRank) {
-            previousRank = validTracks[i].globalRank;
-            break;
-          }
-        }
+        const currentRank = currentTrack.globalRank;
+        const previousRank = previousTrack.globalRank;
+        const rankDiff = previousRank - currentRank; // 이전 순위 - 현재 순위
         
-        if (previousRank !== null) {
-          const rankDiff = previousRank - currentRank; // 이전 순위 - 현재 순위
-          
-          if (rankDiff > 0) {
-            // 순위 상승 (숫자가 작아짐) - 파란색
-            color = "text-blue-600 dark:text-blue-400";
-            trendIcon = "▲";
-            showRank = true;
-          } else if (rankDiff < 0) {
-            // 순위 하락 (숫자가 커짐) - 빨간색
-            color = "text-red-600 dark:text-red-400";
-            trendIcon = "▼";
-            showRank = true;
-          }
-          // rankDiff === 0은 변동 없음이므로 showRank = false (숨김)
+        
+        
+        if (rankDiff > 0) {
+          // 순위 상승 (숫자가 작아짐) - 파란색
+          color = "text-blue-600 dark:text-blue-400";
+          trendIcon = "▲"; // 상승 삼각형
+        } else if (rankDiff < 0) {
+          // 순위 하락 (숫자가 커짐) - 빨간색
+          color = "text-red-600 dark:text-red-400";
+          trendIcon = "▼"; // 하락 삼각형
+        } else {
+          // 순위 변화 없음 - 검정색
+          color = "text-gray-900 dark:text-gray-100";
         }
-      } else if (validTracks.length === 1) {
-        // 최초 발견 (이전 데이터 없음) - 검은색으로 표시
-        color = "text-gray-900 dark:text-gray-100";
-        showRank = true;
       }
     }
 
-    return { rank, page: <span className="relative top-1">{page}페이지</span>, trendIcon, color, showRank };
+    return { rank, page: <span className="relative top-1">{page}페이지</span>, trendIcon, color };
   };
 
   const formatPrice = (priceKrw: number | null) => {
@@ -903,8 +891,8 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                         <td className="px-6 py-4">
                           <div className="flex items-center space-x-2">
                             <span className={`text-2xl font-bold ${rankDisplay.color}`} data-testid={`text-rank-${product.id}`}>
-                              {rankDisplay.showRank ? rankDisplay.rank : ""}
-                              {rankDisplay.showRank && product.latestTrack?.rankOnPage && (
+                              {rankDisplay.rank}
+                              {product.latestTrack?.rankOnPage && (
                                 <span className="text-sm text-gray-500 dark:text-gray-400 ml-1 font-normal">
                                   ({product.latestTrack.rankOnPage})
                                 </span>
