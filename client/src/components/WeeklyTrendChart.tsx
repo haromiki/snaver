@@ -35,15 +35,15 @@ export default function WeeklyTrendChart({ productId, dailyRanks, className = ""
     // 데이터 준비 - 각 날짜별로 개별 dataset 생성 (24:00마다 새로운 선)
     const labels = dailyRanks.map(item => item.day);
     
-    // 색상 팔레트 (7가지 다른 색상)
+    // 색상 팔레트 (모두 검은색으로 통일)
     const colors = [
-      { line: '#3B82F6', fill: 'rgba(59, 130, 246, 0.1)' }, // 파란색 (월)
-      { line: '#10B981', fill: 'rgba(16, 185, 129, 0.1)' }, // 녹색 (화)
-      { line: '#F59E0B', fill: 'rgba(245, 158, 11, 0.1)' }, // 노란색 (수)
-      { line: '#EF4444', fill: 'rgba(239, 68, 68, 0.1)' },  // 빨간색 (목)
-      { line: '#8B5CF6', fill: 'rgba(139, 92, 246, 0.1)' }, // 보라색 (금)
-      { line: '#06B6D4', fill: 'rgba(6, 182, 212, 0.1)' },  // 청록색 (토)
-      { line: '#F97316', fill: 'rgba(249, 115, 22, 0.1)' }  // 주황색 (일)
+      { line: '#000000', fill: 'rgba(0, 0, 0, 0.1)' }, // 검은색 (월)
+      { line: '#000000', fill: 'rgba(0, 0, 0, 0.1)' }, // 검은색 (화)
+      { line: '#000000', fill: 'rgba(0, 0, 0, 0.1)' }, // 검은색 (수)
+      { line: '#000000', fill: 'rgba(0, 0, 0, 0.1)' }, // 검은색 (목)
+      { line: '#000000', fill: 'rgba(0, 0, 0, 0.1)' }, // 검은색 (금)
+      { line: '#000000', fill: 'rgba(0, 0, 0, 0.1)' }, // 검은색 (토)
+      { line: '#000000', fill: 'rgba(0, 0, 0, 0.1)' }  // 검은색 (일)
     ];
 
     // 연속된 데이터 구간별로 dataset 생성 (24:00마다 새로운 선)
