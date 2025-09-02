@@ -386,7 +386,10 @@ export default function StatisticsModal({ productId, onClose }: StatisticsModalP
         <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div>
             <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">순위 통계</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">{product?.productName || `제품 #${productId}`}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {product?.productName || `제품 #${productId}`}
+              {product?.keyword && ` - ${product.keyword}`}
+            </p>
           </div>
           <button 
             onClick={onClose} 
