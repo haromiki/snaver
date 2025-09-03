@@ -907,7 +907,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center space-x-2">
-                            <div className="flex flex-col">
+                            <div className="flex flex-col items-start">
                               <span className={`text-2xl font-bold ${rankDisplay.color}`} data-testid={`text-rank-${product.id}`}>
                                 {rankDisplay.rank}
                                 {product.latestTrack?.rankOnPage && (
@@ -917,7 +917,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                                 )}
                               </span>
                               {rankDisplay.previousRank && (
-                                <span className="text-sm text-gray-500 dark:text-gray-400 font-normal" data-testid={`text-previous-rank-${product.id}`}>
+                                <span className="text-sm text-gray-500 dark:text-gray-400 font-normal ml-0" data-testid={`text-previous-rank-${product.id}`}>
                                   {rankDisplay.previousRank}
                                   {product.latestTrack?.rankOnPage && (
                                     <span className="ml-1">
