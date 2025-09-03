@@ -689,7 +689,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
       trendIcon, 
       color, 
       previousRank, 
-      previousPage: previousPage ? <span className="relative top-1">{previousPage}페이지</span> : null 
+      previousPage: previousPage ? <span className="relative top-1 ">{previousPage}페이지</span> : null 
     };
   };
 
