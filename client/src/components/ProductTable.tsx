@@ -652,31 +652,32 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
       
       if (validTracks.length >= 2) {
         const currentTrack = validTracks[0]; // 최신 유효 트랙
+        const immediateTrack = validTracks[1]; // 바로 이전 트랙 (현재 순위 색상용)
         
-        // 현재와 다른 순위를 가진 이전 데이터를 무한 검색
+        // 현재 순위 색상은 바로 이전 트랙과만 비교
+        const currentRank = currentTrack.globalRank;
+        const immediateRank = immediateTrack.globalRank;
+        const rankDiff = immediateRank - currentRank; // 이전 순위 - 현재 순위
+        
+        if (rankDiff > 0) {
+          // 순위 상승 (숫자가 작아짐) - 파란색
+          color = "text-blue-600 dark:text-blue-400";
+          trendIcon = "▲"; // 상승 삼각형
+        } else if (rankDiff < 0) {
+          // 순위 하락 (숫자가 커짐) - 빨간색
+          color = "text-red-600 dark:text-red-400";
+          trendIcon = "▼"; // 하락 삼각형
+        } else {
+          // 순위 변화 없음 - 검정색
+          color = "text-gray-900 dark:text-gray-100";
+        }
+        
+        // 이전 순위 표시용: 현재와 다른 순위를 가진 이전 데이터를 무한 검색
         for (let i = 1; i < validTracks.length; i++) {
           if (validTracks[i].globalRank !== currentTrack.globalRank) {
             previousRank = validTracks[i].globalRank;
             previousPage = Math.ceil(previousRank / 40);
             break;
-          }
-        }
-        
-        if (previousRank) {
-          const currentRank = currentTrack.globalRank;
-          const rankDiff = previousRank - currentRank; // 이전 순위 - 현재 순위
-          
-          if (rankDiff > 0) {
-            // 순위 상승 (숫자가 작아짐) - 파란색
-            color = "text-blue-600 dark:text-blue-400";
-            trendIcon = "▲"; // 상승 삼각형
-          } else if (rankDiff < 0) {
-            // 순위 하락 (숫자가 커짐) - 빨간색
-            color = "text-red-600 dark:text-red-400";
-            trendIcon = "▼"; // 하락 삼각형
-          } else {
-            // 순위 변화 없음 - 검정색
-            color = "text-gray-900 dark:text-gray-100";
           }
         }
       }
