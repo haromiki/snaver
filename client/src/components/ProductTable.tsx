@@ -210,10 +210,29 @@ function DailyTrendChartWrapper({ productId }: { productId: number }) {
   const { data: dailyData, isLoading } = useQuery({
     queryKey: [`/products/${productId}/daily-ranks`, Date.now()], // 타임스탬프로 캐시 무효화
     queryFn: async () => {
-      const response = await apiRequest("GET", `/products/${productId}/daily-ranks?t=${Date.now()}`);
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2);
+      
+      const response = await fetch(`/api/products/${productId}/daily-ranks?v=${timestamp}&r=${randomId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-Cache-Bust': timestamp.toString()
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
       const data = await response.json();
       console.log(`[Daily Graph Debug ${productId}] API 응답:`, data);
       console.log(`[Daily Graph Debug ${productId}] hourlyRanks 샘플:`, data.hourlyRanks?.slice(0, 3));
+      console.log(`[Daily Graph Debug ${productId}] 실제 데이터 있는 시간:`, data.hourlyRanks?.filter((h: any) => h.hasData).length);
       return data;
     },
     staleTime: 0,
