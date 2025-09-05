@@ -95,7 +95,7 @@ export default function DailyTrendMiniChart({ productId, className = "" }: Daily
         const nextPoint = points[i + 1];
         
         // 순위 변화에 따른 색상 결정
-        const isImproving = nextPoint.rank < currentPoint.rank; // 순위가 올라감 (숫자가 작아짐)
+        const isImproving = currentPoint.rank > nextPoint.rank; // 순위가 올라감 (숫자가 작아짐)
         const color = isImproving ? '#3b82f6' : '#ef4444'; // 파란색: 상승, 빨간색: 하락
         
         // 라인 그리기
