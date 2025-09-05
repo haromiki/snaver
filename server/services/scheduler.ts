@@ -9,8 +9,8 @@ let searchQueue = []; // 순차 검색 큐
 let isProcessingQueue = false; // 큐 처리 중 플래그
 let searchStatus = new Map(); // 제품별 검색 진행상태 추적
 
-// Run every minute
-cron.schedule("* * * * *", async () => {
+// Run every 10 seconds for real-time updates
+cron.schedule("*/10 * * * * *", async () => {
   if (isRunning) {
     console.log("Scheduler already running, skipping...");
     return;
@@ -20,7 +20,7 @@ cron.schedule("* * * * *", async () => {
   
   try {
     const now = new Date();
-    const currentMinute = now.getMinutes();
+    const currentSecond = Math.floor(now.getTime() / 1000); // 초 단위로 계산
     
     console.log(`Scheduler tick: ${now.toISOString()}`);
     
@@ -29,10 +29,12 @@ cron.schedule("* * * * *", async () => {
     
     for (const product of allProducts) {
       try {
-        // 추적 시간인지 확인 (개선된 로직)
-        console.log(`🔍 제품 ${product.id} 체크: intervalMin=${product.intervalMin}, currentMinute=${currentMinute}, 나머지=${currentMinute % product.intervalMin}`);
+        // 실시간 업데이트를 위해 intervalMin을 초 단위로 변환 (60분 = 3600초)
+        const intervalSeconds = product.intervalMin * 60; // 분을 초로 변환
         
-        if (currentMinute % product.intervalMin === 0) {
+        console.log(`🔍 제품 ${product.id} 체크: intervalMin=${product.intervalMin}분(${intervalSeconds}초), currentSecond=${currentSecond}, 나머지=${currentSecond % intervalSeconds}`);
+        
+        if (currentSecond % intervalSeconds === 0) {
           console.log(`⏰ 스케줄 추가 - 제품 ${product.id}: ${product.keyword} (타입: ${product.type})`);
           
           // 큐에 추가 (순차 처리)
@@ -42,9 +44,9 @@ cron.schedule("* * * * *", async () => {
             retries: 0
           });
         } else {
-          // 실시간 업데이트 테스트를 위해 임시로 제품 22를 매분마다 실행
-          if (product.id === 22) {
-            console.log(`⏰ 테스트용 매분 실행 - 제품 ${product.id}: ${product.keyword} (타입: ${product.type})`);
+          // 실시간 테스트를 위해 일부 제품을 30초마다 실행
+          if (product.id === 22 && currentSecond % 30 === 0) {
+            console.log(`⏰ 실시간 테스트용 30초 실행 - 제품 ${product.id}: ${product.keyword} (타입: ${product.type})`);
             
             searchQueue.push({
               product,
