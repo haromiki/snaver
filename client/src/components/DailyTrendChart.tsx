@@ -65,10 +65,10 @@ export default function DailyTrendChart({ productId, hourlyRanks, className = ""
           borderColor: trendColor,
           backgroundColor: trendColor + '40', // 투명도 25%
           borderWidth: 2,
-          pointRadius: validData.length <= 3 ? 3 : 0, // 데이터가 적으면 점 표시
-          pointHoverRadius: validData.length <= 3 ? 5 : 0,
+          pointRadius: 0, // 점 제거
+          pointHoverRadius: 0,
           fill: true, // 면적 채우기
-          tension: 0.4, // 부드러운 곡선
+          tension: 0, // 각진 그래프
           spanGaps: true, // 빈 데이터 포인트를 연결하여 그래프 표시
         }],
       },
