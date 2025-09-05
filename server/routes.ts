@@ -9,7 +9,7 @@ import { authenticateToken } from "./middleware/auth.ts";
 import { fetchOrganicRank } from "./crawler/naverOrganic.js";
 import { fetchOrganicRankPuppeteer } from "./crawler/naverOrganicPuppeteer.js";
 import { fetchAdRank } from "./crawler/adCrawler.js";
-import { getSearchStatus } from "./services/scheduler.js";
+import { getSearchStatus } from "./services/scheduler.ts";
 import crypto from "crypto";
 import { setupWebSocket } from "./websocket";
 
@@ -660,97 +660,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // 24시간 순위 트렌드 데이터 API
-  app.get("/api/products/:id/daily-ranks", authenticateToken, async (req, res) => {
-    // 캐시 방지 헤더 설정
-    res.set({
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
-    });
-    
-    console.log(`🔥🔥🔥 [CRITICAL DEBUG] API 호출됨 - 제품 ID: ${req.params.id} 🔥🔥🔥`);
-    
-    try {
-      const productId = parseInt(req.params.id);
-      
-      // 한국 시간(KST, UTC+9) 기준으로 오늘 시작 시간 계산
-      const now = new Date();
-      const kstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000));
-      
-      // 오늘 00:00 (한국 시간)
-      const todayStartKST = new Date(kstNow);
-      todayStartKST.setHours(0, 0, 0, 0);
-      
-      // UTC 기준으로 오늘 하루 범위 계산 (어제 15:00 ~ 오늘 15:00)
-      const todayStart = new Date(todayStartKST.getTime() - (9 * 60 * 60 * 1000));
-      const tomorrowStart = new Date(todayStart.getTime() + (24 * 60 * 60 * 1000));
-      
-      console.log(`[Daily Ranks API] 제품 ${productId} - 검색 범위: ${todayStart.toISOString()} ~ ${tomorrowStart.toISOString()}`);
-      console.log(`[Daily Ranks API] KST 기준: ${todayStartKST.toISOString().split('T')[0]}`);
-      
-      // 24시간 데이터 조회 (UTC 기준)
-      const dailyTracks = await storage.getProductTracksInRange(
-        productId, 
-        req.userId!,
-        todayStart.toISOString(),
-        tomorrowStart.toISOString()
-      );
-      
-      console.log(`[Daily Ranks API] 조회된 tracks 개수: ${dailyTracks.length}개`);
-      if (dailyTracks.length > 0) {
-        console.log(`[Daily Ranks API] 첫 번째 track:`, {
-          checkedAt: dailyTracks[0].checkedAt,
-          rank: dailyTracks[0].globalRank
-        });
-      }
-
-      // 시간별 최신 순위 데이터로 정리 (24시간, UTC 기준)
-      const hourlyRanks = [];
-      for (let i = 0; i < 24; i++) {
-        const targetHourUTC = new Date(todayStart.getTime() + (i * 60 * 60 * 1000));
-        const nextHourUTC = new Date(todayStart.getTime() + ((i + 1) * 60 * 60 * 1000));
-        
-        // 해당 시간대의 트랙 데이터 중 가장 최근 것 (UTC 기준)
-        const hourTracks = dailyTracks.filter((track: any) => {
-          const trackDate = new Date(track.checkedAt);
-          return trackDate >= targetHourUTC && trackDate < nextHourUTC;
-        });
-        
-        const latestTrack = hourTracks.length > 0 ? 
-          hourTracks.sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime())[0] : null;
-        
-        // 한국시간으로 표시하기 위해 +9시간
-        const kstHour = new Date(targetHourUTC.getTime() + (9 * 60 * 60 * 1000));
-        
-        if (i === 18 || i === 19) { // 18시, 19시 디버깅
-          console.log(`[Daily Ranks API] ${i}시 검색:`, {
-            targetHour: targetHourUTC.toISOString(),
-            nextHour: nextHourUTC.toISOString(),
-            hourTracks: hourTracks.length,
-            latestRank: latestTrack?.globalRank
-          });
-        }
-        
-        hourlyRanks.push({
-          hour: kstHour.getHours().toString().padStart(2, '0') + ':00',
-          time: targetHourUTC.toISOString(),
-          rank: latestTrack?.globalRank || null,
-          hasData: !!latestTrack && latestTrack.globalRank !== null
-        });
-      }
-      
-      res.json({
-        productId,
-        dayStart: todayStartKST.toISOString().split('T')[0],
-        hourlyRanks
-      });
-      
-    } catch (error) {
-      console.error("24시간 순위 데이터 조회 오류:", error);
-      res.status(500).json({ message: "24시간 순위 데이터를 가져오는데 실패했습니다" });
-    }
-  });
 
   // 가격 히스토리 조회 API
   app.get("/api/products/:id/price-history", authenticateToken, async (req, res) => {

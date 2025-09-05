@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
 import StatisticsModal from "./StatisticsModal";
-import SimpleChart from "./SimpleChart";
 import PriceHistoryModal from "./PriceHistoryModal";
 import { useToast } from "@/hooks/use-toast";
 // 웹소켓 제거 - 폴링으로 대체
@@ -205,76 +204,6 @@ function PriceChangeIndicator({ product }: { product: any }) {
   }
 }
 
-// 24시간 트렌드 차트를 위한 래퍼 컴포넌트
-function DailyTrendChartWrapper({ productId }: { productId: number }) {
-  const uniqueCacheKey = `daily-ranks-${productId}-${Date.now()}-${Math.random()}`;
-  
-  const { data: dailyData, isLoading } = useQuery({
-    queryKey: [uniqueCacheKey], // 완전히 고유한 키
-    queryFn: async () => {
-      const timestamp = Date.now();
-      const randomId = Math.random().toString(36).substring(2);
-      
-      const response = await fetch(`/api/products/${productId}/daily-ranks?v=${timestamp}&r=${randomId}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-          'X-Requested-With': 'XMLHttpRequest',
-          'X-Cache-Bust': timestamp.toString()
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log(`[Daily Graph Debug ${productId}] API 응답:`, data);
-      console.log(`[Daily Graph Debug ${productId}] hourlyRanks 샘플:`, data.hourlyRanks?.slice(0, 3));
-      console.log(`[Daily Graph Debug ${productId}] 실제 데이터 있는 시간:`, data.hourlyRanks?.filter((h: any) => h.hasData).length);
-      
-      // 제품 23만 상세 로그
-      if (productId === 23) {
-        console.log(`🔍 [제품 23 상세] 전체 hourlyRanks:`, data.hourlyRanks);
-        const hasDataItems = data.hourlyRanks?.filter((h: any) => h.hasData);
-        console.log(`🔍 [제품 23 상세] hasData=true인 항목들:`, hasDataItems);
-        const nonNullRanks = data.hourlyRanks?.filter((h: any) => h.rank !== null);
-        console.log(`🔍 [제품 23 상세] rank가 null이 아닌 항목들:`, nonNullRanks);
-      }
-      return data;
-    },
-    staleTime: 0,
-    gcTime: 0, // 완전 캐시 비활성화
-    refetchOnWindowFocus: false,
-  });
-
-  if (isLoading) {
-    return (
-      <div className="w-20 h-16 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded animate-pulse">
-        <div className="w-16 h-8 bg-gray-300 dark:bg-gray-600 rounded"></div>
-      </div>
-    );
-  }
-
-  // hourlyRanks 배열이 있으면 항상 차트 표시 (데이터 없어도 가능)
-  if (!dailyData?.hourlyRanks || dailyData.hourlyRanks.length === 0) {
-    return (
-      <div className="w-20 h-16 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
-        <span className="text-xs text-gray-400 dark:text-gray-500">-</span>
-      </div>
-    );
-  }
-
-  return (
-    <SimpleChart 
-      productId={productId} 
-      hourlyRanks={dailyData.hourlyRanks} 
-    />
-  );
-}
 
 interface ProductTableProps {
   section: string;
@@ -418,8 +347,6 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
           const currentFilters = getFilters();
           queryClient.setQueryData(["/products", currentFilters], freshData);
           
-          // 주간 트렌드 캐시 무효화 (새로운 검색 결과 반영)
-          queryClient.invalidateQueries({ queryKey: [`/products/${productId}/daily-ranks`] });
           
           // 전체 제품 목록 새로고침으로 마지막 확인 시간 업데이트
           queryClient.invalidateQueries({ queryKey: ["/products"] });
@@ -866,7 +793,6 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">제품 가격</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">현재 순위</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">순위 변동</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">1일 그래프</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">마지막 확인</th>
                   </>
                 )}
@@ -975,9 +901,6 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                         </td>
                         <td className="px-6 py-4">
                           <RankChangeIndicator productId={product.id} />
-                        </td>
-                        <td className="px-6 py-4">
-                          <DailyTrendChartWrapper productId={product.id} />
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-900 dark:text-gray-100" data-testid={`text-last-checked-${product.id}`}>

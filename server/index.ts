@@ -88,7 +88,7 @@ app.use((req, res, next) => {
       log(`serving on port ${port}`);
       
       // 실서버 환경 최적화 스케줄러 시작
-      import("./services/scheduler.js")
+      import("./services/scheduler.ts")
         .then(() => log("✅ 스케줄러 시작됨 - OpenAPI 우선, 순차 처리"))
         .catch(err => log(`❌ 스케줄러 시작 실패: ${err.message}`));
     },
