@@ -225,7 +225,8 @@ function DailyTrendChartWrapper({ productId }: { productId: number }) {
     );
   }
 
-  if (!dailyData?.hourlyRanks) {
+  // hourlyRanks 배열이 있으면 항상 차트 표시 (데이터 없어도 가능)
+  if (!dailyData?.hourlyRanks || dailyData.hourlyRanks.length === 0) {
     return (
       <div className="w-20 h-16 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
         <span className="text-xs text-gray-400 dark:text-gray-500">-</span>
