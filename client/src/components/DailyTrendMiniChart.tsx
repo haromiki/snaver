@@ -134,7 +134,7 @@ export default function DailyTrendMiniChart({ productId, className = "" }: Daily
   // 로딩 상태
   if (isLoading) {
     return (
-      <div className={`w-20 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded animate-pulse ${className}`}>
+      <div className={`w-[108px] h-[62px] flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded animate-pulse ${className}`}>
         <div className="w-2 h-2 bg-gray-300 dark:bg-gray-500 rounded-full"></div>
       </div>
     );
@@ -143,18 +143,18 @@ export default function DailyTrendMiniChart({ productId, className = "" }: Daily
   // 데이터가 없는 경우
   if (!dailyData?.hourlyRanks || dailyData.hourlyRanks.length === 0) {
     return (
-      <div className={`w-20 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded ${className}`}>
+      <div className={`w-[108px] h-[62px] flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded ${className}`}>
         <span className="text-xs text-gray-400 dark:text-gray-500">-</span>
       </div>
     );
   }
 
   return (
-    <div className={`w-20 h-8 ${className}`}>
+    <div className={`w-[108px] h-[62px] ${className}`}>
       <canvas
         ref={canvasRef}
-        width={80}
-        height={32}
+        width={216}   // 108px × 2 (Retina/고해상도 보정)
+        height={124}  // 62px × 2
         className="w-full h-full rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800"
       />
     </div>
