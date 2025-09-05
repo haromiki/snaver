@@ -207,8 +207,10 @@ function PriceChangeIndicator({ product }: { product: any }) {
 
 // 24시간 트렌드 차트를 위한 래퍼 컴포넌트
 function DailyTrendChartWrapper({ productId }: { productId: number }) {
+  const uniqueCacheKey = `daily-ranks-${productId}-${Date.now()}-${Math.random()}`;
+  
   const { data: dailyData, isLoading } = useQuery({
-    queryKey: [`/products/${productId}/daily-ranks`, Date.now()], // 타임스탬프로 캐시 무효화
+    queryKey: [uniqueCacheKey], // 완전히 고유한 키
     queryFn: async () => {
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2);
