@@ -235,6 +235,15 @@ function DailyTrendChartWrapper({ productId }: { productId: number }) {
       console.log(`[Daily Graph Debug ${productId}] API 응답:`, data);
       console.log(`[Daily Graph Debug ${productId}] hourlyRanks 샘플:`, data.hourlyRanks?.slice(0, 3));
       console.log(`[Daily Graph Debug ${productId}] 실제 데이터 있는 시간:`, data.hourlyRanks?.filter((h: any) => h.hasData).length);
+      
+      // 제품 23만 상세 로그
+      if (productId === 23) {
+        console.log(`🔍 [제품 23 상세] 전체 hourlyRanks:`, data.hourlyRanks);
+        const hasDataItems = data.hourlyRanks?.filter((h: any) => h.hasData);
+        console.log(`🔍 [제품 23 상세] hasData=true인 항목들:`, hasDataItems);
+        const nonNullRanks = data.hourlyRanks?.filter((h: any) => h.rank !== null);
+        console.log(`🔍 [제품 23 상세] rank가 null이 아닌 항목들:`, nonNullRanks);
+      }
       return data;
     },
     staleTime: 0,
