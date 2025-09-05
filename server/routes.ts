@@ -662,15 +662,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // 24시간 순위 트렌드 데이터 API
   app.get("/api/products/:id/daily-ranks", authenticateToken, async (req, res) => {
-    // 캐시 방지 헤더 설정
-    res.set({
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
-    });
-    
-    console.log(`🔥🔥🔥 [CRITICAL DEBUG] API 호출됨 - 제품 ID: ${req.params.id} 🔥🔥🔥`);
-    
     try {
       const productId = parseInt(req.params.id);
       
@@ -678,16 +669,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const now = new Date();
       const kstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000));
       
-      // 오늘 00:00 (한국 시간)
+      // 오늘 00:00 (한국 시간) -> UTC로 변환
       const todayStartKST = new Date(kstNow);
       todayStartKST.setHours(0, 0, 0, 0);
+      const todayStart = new Date(todayStartKST.getTime() - (9 * 60 * 60 * 1000)); // UTC로 변환
       
-      // UTC 기준으로 오늘 하루 범위 계산 (어제 15:00 ~ 오늘 15:00)
-      const todayStart = new Date(todayStartKST.getTime() - (9 * 60 * 60 * 1000));
+      // 내일 00:00 (한국 시간) -> UTC로 변환
       const tomorrowStart = new Date(todayStart.getTime() + (24 * 60 * 60 * 1000));
-      
-      console.log(`[Daily Ranks API] 제품 ${productId} - 검색 범위: ${todayStart.toISOString()} ~ ${tomorrowStart.toISOString()}`);
-      console.log(`[Daily Ranks API] KST 기준: ${todayStartKST.toISOString().split('T')[0]}`);
       
       // 24시간 데이터 조회 (UTC 기준)
       const dailyTracks = await storage.getProductTracksInRange(
@@ -697,14 +685,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tomorrowStart.toISOString()
       );
       
-      console.log(`[Daily Ranks API] 조회된 tracks 개수: ${dailyTracks.length}개`);
-      if (dailyTracks.length > 0) {
-        console.log(`[Daily Ranks API] 첫 번째 track:`, {
-          checkedAt: dailyTracks[0].checkedAt,
-          rank: dailyTracks[0].globalRank
-        });
-      }
-
       // 시간별 최신 순위 데이터로 정리 (24시간, UTC 기준)
       const hourlyRanks = [];
       for (let i = 0; i < 24; i++) {
@@ -723,20 +703,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // 한국시간으로 표시하기 위해 +9시간
         const kstHour = new Date(targetHourUTC.getTime() + (9 * 60 * 60 * 1000));
         
-        if (i === 18 || i === 19) { // 18시, 19시 디버깅
-          console.log(`[Daily Ranks API] ${i}시 검색:`, {
-            targetHour: targetHourUTC.toISOString(),
-            nextHour: nextHourUTC.toISOString(),
-            hourTracks: hourTracks.length,
-            latestRank: latestTrack?.globalRank
-          });
-        }
-        
         hourlyRanks.push({
           hour: kstHour.getHours().toString().padStart(2, '0') + ':00',
           time: targetHourUTC.toISOString(),
           rank: latestTrack?.globalRank || null,
-          hasData: !!latestTrack && latestTrack.globalRank !== null
+          hasData: !!latestTrack
         });
       }
       

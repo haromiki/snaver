@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
 import StatisticsModal from "./StatisticsModal";
-import SimpleChart from "./SimpleChart";
+import DailyTrendChart from "./DailyTrendChart";
 import PriceHistoryModal from "./PriceHistoryModal";
 import { useToast } from "@/hooks/use-toast";
 // 웹소켓 제거 - 폴링으로 대체
@@ -207,47 +207,14 @@ function PriceChangeIndicator({ product }: { product: any }) {
 
 // 24시간 트렌드 차트를 위한 래퍼 컴포넌트
 function DailyTrendChartWrapper({ productId }: { productId: number }) {
-  const uniqueCacheKey = `daily-ranks-${productId}-${Date.now()}-${Math.random()}`;
-  
   const { data: dailyData, isLoading } = useQuery({
-    queryKey: [uniqueCacheKey], // 완전히 고유한 키
+    queryKey: [`/products/${productId}/daily-ranks`],
     queryFn: async () => {
-      const timestamp = Date.now();
-      const randomId = Math.random().toString(36).substring(2);
-      
-      const response = await fetch(`/api/products/${productId}/daily-ranks?v=${timestamp}&r=${randomId}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-          'X-Requested-With': 'XMLHttpRequest',
-          'X-Cache-Bust': timestamp.toString()
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      
+      const response = await apiRequest("GET", `/products/${productId}/daily-ranks`);
       const data = await response.json();
-      console.log(`[Daily Graph Debug ${productId}] API 응답:`, data);
-      console.log(`[Daily Graph Debug ${productId}] hourlyRanks 샘플:`, data.hourlyRanks?.slice(0, 3));
-      console.log(`[Daily Graph Debug ${productId}] 실제 데이터 있는 시간:`, data.hourlyRanks?.filter((h: any) => h.hasData).length);
-      
-      // 제품 23만 상세 로그
-      if (productId === 23) {
-        console.log(`🔍 [제품 23 상세] 전체 hourlyRanks:`, data.hourlyRanks);
-        const hasDataItems = data.hourlyRanks?.filter((h: any) => h.hasData);
-        console.log(`🔍 [제품 23 상세] hasData=true인 항목들:`, hasDataItems);
-        const nonNullRanks = data.hourlyRanks?.filter((h: any) => h.rank !== null);
-        console.log(`🔍 [제품 23 상세] rank가 null이 아닌 항목들:`, nonNullRanks);
-      }
       return data;
     },
-    staleTime: 0,
-    gcTime: 0, // 완전 캐시 비활성화
+    staleTime: 1000 * 60 * 5, // 5분 캐시 (수동/자동 검색 시 즉시 무효화됨)
     refetchOnWindowFocus: false,
   });
 
@@ -269,7 +236,7 @@ function DailyTrendChartWrapper({ productId }: { productId: number }) {
   }
 
   return (
-    <SimpleChart 
+    <DailyTrendChart 
       productId={productId} 
       hourlyRanks={dailyData.hourlyRanks} 
     />
