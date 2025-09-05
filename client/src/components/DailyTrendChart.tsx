@@ -24,9 +24,6 @@ export default function DailyTrendChart({ productId, hourlyRanks, className = ""
   // 데이터 유효성 체크를 먼저 수행
   const validData = hourlyRanks?.filter(item => item.rank !== null && item.hasData) || [];
 
-  // 디버깅용 로그 추가
-  console.log(`[DailyTrendChart ${productId}] hourlyRanks:`, hourlyRanks);
-  console.log(`[DailyTrendChart ${productId}] validData:`, validData);
 
   useEffect(() => {
     if (!canvasRef.current || !hourlyRanks || hourlyRanks.length === 0) return;
@@ -60,6 +57,7 @@ export default function DailyTrendChart({ productId, hourlyRanks, className = ""
         trendColor = '#EF4444';
       }
     }
+
 
     // 차트 생성 - 면적 그래프 스타일
     chartRef.current = new Chart(ctx, {
@@ -128,7 +126,7 @@ export default function DailyTrendChart({ productId, hourlyRanks, className = ""
     };
   }, [hourlyRanks, productId]);
 
-  // 데이터가 없는 경우 - 전체 데이터만 체크 (null 값 있어도 그래프 표시)
+  // 데이터가 없는 경우 - hourlyRanks 배열만 체크 (validData가 0개여도 그래프 표시)
   if (!hourlyRanks || hourlyRanks.length === 0) {
     return (
       <div className={`w-20 h-16 flex items-center justify-center bg-gray-100 rounded ${className}`}>
