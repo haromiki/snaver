@@ -268,12 +268,24 @@ function DailyTrendChartWrapper({ productId }: { productId: number }) {
     );
   }
 
-  return (
-    <DailyTrendChart 
-      productId={productId} 
-      hourlyRanks={dailyData.hourlyRanks} 
-    />
-  );
+  // 실제 데이터가 있으면 차트 표시, 없으면 간단한 표시
+  const hasActualData = dailyData.hourlyRanks.filter((h: any) => h.hasData).length > 0;
+  
+  if (hasActualData) {
+    return (
+      <div className="w-20 h-16 bg-blue-100 dark:bg-blue-900 rounded flex items-center justify-center">
+        <span className="text-xs text-blue-600 dark:text-blue-400 font-bold">
+          📈 {dailyData.hourlyRanks.filter((h: any) => h.hasData).length}개
+        </span>
+      </div>
+    );
+  } else {
+    return (
+      <div className="w-20 h-16 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
+        <span className="text-xs text-gray-400 dark:text-gray-500">-</span>
+      </div>
+    );
+  }
 }
 
 interface ProductTableProps {
