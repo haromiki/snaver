@@ -772,7 +772,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const weeklyData = new Map<string, { prices: number[], date: string }>();
       
       tracksWithPrice.forEach(track => {
-        if (!track.checkedAt) return; // null 체크 추가
         const trackDate = new Date(track.checkedAt);
         // 월요일 시작하는 주의 시작일 계산
         const dayOfWeek = trackDate.getDay();
@@ -800,16 +799,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // 통계 계산
       const allPrices = tracksWithPrice.map(t => t.priceKrw!);
-      
-      // 현재 가격: 가장 최근 checked_at 시간 기준으로 정렬하여 가져오기
-      const sortedByTime = tracksWithPrice
-        .filter(track => track.checkedAt) // null 체크 추가
-        .sort((a, b) => 
-          new Date(b.checkedAt!).getTime() - new Date(a.checkedAt!).getTime()
-        );
-      
       const stats = {
-        current: sortedByTime[0]?.priceKrw || 0,
+        current: tracksWithPrice[tracksWithPrice.length - 1]?.priceKrw || 0,
         highest: Math.max(...allPrices),
         lowest: Math.min(...allPrices),
         average: Math.round(allPrices.reduce((sum, price) => sum + price, 0) / allPrices.length)
