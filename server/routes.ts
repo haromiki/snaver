@@ -669,15 +669,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const now = new Date();
       const kstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000));
       
-      // 오늘 00:00 (한국 시간)
-      const todayStart = new Date(kstNow);
-      todayStart.setHours(0, 0, 0, 0);
+      // 오늘 00:00 (한국 시간) -> UTC로 변환
+      const todayStartKST = new Date(kstNow);
+      todayStartKST.setHours(0, 0, 0, 0);
+      const todayStart = new Date(todayStartKST.getTime() - (9 * 60 * 60 * 1000)); // UTC로 변환
       
-      // 내일 00:00 (한국 시간)
-      const tomorrowStart = new Date(todayStart);
-      tomorrowStart.setDate(todayStart.getDate() + 1);
+      // 내일 00:00 (한국 시간) -> UTC로 변환
+      const tomorrowStart = new Date(todayStart.getTime() + (24 * 60 * 60 * 1000));
       
-      // 24시간 데이터 조회 (오늘 00:00 ~ 내일 00:00 전까지)
+      // 24시간 데이터 조회 (UTC 기준)
       const dailyTracks = await storage.getProductTracksInRange(
         productId, 
         req.userId!,
@@ -685,28 +685,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tomorrowStart.toISOString()
       );
       
-      // 시간별 최신 순위 데이터로 정리 (24시간)
+      // 시간별 최신 순위 데이터로 정리 (24시간, UTC 기준)
       const hourlyRanks = [];
       for (let i = 0; i < 24; i++) {
-        const targetHour = new Date(todayStart);
-        targetHour.setHours(i);
+        const targetHourUTC = new Date(todayStart.getTime() + (i * 60 * 60 * 1000));
+        const nextHourUTC = new Date(todayStart.getTime() + ((i + 1) * 60 * 60 * 1000));
         
-        const nextHour = new Date(targetHour);
-        nextHour.setHours(i + 1);
-        
-        // 해당 시간대의 트랙 데이터 중 가장 최근 것
+        // 해당 시간대의 트랙 데이터 중 가장 최근 것 (UTC 기준)
         const hourTracks = dailyTracks.filter((track: any) => {
           const trackDate = new Date(track.checkedAt);
-          const kstTrackDate = new Date(trackDate.getTime() + (9 * 60 * 60 * 1000));
-          return kstTrackDate >= targetHour && kstTrackDate < nextHour;
+          return trackDate >= targetHourUTC && trackDate < nextHourUTC;
         });
         
         const latestTrack = hourTracks.length > 0 ? 
           hourTracks.sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime())[0] : null;
         
+        // 한국시간으로 표시하기 위해 +9시간
+        const kstHour = new Date(targetHourUTC.getTime() + (9 * 60 * 60 * 1000));
+        
         hourlyRanks.push({
-          hour: i.toString().padStart(2, '0') + ':00',
-          time: targetHour.toISOString(),
+          hour: kstHour.getHours().toString().padStart(2, '0') + ':00',
+          time: targetHourUTC.toISOString(),
           rank: latestTrack?.globalRank || null,
           hasData: !!latestTrack
         });
@@ -714,7 +713,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({
         productId,
-        dayStart: todayStart.toISOString().split('T')[0],
+        dayStart: todayStartKST.toISOString().split('T')[0],
         hourlyRanks
       });
       
