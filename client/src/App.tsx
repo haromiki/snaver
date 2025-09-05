@@ -22,6 +22,16 @@ function RouterWithRoutes() {
   const [location, navigate] = useLocation();
   const { toast } = useToast();
 
+  // 🔥 디버깅: 라우터 상태 확인
+  console.log("🔥 RouterWithRoutes 렌더링:", {
+    user: !!user,
+    isLoading,
+    location,
+    hasToken: !!localStorage.getItem("token"),
+    envVar: (import.meta as any).env.VITE_IS_SERVER_DEPLOY
+  });
+
+
 
   // 네이버 OAuth 콜백 처리
   useEffect(() => {
@@ -108,11 +118,13 @@ function RouterWithRoutes() {
 }
 
 function App() {
+  
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="snaver-ui-theme">
         <TooltipProvider>
-          <div className="min-h-screen bg-background dark:bg-gray-900">
+          <div className="min-h-screen bg-background dark:bg-gray-900" style={{ background: 'white', minHeight: '100vh' }}>
+            
             <Toaster />
             {/* ✅ basePath를 Router에 직접 적용해야 경로가 올바르게 인식됩니다 */}
             <Router base={basePath}>

@@ -662,6 +662,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // 24시간 순위 트렌드 데이터 API
   app.get("/api/products/:id/daily-ranks", authenticateToken, async (req, res) => {
+    // 캐시 방지 헤더 설정
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+    
+    console.log(`🔥🔥🔥 [CRITICAL DEBUG] API 호출됨 - 제품 ID: ${req.params.id} 🔥🔥🔥`);
+    
     try {
       const productId = parseInt(req.params.id);
       
@@ -670,14 +679,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const kstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000));
       
       // 오늘 00:00 (한국 시간)
-      const todayStart = new Date(kstNow);
-      todayStart.setHours(0, 0, 0, 0);
+      const todayStartKST = new Date(kstNow);
+      todayStartKST.setHours(0, 0, 0, 0);
       
-      // 내일 00:00 (한국 시간)
-      const tomorrowStart = new Date(todayStart);
-      tomorrowStart.setDate(todayStart.getDate() + 1);
+      // UTC 기준으로 오늘 하루 범위 계산 (어제 15:00 ~ 오늘 15:00)
+      const todayStart = new Date(todayStartKST.getTime() - (9 * 60 * 60 * 1000));
+      const tomorrowStart = new Date(todayStart.getTime() + (24 * 60 * 60 * 1000));
       
-      // 24시간 데이터 조회 (오늘 00:00 ~ 내일 00:00 전까지)
+      console.log(`[Daily Ranks API] 제품 ${productId} - 검색 범위: ${todayStart.toISOString()} ~ ${tomorrowStart.toISOString()}`);
+      console.log(`[Daily Ranks API] KST 기준: ${todayStartKST.toISOString().split('T')[0]}`);
+      
+      // 24시간 데이터 조회 (UTC 기준)
       const dailyTracks = await storage.getProductTracksInRange(
         productId, 
         req.userId!,
@@ -685,36 +697,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tomorrowStart.toISOString()
       );
       
-      // 시간별 최신 순위 데이터로 정리 (24시간)
+      console.log(`[Daily Ranks API] 조회된 tracks 개수: ${dailyTracks.length}개`);
+      if (dailyTracks.length > 0) {
+        console.log(`[Daily Ranks API] 첫 번째 track:`, {
+          checkedAt: dailyTracks[0].checkedAt,
+          rank: dailyTracks[0].globalRank
+        });
+      }
+
+      // 시간별 최신 순위 데이터로 정리 (24시간, UTC 기준)
       const hourlyRanks = [];
       for (let i = 0; i < 24; i++) {
-        const targetHour = new Date(todayStart);
-        targetHour.setHours(i);
+        const targetHourUTC = new Date(todayStart.getTime() + (i * 60 * 60 * 1000));
+        const nextHourUTC = new Date(todayStart.getTime() + ((i + 1) * 60 * 60 * 1000));
         
-        const nextHour = new Date(targetHour);
-        nextHour.setHours(i + 1);
-        
-        // 해당 시간대의 트랙 데이터 중 가장 최근 것
+        // 해당 시간대의 트랙 데이터 중 가장 최근 것 (UTC 기준)
         const hourTracks = dailyTracks.filter((track: any) => {
           const trackDate = new Date(track.checkedAt);
-          const kstTrackDate = new Date(trackDate.getTime() + (9 * 60 * 60 * 1000));
-          return kstTrackDate >= targetHour && kstTrackDate < nextHour;
+          return trackDate >= targetHourUTC && trackDate < nextHourUTC;
         });
         
         const latestTrack = hourTracks.length > 0 ? 
           hourTracks.sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime())[0] : null;
         
+        // 한국시간으로 표시하기 위해 +9시간
+        const kstHour = new Date(targetHourUTC.getTime() + (9 * 60 * 60 * 1000));
+        
+        if (i === 18 || i === 19) { // 18시, 19시 디버깅
+          console.log(`[Daily Ranks API] ${i}시 검색:`, {
+            targetHour: targetHourUTC.toISOString(),
+            nextHour: nextHourUTC.toISOString(),
+            hourTracks: hourTracks.length,
+            latestRank: latestTrack?.globalRank
+          });
+        }
+        
         hourlyRanks.push({
-          hour: i.toString().padStart(2, '0') + ':00',
-          time: targetHour.toISOString(),
+          hour: kstHour.getHours().toString().padStart(2, '0') + ':00',
+          time: targetHourUTC.toISOString(),
           rank: latestTrack?.globalRank || null,
-          hasData: !!latestTrack
+          hasData: !!latestTrack && latestTrack.globalRank !== null
         });
       }
       
       res.json({
         productId,
-        dayStart: todayStart.toISOString().split('T')[0],
+        dayStart: todayStartKST.toISOString().split('T')[0],
         hourlyRanks
       });
       
@@ -772,6 +800,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const weeklyData = new Map<string, { prices: number[], date: string }>();
       
       tracksWithPrice.forEach(track => {
+        if (!track.checkedAt) return; // null 체크 추가
         const trackDate = new Date(track.checkedAt);
         // 월요일 시작하는 주의 시작일 계산
         const dayOfWeek = trackDate.getDay();
@@ -799,8 +828,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // 통계 계산
       const allPrices = tracksWithPrice.map(t => t.priceKrw!);
+      
+      // 현재 가격: 가장 최근 checked_at 시간 기준으로 정렬하여 가져오기
+      const sortedByTime = tracksWithPrice
+        .filter(track => track.checkedAt) // null 체크 추가
+        .sort((a, b) => 
+          new Date(b.checkedAt!).getTime() - new Date(a.checkedAt!).getTime()
+        );
+      
       const stats = {
-        current: tracksWithPrice[tracksWithPrice.length - 1]?.priceKrw || 0,
+        current: sortedByTime[0]?.priceKrw || 0,
         highest: Math.max(...allPrices),
         lowest: Math.min(...allPrices),
         average: Math.round(allPrices.reduce((sum, price) => sum + price, 0) / allPrices.length)
