@@ -22,6 +22,15 @@ function RouterWithRoutes() {
   const [location, navigate] = useLocation();
   const { toast } = useToast();
 
+  // 🔥 디버깅: 라우터 상태 확인
+  console.log("🔥 RouterWithRoutes 렌더링:", {
+    user: !!user,
+    isLoading,
+    location,
+    hasToken: !!localStorage.getItem("token"),
+    envVar: (import.meta as any).env.VITE_IS_SERVER_DEPLOY
+  });
+
 
 
   // 네이버 OAuth 콜백 처리
