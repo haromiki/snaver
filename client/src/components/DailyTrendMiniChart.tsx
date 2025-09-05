@@ -67,9 +67,9 @@ export default function DailyTrendMiniChart({ productId, className = "" }: Daily
     // 좌표 변환 함수
     const getX = (hourIndex: number) => (hourIndex / 23) * (width - 4) + 2;
     const getY = (rank: number) => {
-      // 순위가 낮을수록(숫자 클수록) 아래쪽에 표시
+      // 순위가 좋을수록(숫자 작을수록) 위쪽에 표시
       const normalized = (rank - minRank) / rankRange;
-      return height - 4 - (normalized * (height - 8));
+      return 4 + (normalized * (height - 8));
     };
 
     // 라인과 색상 세그먼트 생성
