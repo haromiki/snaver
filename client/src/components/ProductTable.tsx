@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
 import StatisticsModal from "./StatisticsModal";
 import PriceHistoryModal from "./PriceHistoryModal";
+import DailyTrendMiniChart from "./DailyTrendMiniChart";
 import { useToast } from "@/hooks/use-toast";
 // 웹소켓 제거 - 폴링으로 대체
 
@@ -793,6 +794,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">제품 가격</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">현재 순위</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">순위 변동</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">1일 그래프</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">마지막 확인</th>
                   </>
                 )}
@@ -901,6 +903,9 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                         </td>
                         <td className="px-6 py-4">
                           <RankChangeIndicator productId={product.id} />
+                        </td>
+                        <td className="px-6 py-4">
+                          <DailyTrendMiniChart productId={product.id} />
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-900 dark:text-gray-100" data-testid={`text-last-checked-${product.id}`}>

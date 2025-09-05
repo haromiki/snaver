@@ -660,6 +660,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 1일 순위변동 그래프 API (24시간 1시간 단위)
+  app.get("/api/products/:id/daily-ranks", authenticateToken, async (req, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+      
+      // 한국 시간(KST, UTC+9) 기준으로 오늘 00:00부터 내일 00:00까지
+      const now = new Date();
+      const kstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+      
+      // 오늘 00:00 (KST 기준)
+      const todayStart = new Date(kstNow);
+      todayStart.setHours(0, 0, 0, 0);
+      
+      // 내일 00:00 (KST 기준)
+      const tomorrowStart = new Date(todayStart);
+      tomorrowStart.setDate(todayStart.getDate() + 1);
+      
+      // UTC로 변환하여 데이터베이스 조회
+      const todayStartUTC = new Date(todayStart.getTime() - (9 * 60 * 60 * 1000));
+      const tomorrowStartUTC = new Date(tomorrowStart.getTime() - (9 * 60 * 60 * 1000));
+      
+      // 오늘 하루치 데이터 조회
+      const dailyTracks = await storage.getProductTracksInRange(
+        productId,
+        req.userId!,
+        todayStartUTC.toISOString(),
+        tomorrowStartUTC.toISOString()
+      );
+      
+      // 24시간 1시간 단위로 데이터 정리
+      const hourlyRanks = [];
+      for (let hour = 0; hour < 24; hour++) {
+        const hourStart = new Date(todayStart);
+        hourStart.setHours(hour, 0, 0, 0);
+        
+        const hourEnd = new Date(hourStart);
+        hourEnd.setHours(hour + 1, 0, 0, 0);
+        
+        // UTC로 변환하여 필터링
+        const hourStartUTC = new Date(hourStart.getTime() - (9 * 60 * 60 * 1000));
+        const hourEndUTC = new Date(hourEnd.getTime() - (9 * 60 * 60 * 1000));
+        
+        // 해당 시간대의 트랙 데이터 중 가장 최근 것
+        const hourTracks = dailyTracks.filter((track: any) => {
+          const trackDate = new Date(track.checkedAt);
+          return trackDate >= hourStartUTC && trackDate < hourEndUTC;
+        });
+        
+        const latestTrack = hourTracks.length > 0 ? 
+          hourTracks.sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime())[0] : null;
+        
+        hourlyRanks.push({
+          hour: hour.toString().padStart(2, '0') + ':00',
+          time: hourStart.toISOString(),
+          rank: latestTrack?.globalRank || null,
+          hasData: !!latestTrack
+        });
+      }
+      
+      res.json({
+        productId,
+        dayStart: todayStart.toISOString().split('T')[0],
+        hourlyRanks
+      });
+      
+    } catch (error) {
+      console.error("1일 순위변동 데이터 조회 오류:", error);
+      res.status(500).json({ message: "1일 순위변동 데이터를 가져오는데 실패했습니다" });
+    }
+  });
 
   // 가격 히스토리 조회 API
   app.get("/api/products/:id/price-history", authenticateToken, async (req, res) => {
