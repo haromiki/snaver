@@ -90,13 +90,24 @@ export default function DailyTrendMiniChart({ productId, className = "" }: Daily
 
     // 각진 라인 그리기
     if (points.length >= 2) {
+      // 이전 트렌드 색상 추적 변수
+      let previousColor = '#3b82f6'; // 기본값
+      
       for (let i = 0; i < points.length - 1; i++) {
         const currentPoint = points[i];
         const nextPoint = points[i + 1];
         
         // 순위 변화에 따른 색상 결정
-        const isImproving = currentPoint.rank > nextPoint.rank; // 순위가 올라감 (숫자가 작아짐)
-        const color = isImproving ? '#3b82f6' : '#ef4444'; // 파란색: 상승, 빨간색: 하락
+        let color;
+        if (currentPoint.rank > nextPoint.rank) {
+          color = '#3b82f6'; // 상승
+          previousColor = '#3b82f6';
+        } else if (currentPoint.rank < nextPoint.rank) {
+          color = '#ef4444'; // 하락  
+          previousColor = '#ef4444';
+        } else {
+          color = previousColor; // 동일하면 이전 색상 유지
+        }
         
         // 라인 그리기
         ctx.beginPath();
@@ -109,7 +120,7 @@ export default function DailyTrendMiniChart({ productId, className = "" }: Daily
         
         // 그라데이션 채우기 (각 세그먼트별로)
         const gradient = ctx.createLinearGradient(0, 0, 0, height);
-        if (isImproving) {
+        if (color === '#3b82f6') {
           gradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)'); // 위쪽 진함
           gradient.addColorStop(1, 'rgba(59, 130, 246, 0.1)'); // 아래쪽 연함
         } else {
