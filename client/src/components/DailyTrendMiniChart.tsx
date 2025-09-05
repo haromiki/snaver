@@ -154,7 +154,7 @@ export default function DailyTrendMiniChart({ productId, className = "" }: Daily
   // 데이터가 없는 경우
   if (!dailyData?.hourlyRanks || dailyData.hourlyRanks.length === 0) {
     return (
-      <div className={`w-[108px] h-[62px] flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded ${className}`}>
+      <div className={`w-[108px] h-[62px] flex items-center justify-center bg-transparent rounded ${className}`}>
         <span className="text-xs text-gray-400 dark:text-gray-500">-</span>
       </div>
     );
