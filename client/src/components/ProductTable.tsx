@@ -212,6 +212,8 @@ function DailyTrendChartWrapper({ productId }: { productId: number }) {
     queryFn: async () => {
       const response = await apiRequest("GET", `/products/${productId}/daily-ranks?t=${Date.now()}`);
       const data = await response.json();
+      console.log(`[Daily Graph Debug ${productId}] API 응답:`, data);
+      console.log(`[Daily Graph Debug ${productId}] hourlyRanks 샘플:`, data.hourlyRanks?.slice(0, 3));
       return data;
     },
     staleTime: 0,

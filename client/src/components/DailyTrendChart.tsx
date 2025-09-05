@@ -23,6 +23,10 @@ export default function DailyTrendChart({ productId, hourlyRanks, className = ""
 
   // 데이터 유효성 체크를 먼저 수행
   const validData = hourlyRanks?.filter(item => item.rank !== null && item.hasData) || [];
+  
+  console.log(`[Chart Debug ${productId}] hourlyRanks 개수:`, hourlyRanks?.length);
+  console.log(`[Chart Debug ${productId}] 유효 데이터 개수:`, validData.length);
+  console.log(`[Chart Debug ${productId}] 유효 데이터 샘플:`, validData.slice(0, 2));
 
 
   useEffect(() => {
@@ -39,6 +43,13 @@ export default function DailyTrendChart({ productId, hourlyRanks, className = ""
     // 데이터 준비 - 24시간 레이블과 랭크 데이터
     const labels = hourlyRanks.map(item => item.hour);
     const rankData = hourlyRanks.map(item => item.rank);
+    
+    console.log(`[Chart Render ${productId}] labels:`, labels.slice(0, 3));
+    console.log(`[Chart Render ${productId}] rankData:`, rankData.slice(0, 10));
+    
+    // 유효한 데이터가 하나도 없으면 기본 차트 생성
+    const hasValidData = rankData.some(rank => rank !== null);
+    console.log(`[Chart Render ${productId}] hasValidData:`, hasValidData);
     
     // 하루 평균 변화 계산 (첫 번째와 마지막 데이터 비교)
     const validRanks = hourlyRanks.filter(item => item.rank !== null);
