@@ -217,7 +217,7 @@ function DailyTrendChartWrapper({ productId }: { productId: number }) {
       return data;
     },
     staleTime: 0,
-    cacheTime: 0, // 완전 캐시 비활성화
+    gcTime: 0, // 완전 캐시 비활성화
     refetchOnWindowFocus: false,
   });
 

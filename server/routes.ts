@@ -662,6 +662,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // 24시간 순위 트렌드 데이터 API
   app.get("/api/products/:id/daily-ranks", authenticateToken, async (req, res) => {
+    // 캐시 방지 헤더 설정
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+    
+    console.log(`🔥🔥🔥 [CRITICAL DEBUG] API 호출됨 - 제품 ID: ${req.params.id} 🔥🔥🔥`);
+    
     try {
       const productId = parseInt(req.params.id);
       
