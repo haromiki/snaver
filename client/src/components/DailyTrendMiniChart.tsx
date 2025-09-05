@@ -54,7 +54,7 @@ export default function DailyTrendMiniChart({ productId, className = "" }: Daily
       ctx.fillStyle = '#9ca3af';
       ctx.font = '8px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('데이터 없음', width / 2, height / 2);
+      ctx.fillText('NO DATA', width / 2, height / 2);
       return;
     }
 
