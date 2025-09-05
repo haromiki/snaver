@@ -736,7 +736,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           hour: kstHour.getHours().toString().padStart(2, '0') + ':00',
           time: targetHourUTC.toISOString(),
           rank: latestTrack?.globalRank || null,
-          hasData: !!latestTrack
+          hasData: !!latestTrack && latestTrack.globalRank !== null
         });
       }
       
