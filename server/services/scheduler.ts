@@ -43,17 +43,6 @@ cron.schedule("*/10 * * * * *", async () => {
             timestamp: now.toISOString(),
             retries: 0
           });
-        } else {
-          // 실시간 테스트를 위해 일부 제품을 30초마다 실행
-          if (product.id === 22 && currentSecond % 30 === 0) {
-            console.log(`⏰ 실시간 테스트용 30초 실행 - 제품 ${product.id}: ${product.keyword} (타입: ${product.type})`);
-            
-            searchQueue.push({
-              product,
-              timestamp: now.toISOString(),
-              retries: 0
-            });
-          }
         }
       } catch (error) {
         console.error(`스케줄 체크 오류 - 제품 ${product.id}:`, error);
