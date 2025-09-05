@@ -208,13 +208,14 @@ function PriceChangeIndicator({ product }: { product: any }) {
 // 24시간 트렌드 차트를 위한 래퍼 컴포넌트
 function DailyTrendChartWrapper({ productId }: { productId: number }) {
   const { data: dailyData, isLoading } = useQuery({
-    queryKey: [`/products/${productId}/daily-ranks`],
+    queryKey: [`/products/${productId}/daily-ranks`, Date.now()], // 타임스탬프로 캐시 무효화
     queryFn: async () => {
-      const response = await apiRequest("GET", `/products/${productId}/daily-ranks`);
+      const response = await apiRequest("GET", `/products/${productId}/daily-ranks?t=${Date.now()}`);
       const data = await response.json();
       return data;
     },
-    staleTime: 1000 * 60 * 5, // 5분 캐시 (수동/자동 검색 시 즉시 무효화됨)
+    staleTime: 0,
+    cacheTime: 0, // 완전 캐시 비활성화
     refetchOnWindowFocus: false,
   });
 
