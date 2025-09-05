@@ -24,9 +24,15 @@ export default function DailyTrendChart({ productId, hourlyRanks, className = ""
   // 데이터 유효성 체크를 먼저 수행
   const validData = hourlyRanks?.filter(item => item.rank !== null && item.hasData) || [];
   
-  console.log(`[Chart Debug ${productId}] hourlyRanks 개수:`, hourlyRanks?.length);
-  console.log(`[Chart Debug ${productId}] 유효 데이터 개수:`, validData.length);
-  console.log(`[Chart Debug ${productId}] 유효 데이터 샘플:`, validData.slice(0, 2));
+  console.log(`🔹 [Chart Debug ${productId}] hourlyRanks 개수:`, hourlyRanks?.length);
+  console.log(`🔹 [Chart Debug ${productId}] 유효 데이터 개수:`, validData.length);
+  console.log(`🔹 [Chart Debug ${productId}] 유효 데이터 샘플:`, validData.slice(0, 2));
+  
+  // 제품 23만 상세 로그
+  if (productId === 23) {
+    console.log(`🎯 [Chart 23 상세] 전체 hourlyRanks:`, hourlyRanks);
+    console.log(`🎯 [Chart 23 상세] validData:`, validData);
+  }
 
 
   useEffect(() => {
