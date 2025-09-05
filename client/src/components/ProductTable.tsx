@@ -631,7 +631,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
 
   const getRankDisplay = (latestTrack: any, product: any) => {
     if (!latestTrack || !latestTrack.globalRank) {
-      return { rank: "-", page: "미발견", change: "", color: "text-gray-400 dark:text-gray-500", changeColor: "text-gray-500 dark:text-gray-400", previousRank: null, previousPage: null };
+      return { rank: "-", page: "미발견", change: "", color: "text-gray-400 dark:text-gray-500", changeColor: "text-gray-500 dark:text-gray-400", previousRank: null, previousPage: null, previousRankOnPage: null };
     }
 
     const rank = latestTrack.globalRank;
@@ -642,6 +642,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     let trendIcon = null;
     let previousRank = null;
     let previousPage = null;
+    let previousRankOnPage = null;
     
     // 제품의 모든 트랙 데이터에서 이전 순위 찾기 (globalRank가 있는 것만)
     if (product.tracks && product.tracks.length >= 1) {
@@ -656,8 +657,10 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         // 현재와 다른 순위를 가진 이전 데이터를 무한 검색
         for (let i = 1; i < validTracks.length; i++) {
           if (validTracks[i].globalRank !== currentTrack.globalRank) {
-            previousRank = validTracks[i].globalRank;
+            const previousTrack = validTracks[i];
+            previousRank = previousTrack.globalRank;
             previousPage = Math.ceil(previousRank / 40);
+            previousRankOnPage = previousTrack.rankOnPage; // 이전 트랙의 실제 rankOnPage 사용
             break;
           }
         }
@@ -688,7 +691,8 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
       trendIcon, 
       color, 
       previousRank, 
-      previousPage: previousPage ? <span className="relative top-1">{previousPage}페이지</span> : null 
+      previousPage: previousPage ? <span className="relative top-1">{previousPage}페이지</span> : null,
+      previousRankOnPage 
     };
   };
 
@@ -918,9 +922,9 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                               {rankDisplay.previousRank && (
                                 <span className="text-sm text-gray-500 dark:text-gray-400 font-normal" data-testid={`text-previous-rank-${product.id}`}>
                                   {rankDisplay.previousRank}
-                                  {product.latestTrack?.rankOnPage && (
+                                  {rankDisplay.previousRankOnPage && (
                                     <span className="ml-1">
-                                      ({Math.ceil(rankDisplay.previousRank / 40)})
+                                      ({rankDisplay.previousRankOnPage})
                                     </span>
                                   )}
                                 </span>
