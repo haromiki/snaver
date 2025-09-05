@@ -739,8 +739,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                 <div className="relative">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                   <div className="absolute top-0 left-0 w-2 h-2 bg-green-400 rounded-full animate-ping opacity-75"></div>
-                </div>
-                <span className="text-sm text-green-600 dark:text-green-400 font-medium">자동 추적중</span>
+                </div>                
               </div>
             )}
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -752,7 +751,12 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
             {section.includes("tracking") && (
               <UpdateStatusText products={products} />
             )}
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span className="text-sm text-green-600 dark:text-green-400 font-medium">1시간 간격 자동 추적중</span>
           </div>
+          
+          
+          
           <div className="flex items-center space-x-3">
             {/* <button className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-100 px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">
               <i className="fas fa-download mr-2"></i>내보내기
