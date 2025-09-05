@@ -22,10 +22,10 @@ interface DailyTrendMiniChartProps {
 export default function DailyTrendMiniChart({ productId, className = "" }: DailyTrendMiniChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // 1일 순위 데이터 조회 (5분마다 폴링)
+  // 1일 순위 데이터 조회 (5초마다 폴링)
   const { data: dailyData, isLoading } = useQuery<DailyRankResponse>({
     queryKey: [`/products/${productId}/daily-ranks`],
-    refetchInterval: 5 * 60 * 1000, // 5분마다 폴링
+    refetchInterval: 5 * 1000, // 5초마다 폴링
     refetchIntervalInBackground: true,
     staleTime: 0 // 항상 최신 데이터 요청
   });
