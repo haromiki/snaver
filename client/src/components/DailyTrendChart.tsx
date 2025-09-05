@@ -21,6 +21,9 @@ export default function DailyTrendChart({ productId, hourlyRanks, className = ""
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
 
+  // 데이터 유효성 체크를 먼저 수행
+  const validData = hourlyRanks?.filter(item => item.rank !== null && item.hasData) || [];
+
   useEffect(() => {
     if (!canvasRef.current || !hourlyRanks || hourlyRanks.length === 0) return;
 
@@ -121,10 +124,8 @@ export default function DailyTrendChart({ productId, hourlyRanks, className = ""
     };
   }, [hourlyRanks, productId]);
 
-  // 데이터가 없는 경우 - 더 관대한 조건으로 변경
-  const validData = hourlyRanks?.filter(item => item.rank !== null && item.hasData) || [];
-  
-  if (!hourlyRanks || hourlyRanks.length === 0 || validData.length === 0) {
+  // 데이터가 없는 경우 - 전체 데이터만 체크 (null 값 있어도 그래프 표시)
+  if (!hourlyRanks || hourlyRanks.length === 0) {
     return (
       <div className={`w-20 h-16 flex items-center justify-center bg-gray-100 rounded ${className}`}>
         <span className="text-xs text-gray-400">-</span>
