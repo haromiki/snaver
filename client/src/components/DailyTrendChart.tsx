@@ -65,11 +65,11 @@ export default function DailyTrendChart({ productId, hourlyRanks, className = ""
           borderColor: trendColor,
           backgroundColor: trendColor + '40', // 투명도 25%
           borderWidth: 2,
-          pointRadius: 0,
-          pointHoverRadius: 0,
+          pointRadius: validData.length <= 3 ? 3 : 0, // 데이터가 적으면 점 표시
+          pointHoverRadius: validData.length <= 3 ? 5 : 0,
           fill: true, // 면적 채우기
           tension: 0.4, // 부드러운 곡선
-          spanGaps: false,
+          spanGaps: true, // 빈 데이터 포인트를 연결하여 그래프 표시
         }],
       },
       options: {
@@ -121,8 +121,10 @@ export default function DailyTrendChart({ productId, hourlyRanks, className = ""
     };
   }, [hourlyRanks, productId]);
 
-  // 데이터가 없는 경우
-  if (!hourlyRanks || hourlyRanks.length === 0) {
+  // 데이터가 없는 경우 - 더 관대한 조건으로 변경
+  const validData = hourlyRanks?.filter(item => item.rank !== null && item.hasData) || [];
+  
+  if (!hourlyRanks || hourlyRanks.length === 0 || validData.length === 0) {
     return (
       <div className={`w-20 h-16 flex items-center justify-center bg-gray-100 rounded ${className}`}>
         <span className="text-xs text-gray-400">-</span>
