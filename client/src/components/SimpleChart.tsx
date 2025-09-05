@@ -9,9 +9,14 @@ interface SimpleChartProps {
 }
 
 export default function SimpleChart({ productId, hourlyRanks }: SimpleChartProps) {
+  console.log(`🔥 [SimpleChart ${productId}] 받은 데이터:`, hourlyRanks?.slice(0, 3));
+  
   const validData = hourlyRanks.filter(item => item.hasData && item.rank !== null);
+  console.log(`🔥 [SimpleChart ${productId}] validData 개수:`, validData.length);
+  console.log(`🔥 [SimpleChart ${productId}] validData:`, validData);
   
   if (validData.length === 0) {
+    console.log(`🔥 [SimpleChart ${productId}] "-" 표시 (데이터 없음)`);
     return (
       <div className="w-20 h-16 flex items-center justify-center bg-gray-50 dark:bg-gray-800 rounded border">
         <span className="text-xs text-gray-400 dark:text-gray-500">-</span>
