@@ -660,6 +660,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 24시간 순위 트렌드 데이터 API
+  app.get("/api/products/:id/daily-ranks", authenticateToken, async (req, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+      
+      // 한국 시간(KST, UTC+9) 기준으로 오늘 시작 시간 계산
+      const now = new Date();
+      const kstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+      
+      // 오늘 00:00 (한국 시간)
+      const todayStart = new Date(kstNow);
+      todayStart.setHours(0, 0, 0, 0);
+      
+      // 내일 00:00 (한국 시간)
+      const tomorrowStart = new Date(todayStart);
+      tomorrowStart.setDate(todayStart.getDate() + 1);
+      
+      // 24시간 데이터 조회 (오늘 00:00 ~ 내일 00:00 전까지)
+      const dailyTracks = await storage.getProductTracksInRange(
+        productId, 
+        req.userId!,
+        todayStart.toISOString(),
+        tomorrowStart.toISOString()
+      );
+      
+      // 시간별 최신 순위 데이터로 정리 (24시간)
+      const hourlyRanks = [];
+      for (let i = 0; i < 24; i++) {
+        const targetHour = new Date(todayStart);
+        targetHour.setHours(i);
+        
+        const nextHour = new Date(targetHour);
+        nextHour.setHours(i + 1);
+        
+        // 해당 시간대의 트랙 데이터 중 가장 최근 것
+        const hourTracks = dailyTracks.filter((track: any) => {
+          const trackDate = new Date(track.checkedAt);
+          const kstTrackDate = new Date(trackDate.getTime() + (9 * 60 * 60 * 1000));
+          return kstTrackDate >= targetHour && kstTrackDate < nextHour;
+        });
+        
+        const latestTrack = hourTracks.length > 0 ? 
+          hourTracks.sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime())[0] : null;
+        
+        hourlyRanks.push({
+          hour: i.toString().padStart(2, '0') + ':00',
+          time: targetHour.toISOString(),
+          rank: latestTrack?.globalRank || null,
+          hasData: !!latestTrack
+        });
+      }
+      
+      res.json({
+        productId,
+        dayStart: todayStart.toISOString().split('T')[0],
+        hourlyRanks
+      });
+      
+    } catch (error) {
+      console.error("24시간 순위 데이터 조회 오류:", error);
+      res.status(500).json({ message: "24시간 순위 데이터를 가져오는데 실패했습니다" });
+    }
+  });
+
   // 가격 히스토리 조회 API
   app.get("/api/products/:id/price-history", authenticateToken, async (req, res) => {
     try {

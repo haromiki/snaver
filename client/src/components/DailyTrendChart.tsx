@@ -1,0 +1,142 @@
+import { useEffect, useRef } from 'react';
+import { Chart, registerables } from 'chart.js';
+
+// Chart.js 등록
+Chart.register(...registerables);
+
+interface HourlyRank {
+  hour: string;
+  time: string;
+  rank: number | null;
+  hasData: boolean;
+}
+
+interface DailyTrendChartProps {
+  productId: number;
+  hourlyRanks: HourlyRank[];
+  className?: string;
+}
+
+export default function DailyTrendChart({ productId, hourlyRanks, className = "" }: DailyTrendChartProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const chartRef = useRef<Chart | null>(null);
+
+  useEffect(() => {
+    if (!canvasRef.current || !hourlyRanks || hourlyRanks.length === 0) return;
+
+    // 기존 차트 제거
+    if (chartRef.current) {
+      chartRef.current.destroy();
+    }
+
+    const ctx = canvasRef.current.getContext('2d');
+    if (!ctx) return;
+
+    // 데이터 준비 - 24시간 레이블과 랭크 데이터
+    const labels = hourlyRanks.map(item => item.hour);
+    const rankData = hourlyRanks.map(item => item.rank);
+    
+    // 하루 평균 변화 계산 (첫 번째와 마지막 데이터 비교)
+    const validRanks = hourlyRanks.filter(item => item.rank !== null);
+    let trendColor = '#000000'; // 기본 검은색
+    
+    if (validRanks.length >= 2) {
+      const firstRank = validRanks[0].rank!;
+      const lastRank = validRanks[validRanks.length - 1].rank!;
+      const rankDiff = firstRank - lastRank; // 첫 번째 - 마지막 (순위는 낮을수록 좋음)
+      
+      if (rankDiff > 0) {
+        // 순위 상승 (숫자가 작아짐) - 파란색
+        trendColor = '#3B82F6';
+      } else if (rankDiff < 0) {
+        // 순위 하락 (숫자가 커짐) - 빨간색
+        trendColor = '#EF4444';
+      }
+    }
+
+    // 차트 생성 - 면적 그래프 스타일
+    chartRef.current = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: '순위',
+          data: rankData,
+          borderColor: trendColor,
+          backgroundColor: trendColor + '40', // 투명도 25%
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          fill: true, // 면적 채우기
+          tension: 0.4, // 부드러운 곡선
+          spanGaps: false,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          intersect: false,
+          mode: 'nearest',
+        },
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            enabled: false
+          }
+        },
+        scales: {
+          x: {
+            display: false, // x축 숨김
+            grid: {
+              display: false
+            }
+          },
+          y: {
+            display: false, // y축 숨김
+            reverse: true, // 순위는 낮을수록 좋으므로 반전
+            grid: {
+              display: false
+            },
+            suggestedMin: 1,
+            suggestedMax: 200
+          }
+        },
+        elements: {
+          point: {
+            hoverBorderWidth: 0
+          }
+        }
+      }
+    });
+
+    // cleanup function
+    return () => {
+      if (chartRef.current) {
+        chartRef.current.destroy();
+        chartRef.current = null;
+      }
+    };
+  }, [hourlyRanks, productId]);
+
+  // 데이터가 없는 경우
+  if (!hourlyRanks || hourlyRanks.length === 0) {
+    return (
+      <div className={`w-20 h-16 flex items-center justify-center bg-gray-100 rounded ${className}`}>
+        <span className="text-xs text-gray-400">-</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`w-20 h-16 relative ${className}`}>
+      <canvas 
+        ref={canvasRef}
+        className="w-full h-full"
+        data-testid={`chart-daily-trend-${productId}`}
+      />
+    </div>
+  );
+}

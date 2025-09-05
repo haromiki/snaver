@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
 import StatisticsModal from "./StatisticsModal";
-import WeeklyTrendChart from "./WeeklyTrendChart";
+import DailyTrendChart from "./DailyTrendChart";
 import PriceHistoryModal from "./PriceHistoryModal";
 import { useToast } from "@/hooks/use-toast";
 // 웹소켓 제거 - 폴링으로 대체
@@ -205,12 +205,12 @@ function PriceChangeIndicator({ product }: { product: any }) {
   }
 }
 
-// 1주일 트렌드 차트를 위한 래퍼 컴포넌트
-function WeeklyTrendChartWrapper({ productId }: { productId: number }) {
-  const { data: weeklyData, isLoading } = useQuery({
-    queryKey: [`/products/${productId}/weekly-ranks`],
+// 24시간 트렌드 차트를 위한 래퍼 컴포넌트
+function DailyTrendChartWrapper({ productId }: { productId: number }) {
+  const { data: dailyData, isLoading } = useQuery({
+    queryKey: [`/products/${productId}/daily-ranks`],
     queryFn: async () => {
-      const response = await apiRequest("GET", `/products/${productId}/weekly-ranks`);
+      const response = await apiRequest("GET", `/products/${productId}/daily-ranks`);
       return await response.json();
     },
     staleTime: 1000 * 60 * 5, // 5분 캐시 (수동/자동 검색 시 즉시 무효화됨)
@@ -219,24 +219,24 @@ function WeeklyTrendChartWrapper({ productId }: { productId: number }) {
 
   if (isLoading) {
     return (
-      <div className="w-20 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded animate-pulse">
-        <div className="w-16 h-4 bg-gray-300 dark:bg-gray-600 rounded"></div>
+      <div className="w-20 h-16 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded animate-pulse">
+        <div className="w-16 h-8 bg-gray-300 dark:bg-gray-600 rounded"></div>
       </div>
     );
   }
 
-  if (!weeklyData?.dailyRanks) {
+  if (!dailyData?.hourlyRanks) {
     return (
-      <div className="w-20 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
+      <div className="w-20 h-16 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
         <span className="text-xs text-gray-400 dark:text-gray-500">-</span>
       </div>
     );
   }
 
   return (
-    <WeeklyTrendChart 
+    <DailyTrendChart 
       productId={productId} 
-      dailyRanks={weeklyData.dailyRanks} 
+      hourlyRanks={dailyData.hourlyRanks} 
     />
   );
 }
@@ -384,7 +384,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
           queryClient.setQueryData(["/products", currentFilters], freshData);
           
           // 주간 트렌드 캐시 무효화 (새로운 검색 결과 반영)
-          queryClient.invalidateQueries({ queryKey: [`/products/${productId}/weekly-ranks`] });
+          queryClient.invalidateQueries({ queryKey: [`/products/${productId}/daily-ranks`] });
           
           // 전체 제품 목록 새로고침으로 마지막 확인 시간 업데이트
           queryClient.invalidateQueries({ queryKey: ["/products"] });
@@ -831,7 +831,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">제품 가격</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">현재 순위</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">순위 변동</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">1주일 그래프</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">1일 그래프</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">마지막 확인</th>
                   </>
                 )}
@@ -942,7 +942,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                           <RankChangeIndicator productId={product.id} />
                         </td>
                         <td className="px-6 py-4">
-                          <WeeklyTrendChartWrapper productId={product.id} />
+                          <DailyTrendChartWrapper productId={product.id} />
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-900 dark:text-gray-100" data-testid={`text-last-checked-${product.id}`}>
