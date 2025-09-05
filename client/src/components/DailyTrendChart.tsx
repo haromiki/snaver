@@ -21,10 +21,6 @@ export default function DailyTrendChart({ productId, hourlyRanks, className = ""
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
 
-  // 데이터 유효성 체크를 먼저 수행
-  const validData = hourlyRanks?.filter(item => item.rank !== null && item.hasData) || [];
-
-
   useEffect(() => {
     if (!canvasRef.current || !hourlyRanks || hourlyRanks.length === 0) return;
 
@@ -58,7 +54,6 @@ export default function DailyTrendChart({ productId, hourlyRanks, className = ""
       }
     }
 
-
     // 차트 생성 - 면적 그래프 스타일
     chartRef.current = new Chart(ctx, {
       type: 'line',
@@ -70,11 +65,11 @@ export default function DailyTrendChart({ productId, hourlyRanks, className = ""
           borderColor: trendColor,
           backgroundColor: trendColor + '40', // 투명도 25%
           borderWidth: 2,
-          pointRadius: 0, // 점 제거
+          pointRadius: 0,
           pointHoverRadius: 0,
           fill: true, // 면적 채우기
-          tension: 0, // 각진 그래프
-          spanGaps: true, // 빈 데이터 포인트를 연결하여 그래프 표시
+          tension: 0.4, // 부드러운 곡선
+          spanGaps: false,
         }],
       },
       options: {
@@ -126,7 +121,7 @@ export default function DailyTrendChart({ productId, hourlyRanks, className = ""
     };
   }, [hourlyRanks, productId]);
 
-  // 데이터가 없는 경우 - hourlyRanks 배열만 체크 (validData가 0개여도 그래프 표시)
+  // 데이터가 없는 경우
   if (!hourlyRanks || hourlyRanks.length === 0) {
     return (
       <div className={`w-20 h-16 flex items-center justify-center bg-gray-100 rounded ${className}`}>

@@ -13,20 +13,14 @@ export function useAuth() {
   const [, navigate] = useLocation();
   // DO NOT MODIFY ABOVE
 
-  const hasToken = !!localStorage.getItem("token");
-  
-  const { data: user, isLoading, isError } = useQuery({
+  const { data: user, isLoading } = useQuery({
     queryKey: ["/auth/me"],
     queryFn: getQueryFn({ on401: "returnNull" }),
     retry: false,
     retryOnMount: false,
     refetchOnWindowFocus: false,
     staleTime: 1000 * 60 * 5, // 5 minutes
-    enabled: hasToken, // 토큰이 있을 때만 쿼리 실행
   });
-
-  // 토큰이 없으면 즉시 로딩 완료
-  const finalIsLoading = hasToken ? isLoading : false;
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: { usernameOrEmail: string; password: string }) => {
@@ -70,7 +64,7 @@ export function useAuth() {
 
   return {
     user,
-    isLoading: finalIsLoading,
+    isLoading,
     login: loginMutation.mutateAsync,
     register: registerMutation.mutateAsync,
     logout,

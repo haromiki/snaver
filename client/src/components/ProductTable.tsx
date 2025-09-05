@@ -211,8 +211,7 @@ function DailyTrendChartWrapper({ productId }: { productId: number }) {
     queryKey: [`/products/${productId}/daily-ranks`],
     queryFn: async () => {
       const response = await apiRequest("GET", `/products/${productId}/daily-ranks`);
-      const data = await response.json();
-      return data;
+      return await response.json();
     },
     staleTime: 1000 * 60 * 5, // 5분 캐시 (수동/자동 검색 시 즉시 무효화됨)
     refetchOnWindowFocus: false,
@@ -226,8 +225,7 @@ function DailyTrendChartWrapper({ productId }: { productId: number }) {
     );
   }
 
-  // hourlyRanks 배열이 있으면 항상 차트 표시 (데이터 없어도 가능)
-  if (!dailyData?.hourlyRanks || dailyData.hourlyRanks.length === 0) {
+  if (!dailyData?.hourlyRanks) {
     return (
       <div className="w-20 h-16 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
         <span className="text-xs text-gray-400 dark:text-gray-500">-</span>
