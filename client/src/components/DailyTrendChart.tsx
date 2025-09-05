@@ -24,6 +24,10 @@ export default function DailyTrendChart({ productId, hourlyRanks, className = ""
   // 데이터 유효성 체크를 먼저 수행
   const validData = hourlyRanks?.filter(item => item.rank !== null && item.hasData) || [];
 
+  // 디버깅용 로그 추가
+  console.log(`[DailyTrendChart ${productId}] hourlyRanks:`, hourlyRanks);
+  console.log(`[DailyTrendChart ${productId}] validData:`, validData);
+
   useEffect(() => {
     if (!canvasRef.current || !hourlyRanks || hourlyRanks.length === 0) return;
 
