@@ -28,6 +28,20 @@ export default function DailyTrendMiniChart({ productId, className = "" }: Daily
     refetchInterval: 5 * 1000,
     refetchIntervalInBackground: true,
     staleTime: 0,
+    gcTime: 0, // 캐시 즉시 무효화
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    // 강제 새로고침을 위한 쿼리 옵션
+    queryFn: () => {
+      const timestamp = Date.now();
+      return fetch(`/api/products/${productId}/daily-ranks?_t=${timestamp}`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      }).then(res => res.json());
+    }
   });
 
   useEffect(() => {
