@@ -24,14 +24,10 @@ export default function DailyTrendMiniChart({ productId, className = "" }: Daily
 
   // 1일 순위 데이터 조회 (5초마다 폴링)
   const { data: dailyData, isLoading } = useQuery<DailyRankResponse>({
-    queryKey: [`/products/${productId}/daily-ranks`, Date.now()], // 타임스탬프로 캐시 무효화
+    queryKey: [`/products/${productId}/daily-ranks`],
     refetchInterval: 5 * 1000,
     refetchIntervalInBackground: true,
     staleTime: 0,
-    gcTime: 0, // 캐시 즉시 무효화
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
   });
 
   useEffect(() => {

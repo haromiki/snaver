@@ -670,17 +670,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 1일 순위변동 그래프 API (24시간 1시간 단위)
-  app.get("/api/products/:id/daily-ranks", authenticateToken, (req, res, next) => {
-    // 강제 캐시 비활성화
-    res.set({
-      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
-      'Pragma': 'no-cache',
-      'Expires': '0',
-      'Last-Modified': new Date().toUTCString(),
-      'ETag': `"force-${Date.now()}-${Math.random()}"`
-    });
-    next();
-  }, async (req, res) => {
+  app.get("/api/products/:id/daily-ranks", authenticateToken, async (req, res) => {
     try {
       const productId = parseInt(req.params.id);
       
@@ -741,8 +731,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         productId,
         dayStart: todayStart.toISOString().split('T')[0],
-        hourlyRanks,
-        _timestamp: Date.now() // 클라이언트 캐시 무력화
+        hourlyRanks
       });
       
     } catch (error) {
