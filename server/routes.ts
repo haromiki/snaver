@@ -2,7 +2,15 @@
 import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertProductSchema, insertKeywordSchema, loginSchema, rankQuerySchema, type RankQuery, type RankResult } from "@shared/schema";
+import {
+  insertUserSchema,
+  insertProductSchema,
+  insertKeywordSchema,
+  loginSchema,
+  rankQuerySchema,
+  type RankQuery,
+  type RankResult,
+} from "@shared/schema";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { authenticateToken } from "./middleware/auth.ts";
@@ -14,13 +22,37 @@ import crypto from "crypto";
 import { setupWebSocket } from "./websocket";
 
 // 세션 타입 확장
-declare module 'express-session' {
+declare module "express-session" {
   interface SessionData {
     naverState?: string;
   }
 }
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+
+// 👇️ DO NOT MODIFY BELOW: KST helpers (timezone-safe day/hour boundaries)
+// KST 고정 오프셋(+09:00)을 문자열로 명시해 Date를 생성하면
+// 서버 로컬 TZ와 무관하게 올바른 절대시간(UTC)이 만들어집니다.
+const KST_TZ = "Asia/Seoul";
+const two = (n: number) => String(n).padStart(2, "0");
+
+/** 주어진 시각(now) 기준 KST 날짜 문자열(YYYY-MM-DD) */
+function getKstYmd(now: Date): string {
+  const f = new Intl.DateTimeFormat("en-CA", {
+    timeZone: KST_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  // e.g. "2025-09-07"
+  return f.format(now);
+}
+
+/** "YYYY-MM-DDTHH:MM:SS+09:00" 형태의 KST 시각을 절대 시간 Date로 생성 */
+function kstDate(ymd: string, hour = 0, min = 0, sec = 0): Date {
+  return new Date(`${ymd}T${two(hour)}:${two(min)}:${two(sec)}+09:00`);
+}
+// 👆️ DO NOT MODIFY ABOVE
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check...
@@ -32,19 +64,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/auth/check-username/:username", async (req, res) => {
     try {
       const { username } = req.params;
-      
+
       if (!username || username.length < 3) {
-        return res.json({ 
+        return res.json({
           available: false,
-          message: "아이디는 3자 이상이어야 합니다"
+          message: "아이디는 3자 이상이어야 합니다",
         });
       }
 
       const existingUser = await storage.getUserByUsername(username);
-      
-      res.json({ 
+
+      res.json({
         available: !existingUser,
-        message: existingUser ? "이미 사용 중인 아이디입니다" : "사용 가능한 아이디입니다"
+        message: existingUser ? "이미 사용 중인 아이디입니다" : "사용 가능한 아이디입니다",
       });
     } catch (error) {
       console.error("아이디 중복체크 오류:", error);
@@ -84,17 +116,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "7d" });
 
-      res.json({ 
-        ok: true, 
+      res.json({
+        ok: true,
         user: { id: user.id, username: user.username, email: user.email || null },
-        token 
+        token,
       });
     } catch (error: any) {
       console.error("회원가입 오류:", error);
       let message = "회원가입에 실패했습니다";
 
       if (error.issues && Array.isArray(error.issues)) {
-        message = error.issues.map((issue: any) => `${issue.path.join('.')}: ${issue.message}`).join(', ');
+        message = error.issues.map((issue: any) => `${issue.path.join(".")}: ${issue.message}`).join(", ");
       } else if (error.message) {
         message = error.message;
       }
@@ -107,8 +139,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = loginSchema.parse(req.body);
 
-      const user = await storage.getUserByUsername(validatedData.usernameOrEmail) ||
-                   await storage.getUserByEmail(validatedData.usernameOrEmail);
+      const user =
+        (await storage.getUserByUsername(validatedData.usernameOrEmail)) ||
+        (await storage.getUserByEmail(validatedData.usernameOrEmail));
 
       if (!user) {
         return res.status(401).json({ message: "잘못된 로그인 정보입니다" });
@@ -122,17 +155,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "7d" });
 
-      res.json({ 
-        ok: true, 
+      res.json({
+        ok: true,
         user: { id: user.id, username: user.username, email: user.email },
-        token 
+        token,
       });
     } catch (error: any) {
       console.error("로그인 오류:", error);
       let message = "로그인에 실패했습니다";
 
       if (error.issues && Array.isArray(error.issues)) {
-        message = error.issues.map((issue: any) => `${issue.path.join('.')}: ${issue.message}`).join(', ');
+        message = error.issues.map((issue: any) => `${issue.path.join(".")}: ${issue.message}`).join(", ");
       } else if (error.message) {
         message = error.message;
       }
@@ -144,19 +177,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 네이버 OAuth 로그인 시작
   app.get("/api/auth/naver", (req, res) => {
     const clientId = process.env.NAVER_CLIENT_ID;
-    const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/naver/callback`;
-    const state = crypto.randomBytes(32).toString('hex');
-    
+    const redirectUri = `${req.protocol}://${req.get("host")}/api/auth/naver/callback`;
+    const state = crypto.randomBytes(32).toString("hex");
+
     // 상태값을 세션에 저장 (실제로는 Redis나 DB에 저장하는 것이 좋음)
     req.session = req.session || {};
     req.session.naverState = state;
-    
-    const naverAuthUrl = `https://nid.naver.com/oauth2.0/authorize?` +
+
+    const naverAuthUrl =
+      `https://nid.naver.com/oauth2.0/authorize?` +
       `response_type=code&` +
       `client_id=${clientId}&` +
       `redirect_uri=${encodeURIComponent(redirectUri)}&` +
       `state=${state}`;
-    
+
     res.redirect(naverAuthUrl);
   });
 
@@ -166,67 +200,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { code, state } = req.query;
       const clientId = process.env.NAVER_CLIENT_ID;
       const clientSecret = process.env.NAVER_CLIENT_SECRET;
-      
+
       // 상태값 검증
       if (!req.session?.naverState || req.session.naverState !== state) {
         return res.status(400).json({ message: "잘못된 상태값입니다" });
       }
-      
+
       // Access Token 요청
-      const tokenResponse = await fetch('https://nid.naver.com/oauth2.0/token', {
-        method: 'POST',
+      const tokenResponse = await fetch("https://nid.naver.com/oauth2.0/token", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+          "Content-Type": "application/x-www-form-urlencoded",
         },
         body: new URLSearchParams({
-          grant_type: 'authorization_code',
+          grant_type: "authorization_code",
           client_id: clientId!,
           client_secret: clientSecret!,
           code: code as string,
           state: state as string,
         }),
       });
-      
+
       const tokenData = await tokenResponse.json();
-      
+
       if (!tokenData.access_token) {
-        throw new Error('액세스 토큰을 받지 못했습니다');
+        throw new Error("액세스 토큰을 받지 못했습니다");
       }
-      
+
       // 사용자 정보 요청
-      const userResponse = await fetch('https://openapi.naver.com/v1/nid/me', {
+      const userResponse = await fetch("https://openapi.naver.com/v1/nid/me", {
         headers: {
-          'Authorization': `Bearer ${tokenData.access_token}`,
+          Authorization: `Bearer ${tokenData.access_token}`,
         },
       });
-      
+
       const userData = await userResponse.json();
-      
-      if (userData.resultcode !== '00') {
-        throw new Error('사용자 정보를 가져오지 못했습니다');
+
+      if (userData.resultcode !== "00") {
+        throw new Error("사용자 정보를 가져오지 못했습니다");
       }
-      
+
       const naverUser = userData.response;
-      
+
       // 기존 사용자 확인 또는 새 사용자 생성
       let user = await storage.getUserByEmail(naverUser.email);
-      
+
       if (!user) {
         // 새 사용자 생성
         const username = naverUser.nickname || naverUser.name || `naver_${naverUser.id}`;
         user = await storage.createUser({
           username: username,
           email: naverUser.email,
-          passwordHash: '', // 네이버 로그인 사용자는 비밀번호 없음
+          passwordHash: "", // 네이버 로그인 사용자는 비밀번호 없음
         } as any);
       }
-      
+
       // JWT 토큰 생성
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "7d" });
-      
+
       // 프론트엔드로 리다이렉트 (토큰을 쿼리 파라미터로 전달)
       res.redirect(`/?token=${token}&loginSuccess=true`);
-      
     } catch (error: any) {
       console.error("네이버 로그인 오류:", error);
       res.redirect(`/?loginError=${encodeURIComponent(error.message)}`);
@@ -240,10 +273,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "사용자를 찾을 수 없습니다" });
       }
 
-      res.json({ 
-        id: user.id, 
-        username: user.username, 
-        email: user.email 
+      res.json({
+        id: user.id,
+        username: user.username,
+        email: user.email,
       });
     } catch (error) {
       res.status(500).json({ message: "사용자 정보를 가져오는데 실패했습니다" });
@@ -257,14 +290,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { currentPassword, newPassword } = req.body;
 
       if (!currentPassword || !newPassword) {
-        return res.status(400).json({ 
-          message: "현재 비밀번호와 새 비밀번호를 모두 입력해주세요" 
+        return res.status(400).json({
+          message: "현재 비밀번호와 새 비밀번호를 모두 입력해주세요",
         });
       }
 
       if (newPassword.length < 8) {
-        return res.status(400).json({ 
-          message: "새 비밀번호는 8자 이상이어야 합니다" 
+        return res.status(400).json({
+          message: "새 비밀번호는 8자 이상이어야 합니다",
         });
       }
 
@@ -286,14 +319,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 비밀번호 업데이트
       await storage.updateUserPassword(userId, newPasswordHash);
 
-      res.json({ 
-        ok: true, 
-        message: "비밀번호가 성공적으로 변경되었습니다" 
+      res.json({
+        ok: true,
+        message: "비밀번호가 성공적으로 변경되었습니다",
       });
     } catch (error: any) {
       console.error("비밀번호 변경 오류:", error);
-      res.status(500).json({ 
-        message: "비밀번호 변경에 실패했습니다" 
+      res.status(500).json({
+        message: "비밀번호 변경에 실패했습니다",
       });
     }
   });
@@ -303,19 +336,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { type, active } = req.query;
       const filters: any = {};
-      
+
       if (type) filters.type = type;
-      if (active !== undefined) filters.active = active === 'true';
-      
+      if (active !== undefined) filters.active = active === "true";
+
       const products = await storage.getProducts(req.userId!, filters);
-      
+
       // 캐시 무효화 헤더 추가 (5초 폴링 시 실시간 데이터 보장)
       res.set({
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+        Vary: "Authorization",
       });
-      
+
       // Express의 자동 304 응답 방지를 위해 명시적으로 200 상태 설정
       res.status(200).json(products);
     } catch (error) {
@@ -337,7 +371,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let message = "제품 추가에 실패했습니다";
 
       if (error.issues && Array.isArray(error.issues)) {
-        message = error.issues.map((issue: any) => `${issue.path.join('.')}: ${issue.message}`).join(', ');
+        message = error.issues.map((issue: any) => `${issue.path.join(".")}: ${issue.message}`).join(", ");
       } else if (error.message) {
         message = error.message;
       }
@@ -349,7 +383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/products/:id", authenticateToken, async (req, res) => {
     try {
       const productId = parseInt(req.params.id);
-      
+
       // 제품 전체 정보 업데이트 또는 부분 업데이트 지원
       const updateData: any = {};
       if (req.body.productName !== undefined) updateData.productName = req.body.productName;
@@ -358,7 +392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.body.type !== undefined) updateData.type = req.body.type;
       if (req.body.intervalMin !== undefined) updateData.intervalMin = req.body.intervalMin;
       if (req.body.active !== undefined) updateData.active = req.body.active;
-      
+
       const updatedProduct = await storage.updateProduct(productId, req.userId!, updateData);
       res.json(updatedProduct);
     } catch (error: any) {
@@ -370,7 +404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/products/:id/refresh", authenticateToken, async (req, res) => {
     try {
       const productId = parseInt(req.params.id);
-      
+
       // 제품 정보 조회
       const product = await storage.getProduct(productId, req.userId!);
       if (!product) {
@@ -383,7 +417,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // 일반(오가닉) 순위 조회 - 실서버 환경 최적화 (OpenAPI 우선, Puppeteer fallback)
         const clientId = process.env.NAVER_CLIENT_ID;
         const clientSecret = process.env.NAVER_CLIENT_SECRET;
-        
+
         if (clientId && clientSecret) {
           console.log(`📡 수동 검색 - OpenAPI 사용 (제품 ${product.id})`);
           try {
@@ -399,7 +433,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             rankResult = {
               productId: product.productNo,
               found: false,
-              notes: [`OpenAPI 오류: ${error.message}`]
+              notes: [`OpenAPI 오류: ${error.message}`],
             };
           }
         } else {
@@ -407,7 +441,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rankResult = {
             productId: product.productNo,
             found: false,
-            notes: ["OpenAPI 인증정보 없음 - 실서버에서 Puppeteer 미사용"]
+            notes: ["OpenAPI 인증정보 없음 - 실서버에서 Puppeteer 미사용"],
           };
         }
       } else {
@@ -420,24 +454,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // 검색 결과 (프로덕션에서는 로그 제거)
-
       // 트랙 데이터 저장 - found 여부와 관계없이 항상 저장
       await storage.createTrack({
         productId: product.id,
         isAd: product.type === "ad",
-        page: rankResult.found ? (rankResult.page || null) : null,
-        rankOnPage: rankResult.found ? (rankResult.rankInPage || null) : null,
-        globalRank: rankResult.found ? (rankResult.globalRank || null) : null,
-        priceKrw: rankResult.found ? (rankResult.price || null) : null,
-        mallName: rankResult.found ? (rankResult.storeName || null) : null,
-        productLink: rankResult.found ? (rankResult.storeLink || null) : null,
+        page: rankResult.found ? rankResult.page || null : null,
+        rankOnPage: rankResult.found ? rankResult.rankInPage || null : null,
+        globalRank: rankResult.found ? rankResult.globalRank || null : null,
+        priceKrw: rankResult.found ? rankResult.price || null : null,
+        mallName: rankResult.found ? rankResult.storeName || null : null,
+        productLink: rankResult.found ? rankResult.storeLink || null : null,
       });
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: "순위 업데이트가 완료되었습니다",
-        result: rankResult 
+        result: rankResult,
       });
     } catch (error: any) {
       console.error("제품 새로고침 오류:", error);
@@ -467,29 +499,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // 새로운 랭킹 시스템 API
-  // 일반(오가닉) 순위 조회 - Naver OpenAPI 사용
   // 🔍 임시 디버깅 엔드포인트 - API 응답 구조 확인
   app.post("/api/debug/naver-api", async (req, res) => {
     try {
       const { keyword = "주차번호판" } = req.body;
-      
+
       const clientId = process.env.NAVER_OPENAPI_CLIENT_ID;
       const clientSecret = process.env.NAVER_OPENAPI_CLIENT_SECRET;
-      
+
       console.log("🔑 API 키 확인:", !!clientId, !!clientSecret);
-      
+
       if (!clientId || !clientSecret) {
-        return res.status(500).json({ error: "API 인증정보 없음", clientId: !!clientId, clientSecret: !!clientSecret });
+        return res
+          .status(500)
+          .json({ error: "API 인증정보 없음", clientId: !!clientId, clientSecret: !!clientSecret });
       }
 
       const { start = 1 } = req.body;
-      // 네이버 쇼핑 검색 파라미터 최적화
-      const url = `https://openapi.naver.com/v1/search/shop.json?query=${encodeURIComponent(keyword)}&display=100&start=${start}&sort=sim`;
-      
+      const url = `https://openapi.naver.com/v1/search/shop.json?query=${encodeURIComponent(
+        keyword
+      )}&display=100&start=${start}&sort=sim`;
+
       console.log("🌐 요청 URL:", url);
-      
-      // Node.js built-in fetch 명시적 사용  
+
       const response = await globalThis.fetch(url, {
         headers: {
           "X-Naver-Client-Id": clientId,
@@ -507,21 +539,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const data = await response.json();
-      
+
       console.log("✅ API 응답 수신:", {
         total: data.total,
         itemsCount: data.items?.length,
-        firstItemKeys: data.items?.[0] ? Object.keys(data.items[0]) : []
+        firstItemKeys: data.items?.[0] ? Object.keys(data.items[0]) : [],
       });
-      
-      // 특정 제품 검색 및 전체 응답 분석
+
       const targetProductId = "5797852571";
-      const matchingItems = data.items?.filter((item: any) => 
-        String(item.productId).includes(targetProductId) || 
-        targetProductId.includes(String(item.productId))
-      ) || [];
-      
-      // 응답 구조와 첫 10개 아이템 반환
+      const matchingItems =
+        data.items?.filter(
+          (item: any) =>
+            String(item.productId).includes(targetProductId) ||
+            targetProductId.includes(String(item.productId))
+        ) || [];
+
       return res.json({
         keyword,
         searchingFor: targetProductId,
@@ -529,20 +561,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         itemsLength: data.items?.length || 0,
         startPosition: start,
         matchingItems: matchingItems.length > 0 ? matchingItems : "미발견",
-        firstItems: data.items?.slice(0, 10).map((item: any) => ({
-          productId: item.productId,
-          mallName: item.mallName,
-          title: item.title,
-          lprice: item.lprice,
-          link: item.link,
-          productType: item.productType,
-          allKeys: Object.keys(item)
-        })) || [],
-        // 모든 productId 목록도 포함
+        firstItems:
+          data.items
+            ?.slice(0, 10)
+            .map((item: any) => ({
+              productId: item.productId,
+              mallName: item.mallName,
+              title: item.title,
+              lprice: item.lprice,
+              link: item.link,
+              productType: item.productType,
+              allKeys: Object.keys(item),
+            })) || [],
         allProductIds: data.items?.map((item: any) => item.productId) || [],
-        success: true
+        success: true,
       });
-      
     } catch (error: any) {
       console.error("🚨 디버깅 API 오류:", error);
       res.status(500).json({ error: error.message, stack: error.stack });
@@ -552,13 +585,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/rank/organic", async (req, res) => {
     try {
       const validatedData = rankQuerySchema.parse(req.body);
-      
+
       // 실서버 환경 최적화: OpenAPI 우선, Puppeteer fallback
       const clientId = process.env.NAVER_CLIENT_ID;
       const clientSecret = process.env.NAVER_CLIENT_SECRET;
-      
+
       let result: RankResult;
-      
+
       if (clientId && clientSecret) {
         console.log(`📡 OpenAPI 우선 사용 - 키워드: "${validatedData.keyword}"`);
         try {
@@ -570,11 +603,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         } catch (error: any) {
           console.log(`❌ OpenAPI 실패 - 실서버에서 Puppeteer 미사용:`, error.message);
-          // 실서버 안전성: Puppeteer fallback 제거
           result = {
             productId: validatedData.productId,
             found: false,
-            notes: [`OpenAPI 오류: ${error.message}`]
+            notes: [`OpenAPI 오류: ${error.message}`],
           };
         }
       } else {
@@ -582,7 +614,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         result = {
           productId: validatedData.productId,
           found: false,
-          notes: ["OpenAPI 인증정보 없음 - 실서버에서 Puppeteer 미사용"]
+          notes: ["OpenAPI 인증정보 없음 - 실서버에서 Puppeteer 미사용"],
         };
       }
 
@@ -592,7 +624,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let message = "일반 순위 조회에 실패했습니다";
 
       if (error.issues && Array.isArray(error.issues)) {
-        message = error.issues.map((issue: any) => `${issue.path.join('.')}: ${issue.message}`).join(', ');
+        message = error.issues.map((issue: any) => `${issue.path.join(".")}: ${issue.message}`).join(", ");
       } else if (error.message) {
         message = error.message;
       }
@@ -601,139 +633,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // 1주일 순위 트렌드 데이터 API
+  // 1주일 순위 트렌드 데이터 API (KST 안전)
   app.get("/api/products/:id/weekly-ranks", authenticateToken, async (req, res) => {
     try {
       const productId = parseInt(req.params.id);
-      
-      // 한국 시간(KST, UTC+9) 기준으로 이번 주 시작일 계산
+
       const now = new Date();
-      // 한국 시간으로 변환 (UTC+9)
-      const kstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000));
-      const dayOfWeek = kstNow.getDay(); // 0=일요일, 1=월요일, ..., 6=토요일
-      const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 일요일이면 6일 전, 아니면 현재요일-1
-      
-      // 한국 시간 기준 이번 주 월요일 00:00
-      const thisWeekMonday = new Date(kstNow.getTime() - (daysFromMonday * 24 * 60 * 60 * 1000));
-      thisWeekMonday.setHours(0, 0, 0, 0);
-      
-      // 다음 주 월요일 00:00
-      const nextWeekMonday = new Date(thisWeekMonday);
-      nextWeekMonday.setDate(thisWeekMonday.getDate() + 7);
-      
-      // 이번 주 데이터 조회 (월요일 00:00 ~ 다음주 월요일 00:00 전까지)
+      const ymd = getKstYmd(now);
+      // 이번 주 월요일 00:00(KST)
+      const kst = new Date(`${ymd}T00:00:00+09:00`);
+      // kst.getDay()는 로컬 기준이므로, 주차 계산은 국제화 포맷으로 보정하지 않고
+      // 요일 계산은 Date -> KST 문자열 재생성 대신 day별 루프로 처리
+      // 월요일 기준 주 시작일 계산 (KST에서 계산)
+      const dowF = new Intl.DateTimeFormat("en-US", { timeZone: KST_TZ, weekday: "short" });
+      const weekday = dowF.format(now); // e.g., "Mon"
+      // 요일 인덱스 맵 (Mon=1 ... Sun=0→7)
+      const wmap: Record<string, number> = { Sun: 7, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+      const daysFromMonday = (wmap[weekday] ?? 7) - 1;
+
+      const weekStartKST = new Date(kstDate(getKstYmd(now), 0, 0, 0).getTime() - daysFromMonday * 86400000);
+      const nextWeekStartKST = new Date(weekStartKST.getTime() + 7 * 86400000);
+
       const weeklyRanks = await storage.getProductTracksInRange(
-        productId, 
+        productId,
         req.userId!,
-        thisWeekMonday.toISOString(),
-        nextWeekMonday.toISOString()
+        weekStartKST.toISOString(),
+        nextWeekStartKST.toISOString()
       );
-      
-      // 요일별 최신 순위 데이터로 정리 (7일간)
+
       const dailyRanks = [];
       for (let i = 0; i < 7; i++) {
-        const targetDate = new Date(thisWeekMonday);
-        targetDate.setDate(thisWeekMonday.getDate() + i);
-        
-        const dayName = ['월', '화', '수', '목', '금', '토', '일'][i];
-        
-        // 해당 날짜의 트랙 데이터 중 가장 최근 것 (한국 시간 기준)
+        const dayStartKST = new Date(weekStartKST.getTime() + i * 86400000);
+        const dayEndKST = new Date(dayStartKST.getTime() + 86400000);
+
+        const dayName = ["월", "화", "수", "목", "금", "토", "일"][i];
+
         const dayTracks = weeklyRanks.filter((track: any) => {
-          const trackDate = new Date(track.checkedAt);
-          // 한국 시간으로 변환하여 날짜 비교
-          const kstTrackDate = new Date(trackDate.getTime() + (9 * 60 * 60 * 1000));
-          const kstTargetDate = new Date(targetDate.getTime() + (9 * 60 * 60 * 1000));
-          return kstTrackDate.toDateString() === kstTargetDate.toDateString();
+          if (!track.checkedAt) return false;
+          const t = new Date(track.checkedAt);
+          return t >= dayStartKST && t < dayEndKST;
         });
-        
-        const latestTrack = dayTracks.length > 0 ? 
-          dayTracks.sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime())[0] : null;
-        
+
+        const latestTrack =
+          dayTracks.length > 0
+            ? dayTracks.sort(
+                (a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime()
+              )[0]
+            : null;
+
+        const dayYmd = new Intl.DateTimeFormat("en-CA", {
+          timeZone: KST_TZ,
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(dayStartKST);
+
         dailyRanks.push({
           day: dayName,
-          date: targetDate.toISOString().split('T')[0],
+          date: dayYmd,
           rank: latestTrack?.globalRank || null,
-          hasData: !!latestTrack
+          hasData: !!latestTrack,
         });
       }
-      
+
       res.json({
         productId,
-        weekStart: thisWeekMonday.toISOString().split('T')[0],
-        dailyRanks
+        weekStart: new Intl.DateTimeFormat("en-CA", {
+          timeZone: KST_TZ,
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(weekStartKST),
+        dailyRanks,
       });
-      
     } catch (error) {
       console.error("1주일 순위 데이터 조회 오류:", error);
       res.status(500).json({ message: "1주일 순위 데이터를 가져오는데 실패했습니다" });
     }
   });
 
-  // 1일 순위변동 그래프 API (24시간 1시간 단위)
+  // 1일 순위변동 그래프 API (24시간, KST 안전)
   app.get("/api/products/:id/daily-ranks", authenticateToken, async (req, res) => {
     try {
       const productId = parseInt(req.params.id);
-      
-      // 한국 시간(KST, UTC+9) 기준으로 오늘 00:00부터 내일 00:00까지
+
+      // 👇️ KST 기준 오늘 00:00 ~ 내일 00:00을 절대시간으로 정확히 산출
       const now = new Date();
-      const kstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000));
-      
-      // 오늘 00:00 (KST 기준)
-      const todayStart = new Date(kstNow);
-      todayStart.setHours(0, 0, 0, 0);
-      
-      // 내일 00:00 (KST 기준)
-      const tomorrowStart = new Date(todayStart);
-      tomorrowStart.setDate(todayStart.getDate() + 1);
-      
-      // UTC로 변환하여 데이터베이스 조회
-      const todayStartUTC = new Date(todayStart.getTime() - (9 * 60 * 60 * 1000));
-      const tomorrowStartUTC = new Date(tomorrowStart.getTime() - (9 * 60 * 60 * 1000));
-      
-      // 오늘 하루치 데이터 조회
+      const ymdKST = getKstYmd(now); // "YYYY-MM-DD" (KST 기준 오늘)
+      const todayStartKST = kstDate(ymdKST, 0, 0, 0);
+      const tomorrowStartKST = new Date(todayStartKST.getTime() + 24 * 60 * 60 * 1000);
+
+      // 오늘 하루치 데이터 조회 (UTC 저장이라도 절대시간 비교이므로 안전)
       const dailyTracks = await storage.getProductTracksInRange(
         productId,
         req.userId!,
-        todayStartUTC.toISOString(),
-        tomorrowStartUTC.toISOString()
+        todayStartKST.toISOString(),
+        tomorrowStartKST.toISOString()
       );
-      
-      // 24시간 1시간 단위로 데이터 정리
-      const hourlyRanks = [];
+
+      // 24시간 1시간 단위로 데이터 정리 (KST 구간으로 자름)
+      const hourlyRanks: Array<{
+        hour: string;
+        time: string;
+        rank: number | null;
+        hasData: boolean;
+      }> = [];
+
       for (let hour = 0; hour < 24; hour++) {
-        const hourStart = new Date(todayStart);
-        hourStart.setHours(hour, 0, 0, 0);
-        
-        const hourEnd = new Date(hourStart);
-        hourEnd.setHours(hour + 1, 0, 0, 0);
-        
-        // UTC로 변환하여 필터링
-        const hourStartUTC = new Date(hourStart.getTime() - (9 * 60 * 60 * 1000));
-        const hourEndUTC = new Date(hourEnd.getTime() - (9 * 60 * 60 * 1000));
-        
-        // 해당 시간대의 트랙 데이터 중 가장 최근 것
+        const hourStartKST = kstDate(ymdKST, hour, 0, 0);
+        const hourEndKST = new Date(hourStartKST.getTime() + 60 * 60 * 1000);
+
         const hourTracks = dailyTracks.filter((track: any) => {
-          const trackDate = new Date(track.checkedAt);
-          return trackDate >= hourStartUTC && trackDate < hourEndUTC;
+          if (!track.checkedAt) return false;
+          const t = new Date(track.checkedAt);
+          return t >= hourStartKST && t < hourEndKST;
         });
-        
-        const latestTrack = hourTracks.length > 0 ? 
-          hourTracks.sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime())[0] : null;
-        
+
+        const latestTrack =
+          hourTracks.length > 0
+            ? hourTracks.sort(
+                (a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime()
+              )[0]
+            : null;
+
         hourlyRanks.push({
-          hour: hour.toString().padStart(2, '0') + ':00',
-          time: hourStart.toISOString(),
+          hour: `${two(hour)}:00`,
+          time: hourStartKST.toISOString(),
           rank: latestTrack?.globalRank || null,
-          hasData: !!latestTrack
+          hasData: !!latestTrack,
         });
       }
-      
+
+      // 캐시 무효화(자정 전후 갱신 보장) + 인증별 변형
+      res.set({
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+        Vary: "Authorization",
+        "X-Timezone": "Asia/Seoul",
+      });
+
       res.json({
         productId,
-        dayStart: todayStart.toISOString().split('T')[0],
-        hourlyRanks
+        dayStart: ymdKST, // ← KST 기준 날짜 문자열을 직접 반환
+        hourlyRanks,
       });
-      
     } catch (error) {
       console.error("1일 순위변동 데이터 조회 오류:", error);
       res.status(500).json({ message: "1일 순위변동 데이터를 가져오는데 실패했습니다" });
@@ -744,34 +788,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/products/:id/price-history", authenticateToken, async (req, res) => {
     try {
       const productId = parseInt(req.params.id);
-      const { range = '1year' } = req.query;
-      
+      const { range = "1year" } = req.query;
+
       // 날짜 범위 계산
       const now = new Date();
       let fromDate: Date;
-      
+
       switch (range) {
-        case '1month':
+        case "1month":
           fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
           break;
-        case '3months':
+        case "3months":
           fromDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
           break;
-        case '6months':
+        case "6months":
           fromDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
           break;
-        case '2years':
+        case "2years":
           fromDate = new Date(now.getTime() - 2 * 365 * 24 * 60 * 60 * 1000);
           break;
         default: // '1year'
           fromDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
           break;
       }
-      
+
       // 가격 데이터가 있는 트랙들만 조회
       const tracks = await storage.getTracks(productId, fromDate, now);
-      const tracksWithPrice = tracks.filter(track => track.priceKrw && track.priceKrw > 0);
-      
+      const tracksWithPrice = tracks.filter((track) => track.priceKrw && track.priceKrw > 0);
+
       if (tracksWithPrice.length === 0) {
         return res.json({
           data: [],
@@ -779,63 +823,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
             current: 0,
             highest: 0,
             lowest: 0,
-            average: 0
-          }
+            average: 0,
+          },
         });
       }
-      
+
       // 주간별로 데이터 그룹화 (같은 주의 데이터는 평균 가격 사용)
-      const weeklyData = new Map<string, { prices: number[], date: string }>();
-      
-      tracksWithPrice.forEach(track => {
+      const weeklyData = new Map<string, { prices: number[]; date: string }>();
+
+      tracksWithPrice.forEach((track) => {
         if (!track.checkedAt) return; // null 체크 추가
         const trackDate = new Date(track.checkedAt);
-        // 월요일 시작하는 주의 시작일 계산
-        const dayOfWeek = trackDate.getDay();
-        const diff = trackDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-        const weekStart = new Date(trackDate.setDate(diff));
-        const weekKey = weekStart.toISOString().split('T')[0];
-        
+        // 월요일 시작 주의 시작일 계산 (단순화: 로컬 기준이 아닌 절대시간 기준 후 정렬로 보정)
+        const dayOfWeek = trackDate.getUTCDay(); // 0=Sun
+        const diff = trackDate.getUTCDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+        const weekStart = new Date(Date.UTC(trackDate.getUTCFullYear(), trackDate.getUTCMonth(), diff, 0, 0, 0));
+        const weekKey = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "UTC",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(weekStart);
+
         if (!weeklyData.has(weekKey)) {
-          weeklyData.set(weekKey, { 
-            prices: [], 
-            date: weekKey // ISO 날짜 문자열 사용 (YYYY-MM-DD)
+          weeklyData.set(weekKey, {
+            prices: [],
+            date: weekKey,
           });
         }
-        
+
         weeklyData.get(weekKey)!.prices.push(track.priceKrw!);
       });
-      
+
       // 주간 평균 가격 계산
       const chartData = Array.from(weeklyData.entries())
         .map(([date, data]) => ({
           date: data.date,
-          price: Math.round(data.prices.reduce((sum, price) => sum + price, 0) / data.prices.length)
+          price: Math.round(data.prices.reduce((sum, price) => sum + price, 0) / data.prices.length),
         }))
-        .sort((a, b) => a.date.localeCompare(b.date)); // 문자열 정렬로 변경
-      
+        .sort((a, b) => a.date.localeCompare(b.date));
+
       // 통계 계산
-      const allPrices = tracksWithPrice.map(t => t.priceKrw!);
-      
-      // 현재 가격: 가장 최근 checked_at 시간 기준으로 정렬하여 가져오기
+      const allPrices = tracksWithPrice.map((t) => t.priceKrw!);
+
       const sortedByTime = tracksWithPrice
-        .filter(track => track.checkedAt) // null 체크 추가
-        .sort((a, b) => 
-          new Date(b.checkedAt!).getTime() - new Date(a.checkedAt!).getTime()
-        );
-      
+        .filter((track) => track.checkedAt) // null 체크 추가
+        .sort((a, b) => new Date(b.checkedAt!).getTime() - new Date(a.checkedAt!).getTime());
+
       const stats = {
         current: sortedByTime[0]?.priceKrw || 0,
         highest: Math.max(...allPrices),
         lowest: Math.min(...allPrices),
-        average: Math.round(allPrices.reduce((sum, price) => sum + price, 0) / allPrices.length)
+        average: Math.round(allPrices.reduce((sum, price) => sum + price, 0) / allPrices.length),
       };
-      
+
       res.json({
         data: chartData,
-        stats
+        stats,
       });
-      
     } catch (error) {
       console.error("가격 히스토리 조회 오류:", error);
       res.status(500).json({ message: "가격 히스토리를 가져오는데 실패했습니다" });
@@ -863,7 +908,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let message = "광고 순위 조회에 실패했습니다";
 
       if (error.issues && Array.isArray(error.issues)) {
-        message = error.issues.map((issue: any) => `${issue.path.join('.')}: ${issue.message}`).join(', ');
+        message = error.issues.map((issue: any) => `${issue.path.join(".")}: ${issue.message}`).join(", ");
       } else if (error.message) {
         message = error.message;
       }
@@ -877,10 +922,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { product_id, from, to } = req.query;
       const productId = parseInt(product_id as string);
-      
+
       const fromDate = from ? new Date(from as string) : undefined;
       const toDate = to ? new Date(to as string) : undefined;
-      
+
       const tracks = await storage.getTracks(productId, fromDate, toDate);
       res.json(tracks);
     } catch (error) {
@@ -940,7 +985,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const keywords = await storage.getUserKeywords(req.userId!);
       res.json(keywords);
     } catch (error) {
-      console.error("키워드 조회 오류:", error);
+    console.error("키워드 조회 오류:", error);
       res.status(500).json({ message: "키워드를 불러오는데 실패했습니다" });
     }
   });
@@ -949,12 +994,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/keywords", authenticateToken, async (req, res) => {
     try {
       const validatedData = insertKeywordSchema.parse(req.body);
-      
+
       const newKeyword = await storage.createKeyword({
         ...validatedData,
         userId: req.userId!,
       });
-      
+
       res.status(201).json(newKeyword);
     } catch (error) {
       console.error("키워드 생성 오류:", error);
@@ -967,13 +1012,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const keywordId = parseInt(req.params.id);
       const validatedData = insertKeywordSchema.partial().parse(req.body);
-      
+
       const updatedKeyword = await storage.updateKeyword(keywordId, req.userId!, validatedData);
-      
+
       if (!updatedKeyword) {
         return res.status(404).json({ message: "키워드를 찾을 수 없습니다" });
       }
-      
+
       res.json(updatedKeyword);
     } catch (error) {
       console.error("키워드 수정 오류:", error);
@@ -985,13 +1030,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/keywords/:id", authenticateToken, async (req, res) => {
     try {
       const keywordId = parseInt(req.params.id);
-      
+
       const deleted = await storage.deleteKeyword(keywordId, req.userId!);
-      
+
       if (!deleted) {
         return res.status(404).json({ message: "키워드를 찾을 수 없습니다" });
       }
-      
+
       res.json({ message: "키워드가 삭제되었습니다" });
     } catch (error) {
       console.error("키워드 삭제 오류:", error);
@@ -999,11 +1044,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-
   const httpServer = createServer(app);
-  
+
   // 웹소켓 서버 설정
   setupWebSocket(httpServer);
-  
+
   return httpServer;
 }
