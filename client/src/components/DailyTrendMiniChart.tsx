@@ -45,7 +45,7 @@ export default function DailyTrendMiniChart({ productId, className = "" }: Daily
 
     // 실제 데이터가 있는 순위만 필터링
     const validRanks = dailyData.hourlyRanks.filter(item => item.hasData && item.rank !== null);
-    if (validRanks.length < 2) {
+    if (validRanks.length < 1) {
       ctx.fillStyle = "#f3f4f6";
       ctx.fillRect(0, 0, width, height);
       ctx.fillStyle = "#9ca3af";
