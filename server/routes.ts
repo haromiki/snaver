@@ -728,6 +728,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // 캐시 방지 헤더 설정 (24시간 실시간 데이터)
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'ETag': `"${Date.now()}-${productId}"` // 고유 ETag로 강제 새로고침
+      });
+
       res.json({
         productId,
         dayStart: todayStart.toISOString().split('T')[0],
