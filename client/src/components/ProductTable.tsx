@@ -54,20 +54,8 @@ function UpdateStatusText({ products }: { products: any[] }) {
   );
 }
 
-function RankChangeIndicator({ productId }: { productId: number }) {
-  const { data: products } = useQuery({
-    queryKey: ["/products", {}],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      const response = await apiRequest("GET", `/products?${params}`);
-      return await response.json();
-    },
-    staleTime: 1000 * 30,
-    refetchOnWindowFocus: false,
-  });
-
-  // 해당 제품 찾기
-  const product = products?.find((p: any) => p.id === productId);
+function RankChangeIndicator({ product }: { product: any }) {
+  // 전달받은 product 데이터 직접 사용 (별도 API 호출 제거)
   
   if (!product?.tracks || product.tracks.length < 2) {
     return <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>;
@@ -246,10 +234,13 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
       if (filters.type) params.append("type", filters.type);
       if (filters.active !== undefined) params.append("active", filters.active.toString());
       
+      // 캐시 무효화를 위한 타임스탬프 추가 (5초 폴링 시 실시간 데이터 보장)
+      params.append("_t", Date.now().toString());
+      
       const response = await apiRequest("GET", `/products?${params}`);
       return await response.json();
     },
-    staleTime: 1000 * 30, // 30초 캐시
+    staleTime: 0, // 캐시 비활성화 (실시간 데이터 우선)
     refetchInterval: 5000, // 5초마다 폴링 (순위, 스토어명, 제품가격 실시간 업데이트)
   });
 
@@ -906,7 +897,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <RankChangeIndicator productId={product.id} />
+                          <RankChangeIndicator product={product} />
                         </td>
                         <td className="px-6 py-4">
                           <DailyTrendMiniChart productId={product.id} />

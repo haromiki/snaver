@@ -308,7 +308,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (active !== undefined) filters.active = active === 'true';
       
       const products = await storage.getProducts(req.userId!, filters);
-      res.json(products);
+      
+      // 캐시 무효화 헤더 추가 (5초 폴링 시 실시간 데이터 보장)
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
+      
+      // Express의 자동 304 응답 방지를 위해 명시적으로 200 상태 설정
+      res.status(200).json(products);
     } catch (error) {
       console.error("제품 목록 조회 오류:", error);
       res.status(500).json({ message: "제품 목록을 가져오는데 실패했습니다" });
