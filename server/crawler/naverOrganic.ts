@@ -168,7 +168,7 @@ export async function fetchOrganicRank({
   clientId: string;
   clientSecret: string;
 }): Promise<RankResult> {
-  const HARD_DEADLINE_MS = 40000; // 실서버 안정성: 5번 호출 대응 40초로 확장
+  const HARD_DEADLINE_MS = 80000; // 실서버 안정성: 10번 호출 대응 80초로 확장
   const started = Date.now();
   // 실서버 환경에서 더 안전한 User-Agent 사용  
   const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -236,7 +236,7 @@ export async function fetchOrganicRank({
       throw new Error("API 호출 최대 재시도 횟수 초과");
     };
 
-    // 실서버 안정성을 위해 순차 호출로 변경 (500위까지 확장)
+    // 실서버 안정성을 위해 순차 호출로 변경 (1000위까지 확장)
     console.log("[organic] 1차 배치 요청 중...");
     const batch1 = await callApi(1);
     console.log(`[organic] 1차 배치 결과: ${batch1.items?.length || 0}건`);
@@ -257,12 +257,37 @@ export async function fetchOrganicRank({
     const batch5 = await callApi(401);
     console.log(`[organic] 5차 배치 결과: ${batch5.items?.length || 0}건`);
     
+    console.log("[organic] 6차 배치 요청 중...");
+    const batch6 = await callApi(501);
+    console.log(`[organic] 6차 배치 결과: ${batch6.items?.length || 0}건`);
+    
+    console.log("[organic] 7차 배치 요청 중...");
+    const batch7 = await callApi(601);
+    console.log(`[organic] 7차 배치 결과: ${batch7.items?.length || 0}건`);
+    
+    console.log("[organic] 8차 배치 요청 중...");
+    const batch8 = await callApi(701);
+    console.log(`[organic] 8차 배치 결과: ${batch8.items?.length || 0}건`);
+    
+    console.log("[organic] 9차 배치 요청 중...");
+    const batch9 = await callApi(801);
+    console.log(`[organic] 9차 배치 결과: ${batch9.items?.length || 0}건`);
+    
+    console.log("[organic] 10차 배치 요청 중...");
+    const batch10 = await callApi(901);
+    console.log(`[organic] 10차 배치 결과: ${batch10.items?.length || 0}건`);
+    
     const allItems: NaverShopItem[] = [
       ...(batch1.items ?? []), 
       ...(batch2.items ?? []),
       ...(batch3.items ?? []), 
       ...(batch4.items ?? []),
-      ...(batch5.items ?? [])
+      ...(batch5.items ?? []),
+      ...(batch6.items ?? []),
+      ...(batch7.items ?? []),
+      ...(batch8.items ?? []),
+      ...(batch9.items ?? []),
+      ...(batch10.items ?? [])
     ];
     console.log(`[organic] 전체 아이템 수: ${allItems.length}건`);
     
@@ -347,13 +372,13 @@ export async function fetchOrganicRank({
       }
     }
 
-    // 4) 500위 내 미발견
+    // 4) 1000위 내 미발견
     console.log(`[organic] 최종 결과: found=false, 전체 아이템 ${allItems.length}건 검색 완료`);
     console.log(`[organic] 모든 검색 방법 실패 - inputId: "${inputId}" 미발견`);
     return {
       productId: inputId,
       found: false,
-      notes: ["상위 500위 내 미노출 또는 OpenAPI-실검색 불일치"],
+      notes: ["상위 1000위 내 미노출 또는 OpenAPI-실검색 불일치"],
     };
   } catch (err: any) {
     console.error(`[organic] 치명적 오류 - inputId: "${inputId}", keyword: "${keyword}"`);
