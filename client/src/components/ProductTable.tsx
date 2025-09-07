@@ -10,7 +10,7 @@ import { useSSE } from "@/hooks/useSSE";
 // 업데이트 상태 표시 컴포넌트
 function UpdateStatusText({ products }: { products: any[] }) {
   const now = new Date();
-
+  
   // 최근 업데이트된 제품 찾기 (24시간 내)
   const recentlyUpdated = products.filter(product => {
     if (!product.latestTrack?.checkedAt) return false;
@@ -35,7 +35,7 @@ function UpdateStatusText({ products }: { products: any[] }) {
   });
 
   const lastUpdateTime = new Date(mostRecentUpdate.latestTrack.checkedAt);
-
+  
   // 한국 표준 시간(KST)으로 변환 - UTC+9
   const timeText = lastUpdateTime.toLocaleString('ko-KR', {
     timeZone: 'Asia/Seoul',
@@ -56,7 +56,7 @@ function UpdateStatusText({ products }: { products: any[] }) {
 
 function RankChangeIndicator({ product }: { product: any }) {
   // 전달받은 product 데이터 직접 사용 (별도 API 호출 제거)
-
+  
   if (!product?.tracks || product.tracks.length < 2) {
     return <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>;
   }
@@ -65,14 +65,14 @@ function RankChangeIndicator({ product }: { product: any }) {
   const validTracks = product.tracks
     .filter((track: any) => track.globalRank && track.globalRank > 0)
     .sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
-
+  
   if (validTracks.length < 2) {
     return <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>;
   }
 
   // 현재 순위
   const currentRank = validTracks[0].globalRank;
-
+  
   // 현재와 다른 순위를 가진 이전 데이터를 무한 검색
   let previousRank = null;
   for (let i = 1; i < validTracks.length; i++) {
@@ -81,12 +81,12 @@ function RankChangeIndicator({ product }: { product: any }) {
       break;
     }
   }
-
+  
   // 다른 순위를 찾지 못한 경우 빈 공간
   if (previousRank === null) {
     return <div className="w-7 h-7"></div>;
   }
-
+  
   const rankDiff = previousRank - currentRank;
 
   if (rankDiff > 0) {
@@ -145,10 +145,10 @@ function PriceChangeIndicator({ product }: { product: any }) {
   const sortedTracks = [...product.tracks].sort((a, b) => 
     new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime()
   );
-
+  
   const currentTrack = sortedTracks[0]; // 최신 트랙
   const previousTrack = sortedTracks[1]; // 이전 트랙
-
+  
   if (!currentTrack.priceKrw || !previousTrack.priceKrw) {
     return (
       <div className="flex items-center justify-center">
@@ -158,11 +158,11 @@ function PriceChangeIndicator({ product }: { product: any }) {
       </div>
     );
   }
-
+  
   const currentPrice = currentTrack.priceKrw;
   const previousPrice = previousTrack.priceKrw;
   const priceDiff = currentPrice - previousPrice;
-
+  
   if (priceDiff > 0) {
     // 가격 상승 - 빨간색 상승 아이콘
     return (
@@ -212,10 +212,10 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
   const [bulkRefreshProgress, setBulkRefreshProgress] = useState(0);
   const [searchStatus, setSearchStatus] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState(new Date()); // 실시간 시간 업데이트용
-
+  
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
+  
   // SSE 연결 (폴링 대체)
   const { isConnected } = useSSE();
 
@@ -233,16 +233,18 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
       const params = new URLSearchParams();
       if (filters.type) params.append("type", filters.type);
       if (filters.active !== undefined) params.append("active", filters.active.toString());
-
+      
       // 캐시 무효화를 위한 타임스탬프 추가 (5초 폴링 시 실시간 데이터 보장)
       params.append("_t", Date.now().toString());
-
+      
       const response = await apiRequest("GET", `/products?${params}`);
       return await response.json();
     },
     staleTime: 0, // 캐시 비활성화 (실시간 데이터 우선)
     // SSE로 실시간 업데이트 대체 (폴링 제거)
   });
+
+  // 키워드 매핑이 더 이상 필요하지 않음 (직접 키워드 필터링)
 
   // 검색 및 상태 필터링
   const products = allProducts.filter((product: any) => {
@@ -257,7 +259,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
       const productName = product.productName.toLowerCase();
       const keyword = product.keyword.toLowerCase();
       const productNo = product.productNo.toLowerCase();
-
+      
       const matchesSearch = productName.includes(query) || 
                           keyword.includes(query) || 
                           productNo.includes(query);
@@ -282,10 +284,10 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     mutationFn: async (productId: number) => {
       // 검색 중 상태 추가
       setRefreshingProducts(prev => new Set(prev).add(productId));
-
+      
       const response = await apiRequest("POST", `/products/${productId}/refresh`);
       const result = await response.json();
-
+      
       return result;
     },
     onSuccess: (data, productId) => {
@@ -299,7 +301,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         newSet.delete(productId);
         return newSet;
       });
-
+      
       toast({
         title: "수동 검색 실패",
         description: error.message,
@@ -312,40 +314,40 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
   const verifyAndUpdateData = async (productId: number) => {
     let attempts = 0;
     const maxAttempts = 10; // 최대 10회 시도
-
+    
     const checkData = async (): Promise<void> => {
       attempts++;
-
+      
       try {
         // 캐시를 완전히 무시하고 새로운 데이터 강제 요청
         const params = new URLSearchParams();
         const filters = getFilters();
         if (filters.type) params.append("type", filters.type);
         if (filters.active !== undefined) params.append("active", filters.active.toString());
-
+        
         // 타임스탬프 추가로 캐시 완전 무효화
         params.append("_t", Date.now().toString());
-
+        
         const response = await apiRequest("GET", `/products?${params}`);
         const freshData = await response.json();
-
+        
         // 해당 제품의 최신 트랙 데이터 확인
         const updatedProduct = freshData.find((p: any) => p.id === productId);
-
+        
         if (updatedProduct && updatedProduct.latestTrack && updatedProduct.latestTrack.id) {
           // 데이터 확인됨 - UI 업데이트
           const currentFilters = getFilters();
           queryClient.setQueryData(["/products", currentFilters], freshData);
-
-
+          
+          
           // 전체 제품 목록 새로고침으로 마지막 확인 시간 업데이트
           queryClient.invalidateQueries({ queryKey: ["/products"] });
-
+          
           toast({
             title: "수동 검색 완료",
             description: `순위 정보가 업데이트되었습니다. (${updatedProduct.latestTrack.globalRank ? updatedProduct.latestTrack.globalRank + '위' : '미발견'})`,
           });
-
+          
           // 검색 중 상태 제거
           setTimeout(() => {
             setRefreshingProducts(prev => {
@@ -354,10 +356,10 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
               return newSet;
             });
           }, 1500);
-
+          
           return; // 성공 완료
         }
-
+        
         // 데이터 없음 - 재시도
         if (attempts < maxAttempts) {
           setTimeout(() => checkData(), 1000); // 1초 후 재시도
@@ -368,7 +370,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
             description: "검색이 완료되었지만 결과를 불러오는데 시간이 걸립니다. 잠시 후 새로고침해주세요.",
             variant: "destructive",
           });
-
+          
           // 검색 중 상태 제거
           setRefreshingProducts(prev => {
             const newSet = new Set(prev);
@@ -376,10 +378,10 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
             return newSet;
           });
         }
-
+        
       } catch (error) {
         console.error('데이터 확인 오류:', error);
-
+        
         if (attempts < maxAttempts) {
           setTimeout(() => checkData(), 1000);
         } else {
@@ -388,7 +390,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
             description: "데이터를 불러오는데 실패했습니다.",
             variant: "destructive",
           });
-
+          
           setRefreshingProducts(prev => {
             const newSet = new Set(prev);
             newSet.delete(productId);
@@ -397,7 +399,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         }
       }
     };
-
+    
     // 1초 후 시작 (서버 처리 시간 고려)
     setTimeout(() => checkData(), 1000);
   };
@@ -444,7 +446,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         const orderedProducts = productIds.map(id => 
           (previousProducts as any[]).find(p => p.id === id)
         ).filter(Boolean);
-
+        
         queryClient.setQueryData(["/products", currentFilters], orderedProducts);
       }
 
@@ -456,7 +458,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         const currentFilters = getFilters();
         queryClient.setQueryData(["/products", currentFilters], context.previousProducts);
       }
-
+      
       toast({
         title: "정렬 실패",
         description: "제품 순서 변경에 실패했습니다.",
@@ -512,7 +514,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         try {
           // Dynamically import Sortable
           const Sortable = (await import("sortablejs")).default;
-
+          
           const element = document.getElementById("sortable-products");
           if (element) {
             const sortableInstance = Sortable.create(element, {
@@ -526,7 +528,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                   const newOrder = [...products];
                   const [removed] = newOrder.splice(evt.oldIndex!, 1);
                   newOrder.splice(evt.newIndex!, 0, removed);
-
+                  
                   const productIds = newOrder.map(p => p.id);
                   updateSortMutation.mutate(productIds);
                 }
@@ -556,50 +558,28 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     };
   }, [products.length, updateSortMutation.isPending]);
 
-  // ────────────────────────────────────────────────
-  // 실시간 시간 업데이트 (1초마다)
-  // ────────────────────────────────────────────────
+  // 실시간 시간 업데이트 (매분마다)
   useEffect(() => {
     const updateCurrentTime = () => {
       setCurrentTime(new Date());
     };
-
+    
     updateCurrentTime(); // 초기 설정
-    const interval = setInterval(updateCurrentTime, 1000); // 1초마다 업데이트
-
+    const interval = setInterval(updateCurrentTime, 60000); // 1분마다 업데이트
+    
     return () => clearInterval(interval);
   }, []);
 
-  // ────────────────────────────────────────────────
-  // 상대시간 포맷터: "5분 10초 전"까지 표시
-  // ────────────────────────────────────────────────
   const formatLastChecked = (latestTrack: any) => {
     if (!latestTrack) return "미확인";
-
+    
     const date = new Date(latestTrack.checkedAt);
     const diffMs = currentTime.getTime() - date.getTime(); // 실시간 업데이트된 현재 시간 사용
-    const diffSec = Math.max(0, Math.floor(diffMs / 1000));
-
-    if (diffSec < 5) return "방금 전";                // 0~4초
-    if (diffSec < 60) return `${diffSec}초 전`;        // 5~59초
-
-    const mins = Math.floor(diffSec / 60);
-    const secs = diffSec % 60;
-
-    if (diffSec < 3600) {
-      // 1시간 미만: "M분 Ss 전"
-      return secs === 0 ? `${mins}분 전` : `${mins}분 ${secs}초 전`;
-    }
-
-    const hours = Math.floor(diffSec / 3600);
-    const remMins = Math.floor((diffSec % 3600) / 60);
-
-    if (diffSec < 86400) {
-      // 24시간 미만: "H시간 M분 전"
-      return remMins === 0 ? `${hours}시간 전` : `${hours}시간 ${remMins}분 전`;
-    }
-
-    // 24시간 이상: 날짜로 표기 (간단)
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    
+    if (diffMins < 1) return "방금 전";
+    if (diffMins < 60) return `${diffMins}분 전`;
+    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}시간 전`;
     return date.toLocaleDateString();
   };
 
@@ -610,24 +590,24 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
 
     const rank = latestTrack.globalRank;
     const page = Math.ceil(rank / 40);
-
+    
     // 이전 순위와 비교하여 순위 색상 결정
     let color = "text-gray-900 dark:text-gray-100"; // 기본 색상 (변화 없음 또는 첫 검색)
     let trendIcon = null;
     let previousRank = null;
     let previousPage = null;
     let previousRankOnPage = null;
-
+    
     // 제품의 모든 트랙 데이터에서 이전 순위 찾기 (globalRank가 있는 것만)
     if (product.tracks && product.tracks.length >= 1) {
       // globalRank가 있는 트랙만 필터링하고 최신 순으로 정렬
       const validTracks = product.tracks
         .filter((track: any) => track.globalRank && track.globalRank > 0)
         .sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
-
+      
       if (validTracks.length >= 2) {
         const currentTrack = validTracks[0]; // 최신 유효 트랙
-
+        
         // 현재와 다른 순위를 가진 이전 데이터를 무한 검색
         for (let i = 1; i < validTracks.length; i++) {
           if (validTracks[i].globalRank !== currentTrack.globalRank) {
@@ -638,11 +618,11 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
             break;
           }
         }
-
+        
         if (previousRank) {
           const currentRank = currentTrack.globalRank;
           const rankDiff = previousRank - currentRank; // 이전 순위 - 현재 순위
-
+          
           if (rankDiff > 0) {
             // 순위 상승 (숫자가 작아짐) - 파란색
             color = "text-blue-600 dark:text-blue-400";
@@ -688,15 +668,15 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
   // 전체 새로고침 순차 실행 기능
   const handleBulkRefresh = async () => {
     if (products.length === 0 || bulkRefreshInProgress) return;
-
+    
     setBulkRefreshInProgress(true);
     setBulkRefreshProgress(0);
-
+    
     try {
       for (let i = 0; i < products.length; i++) {
         const product = products[i];
         setBulkRefreshProgress(i + 1);
-
+        
         try {
           await new Promise((resolve, reject) => {
             const mutation = refreshProductMutation.mutate(product.id, {
@@ -708,13 +688,13 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
           console.error(`제품 ${product.productName} 새로고침 실패:`, error);
           // 에러가 발생해도 계속 진행
         }
-
+        
         // 각 제품 간 1초 대기 (서버 부하 방지)
         if (i < products.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
       }
-
+      
       toast({
         title: "전체 새로고침 완료",
         description: `${products.length}개 제품의 순위 업데이트가 완료되었습니다.`,
@@ -765,9 +745,9 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             <span className="text-sm text-green-600 dark:text-green-400 font-medium">1시간 간격 자동 추적중</span>
           </div>
-
-
-
+          
+          
+          
           <div className="flex items-center space-x-3">
             {/* <button className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-100 px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">
               <i className="fas fa-download mr-2"></i>내보내기
@@ -819,7 +799,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
             <tbody id="sortable-products" className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
               {products.map((product: any) => {
                 const rankDisplay = getRankDisplay(product.latestTrack, product);
-
+                
                 return (
                   <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors sortable-item" data-testid={`row-product-${product.id}`}>
                     <td className="px-6 py-4">
