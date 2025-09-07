@@ -20,6 +20,7 @@ import { fetchAdRank } from "./crawler/adCrawler.js";
 import { getSearchStatus } from "./services/scheduler.ts";
 import crypto from "crypto";
 import { setupWebSocket } from "./websocket";
+import { handleSSEConnection } from "./sse";
 
 // 세션 타입 확장
 declare module "express-session" {
@@ -1042,6 +1043,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("키워드 삭제 오류:", error);
       res.status(500).json({ message: "키워드 삭제에 실패했습니다" });
     }
+  });
+
+  // SSE 연결 엔드포인트
+  app.get("/api/events", authenticateToken, (req, res) => {
+    handleSSEConnection(req, res);
   });
 
   const httpServer = createServer(app);

@@ -5,7 +5,7 @@ import StatisticsModal from "./StatisticsModal";
 import PriceHistoryModal from "./PriceHistoryModal";
 import DailyTrendMiniChart from "./DailyTrendMiniChart";
 import { useToast } from "@/hooks/use-toast";
-// 웹소켓 제거 - 폴링으로 대체
+import { useSSE } from "@/hooks/useSSE";
 
 // 업데이트 상태 표시 컴포넌트
 function UpdateStatusText({ products }: { products: any[] }) {
@@ -216,8 +216,8 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  // 웹소켓 연결 (폴링 대체)
-  // 웹소켓 제거됨 - 폴링으로 대체
+  // SSE 연결 (폴링 대체)
+  const { isConnected } = useSSE();
 
   // Determine filters based on section
   const getFilters = () => {
@@ -241,7 +241,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
       return await response.json();
     },
     staleTime: 0, // 캐시 비활성화 (실시간 데이터 우선)
-    refetchInterval: 5000, // 5초마다 폴링 (순위, 스토어명, 제품가격 실시간 업데이트)
+    // SSE로 실시간 업데이트 대체 (폴링 제거)
   });
 
   // 키워드 매핑이 더 이상 필요하지 않음 (직접 키워드 필터링)

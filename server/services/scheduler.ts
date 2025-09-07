@@ -2,7 +2,7 @@ import cron from "node-cron";
 import { storage } from "../storage.ts";
 import { crawlProduct } from "../crawler/shoppingCrawler.js";
 import { fetchOrganicRank } from "../crawler/naverOrganic.ts";
-import { broadcastToClients } from "../websocket.ts";
+import { broadcastSearchStarted, broadcastSearchCompleted, broadcastSearchFailed } from "../sse.ts";
 
 let isRunning = false;
 let searchQueue = []; // 순차 검색 큐
@@ -106,12 +106,9 @@ async function processSearchQueue() {
       };
       searchStatus.set(product.id, statusData);
       
-      // 웹소켓으로 검색 시작 알림
-      console.log('📡 웹소켓 검색 시작 이벤트 발송:', statusData);
-      broadcastToClients({
-        type: 'searchStarted',
-        data: statusData
-      });
+      // SSE로 검색 시작 알림
+      console.log('📡 SSE 검색 시작 이벤트 발송:', statusData);
+      broadcastSearchStarted(product.id, product.keyword);
       
       let result;
       
@@ -184,12 +181,9 @@ async function processSearchQueue() {
       };
       searchStatus.set(product.id, completedStatusData);
       
-      // 웹소켓으로 검색 완료 알림
-      console.log('📡 웹소켓 검색 완료 이벤트 발송:', completedStatusData);
-      broadcastToClients({
-        type: 'searchCompleted',
-        data: completedStatusData
-      });
+      // SSE로 검색 완료 알림
+      console.log('📡 SSE 검색 완료 이벤트 발송:', completedStatusData);
+      broadcastSearchCompleted(product.id, completedStatusData);
       
       // 검색 간 지연 (속도 최적화 - 실서버 안정성 확보됨)
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -237,11 +231,8 @@ async function processSearchQueue() {
         };
         searchStatus.set(product.id, failedStatusData);
         
-        // 웹소켓으로 검색 실패 알림
-        broadcastToClients({
-          type: 'searchFailed',
-          data: failedStatusData
-        });
+        // SSE로 검색 실패 알림
+        broadcastSearchFailed(product.id, error.message);
       }
     }
   }
