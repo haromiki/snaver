@@ -720,7 +720,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 👇️ KST 기준 오늘 00:00 ~ 내일 00:00을 절대시간으로 정확히 산출
       const now = new Date();
       const ymdKST = getKstYmd(now); // "YYYY-MM-DD" (KST 기준 오늘)
-      const todayStartKST = kstDate(ymdKST, 0, 0, 0);
+      const todayStartKST = kstDate(ymdKST, 1, 0, 0);
       const tomorrowStartKST = new Date(todayStartKST.getTime() + 24 * 60 * 60 * 1000);
 
       // 오늘 하루치 데이터 조회 (UTC 저장이라도 절대시간 비교이므로 안전)
