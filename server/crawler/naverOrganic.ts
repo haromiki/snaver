@@ -168,7 +168,7 @@ export async function fetchOrganicRank({
   clientId: string;
   clientSecret: string;
 }): Promise<RankResult> {
-  const HARD_DEADLINE_MS = 30000; // 실서버 안정성: 조기 종료 대응 30초로 최적화
+  const HARD_DEADLINE_MS = 60000; // 실서버 안정성: 조기 종료 대응 60초로 안전 여유분 확보
   const started = Date.now();
   // 실서버 환경에서 더 안전한 User-Agent 사용  
   const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
