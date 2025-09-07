@@ -19,7 +19,7 @@ import { fetchOrganicRankPuppeteer } from "./crawler/naverOrganicPuppeteer.js";
 import { fetchAdRank } from "./crawler/adCrawler.js";
 import { getSearchStatus } from "./services/scheduler.ts";
 import crypto from "crypto";
-import { setupWebSocket } from "./websocket";
+// WebSocket 제거됨 - SSE로 대체
 import { handleSSEConnection } from "./sse";
 
 // 세션 타입 확장
@@ -1052,8 +1052,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const httpServer = createServer(app);
 
-  // 웹소켓 서버 설정
-  setupWebSocket(httpServer);
+  // WebSocket 제거됨 - SSE로 대체
 
   return httpServer;
 }
