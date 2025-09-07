@@ -168,7 +168,7 @@ export async function fetchOrganicRank({
   clientId: string;
   clientSecret: string;
 }): Promise<RankResult> {
-  const HARD_DEADLINE_MS = 80000; // 실서버 안정성: 10번 호출 대응 80초로 확장
+  const HARD_DEADLINE_MS = 30000; // 실서버 안정성: 조기 종료 대응 30초로 최적화
   const started = Date.now();
   // 실서버 환경에서 더 안전한 User-Agent 사용  
   const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -236,124 +236,38 @@ export async function fetchOrganicRank({
       throw new Error("API 호출 최대 재시도 횟수 초과");
     };
 
-    // 실서버 안정성을 위해 순차 호출로 변경 (1000위까지 확장)
-    console.log("[organic] 1차 배치 요청 중...");
-    const batch1 = await callApi(1);
-    console.log(`[organic] 1차 배치 결과: ${batch1.items?.length || 0}건`);
+    // 실서버 안정성을 위해 순차 호출로 변경 (1000위까지 확장, 조기 종료 최적화)
+    let allProcessedItems: NaverShopItem[] = [];
     
-    console.log("[organic] 2차 배치 요청 중...");
-    const batch2 = await callApi(101);
-    console.log(`[organic] 2차 배치 결과: ${batch2.items?.length || 0}건`);
-    
-    console.log("[organic] 3차 배치 요청 중...");
-    const batch3 = await callApi(201);
-    console.log(`[organic] 3차 배치 결과: ${batch3.items?.length || 0}건`);
-    
-    console.log("[organic] 4차 배치 요청 중...");
-    const batch4 = await callApi(301);
-    console.log(`[organic] 4차 배치 결과: ${batch4.items?.length || 0}건`);
-    
-    console.log("[organic] 5차 배치 요청 중...");
-    const batch5 = await callApi(401);
-    console.log(`[organic] 5차 배치 결과: ${batch5.items?.length || 0}건`);
-    
-    console.log("[organic] 6차 배치 요청 중...");
-    const batch6 = await callApi(501);
-    console.log(`[organic] 6차 배치 결과: ${batch6.items?.length || 0}건`);
-    
-    console.log("[organic] 7차 배치 요청 중...");
-    const batch7 = await callApi(601);
-    console.log(`[organic] 7차 배치 결과: ${batch7.items?.length || 0}건`);
-    
-    console.log("[organic] 8차 배치 요청 중...");
-    const batch8 = await callApi(701);
-    console.log(`[organic] 8차 배치 결과: ${batch8.items?.length || 0}건`);
-    
-    console.log("[organic] 9차 배치 요청 중...");
-    const batch9 = await callApi(801);
-    console.log(`[organic] 9차 배치 결과: ${batch9.items?.length || 0}건`);
-    
-    console.log("[organic] 10차 배치 요청 중...");
-    const batch10 = await callApi(901);
-    console.log(`[organic] 10차 배치 결과: ${batch10.items?.length || 0}건`);
-    
-    const allItems: NaverShopItem[] = [
-      ...(batch1.items ?? []), 
-      ...(batch2.items ?? []),
-      ...(batch3.items ?? []), 
-      ...(batch4.items ?? []),
-      ...(batch5.items ?? []),
-      ...(batch6.items ?? []),
-      ...(batch7.items ?? []),
-      ...(batch8.items ?? []),
-      ...(batch9.items ?? []),
-      ...(batch10.items ?? [])
-    ];
-    console.log(`[organic] 전체 아이템 수: ${allItems.length}건`);
-    
-    if (!allItems.length) {
-      return { productId: inputId, found: false, notes: ["OpenAPI 결과 0건 - 실서버 네트워크 이슈 가능성"] };
-    }
-
-    // 2) 1차: items[].productId 즉시 매칭 (가장 빠름)
-    console.log(`[organic] 1차 매칭 시도 - 검색할 inputId: "${inputId}"`);
-    console.log(`[organic] 처음 5개 아이템 productId: ${allItems.slice(0, 5).map(it => it.productId).join(', ')}`);
-    
-    let idx = allItems.findIndex((it) => eqNumStr(it.productId, inputId));
-    console.log(`[organic] 1차 매칭 결과 - 찾은 인덱스: ${idx}`);
-    
-    if (idx !== -1) {
-      const hit = allItems[idx];
-      const globalRank = idx + 1;
-      const pageNumber = Math.ceil(globalRank / 40);
-      const rankInPage = ((globalRank - 1) % 40) + 1;
-      console.log(`[organic] 1차 매칭 성공! 순위: ${globalRank}위, 상품ID: ${hit.productId}`);
-      return {
-        productId: hit.productId,
-        storeName: hit.mallName,
-        storeLink: hit.link,
-        price: parseInt(hit.lprice || "0", 10) || 0,
-        globalRank,
-        page: pageNumber,
-        rankInPage,
-        found: true,
-        notes: ["1차: OpenAPI productId 매칭"],
-      };
-    }
-    
-    console.log(`[organic] 1차 매칭 실패 - "${inputId}"와 일치하는 productId 없음`);
-
-    // 3) 실서버 환경 안전성: URL 기반 검색만 사용 (HEAD 요청 제거)
-    console.log(`[organic] 2차 매칭 시도 - URL 기반 ID 추출만 사용 (실서버 안전)`);
-    // 디버깅 완료
-    
-    for (let i = 0; i < allItems.length; i++) {
+    for (let batchNum = 1; batchNum <= 10; batchNum++) {
       // 하드 데드라인 체크
       if (Date.now() - started > HARD_DEADLINE_MS) {
-        console.log(`[organic] 시간 초과 - 하드 데드라인 ${HARD_DEADLINE_MS}ms 도달`);
-        return { productId: inputId, found: false, notes: ["시간 초과(하드 타임박스)"] };
+        console.log(`[organic] 시간 초과 - 하드 데드라인 ${HARD_DEADLINE_MS}ms 도달, ${batchNum-1}차까지 완료`);
+        break;
       }
-
-      const item = allItems[i];
       
-      try {
-        // URL에서 ID 추출만 사용 (네트워크 요청 없음 - 실서버 안전)
-        const ids = extractIdsFromUrl(item.link);
-        
-        // ID 추출 완료
-        
-        const matched =
-          eqNumStr(ids.prodNo, inputId) ||
-          eqNumStr(ids.nvMid, inputId) ||
-          eqNumStr(ids.productId, inputId) ||
-          eqNumStr(item.productId, inputId);
-
-        if (matched) {
-          const globalRank = i + 1;
+      const start = (batchNum - 1) * 100 + 1;
+      console.log(`[organic] ${batchNum}차 배치 요청 중... (${start}~${start+99}위)`);
+      
+      const batch = await callApi(start);
+      console.log(`[organic] ${batchNum}차 배치 결과: ${batch.items?.length || 0}건`);
+      
+      if (!batch.items?.length) {
+        console.log(`[organic] ${batchNum}차 배치 데이터 없음 - 검색 종료`);
+        break;
+      }
+      
+      // 현재 배치 아이템들을 전체 리스트에 추가
+      allProcessedItems.push(...batch.items);
+      
+      // 1차 매칭: 현재 배치에서 productId 즉시 매칭
+      for (let i = 0; i < batch.items.length; i++) {
+        const item = batch.items[i];
+        if (eqNumStr(item.productId, inputId)) {
+          const globalRank = (batchNum - 1) * 100 + i + 1;
           const pageNumber = Math.ceil(globalRank / 40);
           const rankInPage = ((globalRank - 1) % 40) + 1;
-
-          console.log(`[organic] 2차 매칭 성공! URL 기반 - 순위: ${globalRank}위`);
+          console.log(`[organic] ${batchNum}차 배치에서 즉시 매칭 성공! 순위: ${globalRank}위, 상품ID: ${item.productId}`);
           return {
             productId: item.productId,
             storeName: item.mallName,
@@ -363,22 +277,59 @@ export async function fetchOrganicRank({
             page: pageNumber,
             rankInPage,
             found: true,
-            notes: ["2차: URL 기반 ID 매칭 (실서버 안전)"],
+            notes: [`${batchNum}차 배치: OpenAPI productId 즉시 매칭`],
           };
         }
-      } catch (e: any) {
-        // 개별 아이템 오류는 무시하고 계속 진행
-        console.warn(`[organic] 아이템 ${i} 처리 오류:`, e?.message || String(e));
       }
+      
+      // 2차 매칭: 현재 배치에서 URL 기반 ID 매칭
+      for (let i = 0; i < batch.items.length; i++) {
+        const item = batch.items[i];
+        try {
+          const ids = extractIdsFromUrl(item.link);
+          const matched =
+            eqNumStr(ids.prodNo, inputId) ||
+            eqNumStr(ids.nvMid, inputId) ||
+            eqNumStr(ids.productId, inputId);
+          
+          if (matched) {
+            const globalRank = (batchNum - 1) * 100 + i + 1;
+            const pageNumber = Math.ceil(globalRank / 40);
+            const rankInPage = ((globalRank - 1) % 40) + 1;
+            console.log(`[organic] ${batchNum}차 배치에서 URL 매칭 성공! 순위: ${globalRank}위`);
+            return {
+              productId: item.productId,
+              storeName: item.mallName,
+              storeLink: item.link,
+              price: parseInt(item.lprice || "0", 10) || 0,
+              globalRank,
+              page: pageNumber,
+              rankInPage,
+              found: true,
+              notes: [`${batchNum}차 배치: URL 기반 ID 매칭`],
+            };
+          }
+        } catch (e: any) {
+          // 개별 아이템 오류는 무시하고 계속 진행
+        }
+      }
+      
+      console.log(`[organic] ${batchNum}차 배치 매칭 실패 - 다음 배치 진행`);
+    }
+    
+    console.log(`[organic] 전체 처리된 아이템 수: ${allProcessedItems.length}건`);
+    
+    if (!allProcessedItems.length) {
+      return { productId: inputId, found: false, notes: ["OpenAPI 결과 0건 - 실서버 네트워크 이슈 가능성"] };
     }
 
     // 4) 1000위 내 미발견
-    console.log(`[organic] 최종 결과: found=false, 전체 아이템 ${allItems.length}건 검색 완료`);
+    console.log(`[organic] 최종 결과: found=false, 전체 아이템 ${allProcessedItems.length}건 검색 완료`);
     console.log(`[organic] 모든 검색 방법 실패 - inputId: "${inputId}" 미발견`);
     return {
       productId: inputId,
       found: false,
-      notes: ["상위 1000위 내 미노출 또는 OpenAPI-실검색 불일치"],
+      notes: [`상위 ${allProcessedItems.length}개 아이템 내 미노출 또는 OpenAPI-실검색 불일치`],
     };
   } catch (err: any) {
     console.error(`[organic] 치명적 오류 - inputId: "${inputId}", keyword: "${keyword}"`);
