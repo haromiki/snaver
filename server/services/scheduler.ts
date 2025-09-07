@@ -9,8 +9,8 @@ let searchQueue = []; // 순차 검색 큐
 let isProcessingQueue = false; // 큐 처리 중 플래그
 let searchStatus = new Map(); // 제품별 검색 진행상태 추적
 
-// Run every 10 seconds for real-time updates
-cron.schedule("*/10 * * * * *", async () => {
+// 1초 마스터 타이머 - 조건부 검색 실행
+cron.schedule("*/1 * * * * *", async () => {
   if (isRunning) {
     console.log("Scheduler already running, skipping...");
     return;
@@ -22,30 +22,32 @@ cron.schedule("*/10 * * * * *", async () => {
     const now = new Date();
     const currentSecond = Math.floor(now.getTime() / 1000); // 초 단위로 계산
     
-    console.log(`Scheduler tick: ${now.toISOString()}`);
-    
-    // 모든 사용자의 활성 제품 가져오기 (실서버 환경 개선)
-    const allProducts = await getAllActiveProducts();
-    
-    for (const product of allProducts) {
-      try {
-        // 실시간 업데이트를 위해 intervalMin을 초 단위로 변환 (60분 = 3600초)
-        const intervalSeconds = product.intervalMin * 60; // 분을 초로 변환
-        
-        console.log(`🔍 제품 ${product.id} 체크: intervalMin=${product.intervalMin}분(${intervalSeconds}초), currentSecond=${currentSecond}, 나머지=${currentSecond % intervalSeconds}`);
-        
-        if (currentSecond % intervalSeconds === 0) {
-          console.log(`⏰ 스케줄 추가 - 제품 ${product.id}: ${product.keyword} (타입: ${product.type})`);
+    // 10초마다만 활성 제품 체크 (로그 최적화)
+    if (currentSecond % 10 === 0) {
+      console.log(`⏰ 1초 마스터 타이머: ${now.toISOString()}`);
+      
+      // 모든 사용자의 활성 제품 가져오기
+      const allProducts = await getAllActiveProducts();
+      console.log(`📊 전체 활성 제품 수: ${allProducts.length}개`);
+      
+      for (const product of allProducts) {
+        try {
+          // intervalMin을 초 단위로 변환 (60분 = 3600초)
+          const intervalSeconds = product.intervalMin * 60;
           
-          // 큐에 추가 (순차 처리)
-          searchQueue.push({
-            product,
-            timestamp: now.toISOString(),
-            retries: 0
-          });
+          if (currentSecond % intervalSeconds === 0) {
+            console.log(`⏰ 검색 스케줄 - 제품 ${product.id}: ${product.keyword} (${product.type}타입)`);
+            
+            // 큐에 추가 (순차 처리)
+            searchQueue.push({
+              product,
+              timestamp: now.toISOString(),
+              retries: 0
+            });
+          }
+        } catch (error) {
+          console.error(`스케줄 체크 오류 - 제품 ${product.id}:`, error);
         }
-      } catch (error) {
-        console.error(`스케줄 체크 오류 - 제품 ${product.id}:`, error);
       }
     }
     

@@ -68,7 +68,7 @@ class SSEManager {
     return clientId;
   }
 
-  // 모든 클라이언트에게 브로드캐스트
+  // 실제 이벤트만 브로드캐스트 (heartbeat 제거)
   broadcast(data: any) {
     if (this.clients.size === 0) return;
 
@@ -89,7 +89,7 @@ class SSEManager {
       this.clients.delete(clientId);
     });
 
-    console.log(`📡 SSE 브로드캐스트: ${this.clients.size}개 클라이언트에게 전송`);
+    console.log(`📡 SSE 이벤트 전송: ${this.clients.size}개 클라이언트 (타입: ${data.type})`);
   }
 
   // 특정 사용자에게만 전송
