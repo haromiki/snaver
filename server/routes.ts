@@ -505,8 +505,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { keyword = "주차번호판" } = req.body;
 
-      const clientId = process.env.NAVER_OPENAPI_CLIENT_ID;
-      const clientSecret = process.env.NAVER_OPENAPI_CLIENT_SECRET;
+      const clientId = process.env.NAVER_CLIENT_ID;
+      const clientSecret = process.env.NAVER_CLIENT_SECRET;
 
       console.log("🔑 API 키 확인:", !!clientId, !!clientSecret);
 
