@@ -1045,8 +1045,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // SSE 연결 엔드포인트
-  app.get("/api/events", authenticateToken, (req, res) => {
+  // SSE 연결 엔드포인트 (쿼리 파라미터 인증)
+  app.get("/api/events", (req, res) => {
     handleSSEConnection(req, res);
   });
 

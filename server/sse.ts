@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
 
 interface SSEClient {
   id: string;
@@ -9,8 +10,26 @@ interface SSEClient {
 class SSEManager {
   private clients = new Map<string, SSEClient>();
 
-  // 클라이언트 연결 설정
+  // 클라이언트 연결 설정 (토큰 인증 포함)
   connect(req: Request, res: Response): string {
+    // 쿼리 파라미터에서 토큰 가져오기 및 인증
+    const token = req.query.token as string;
+    let userId: number | undefined;
+
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as any;
+        userId = decoded.userId;
+        console.log(`🔐 SSE 토큰 인증 성공: 사용자 ${userId}`);
+      } catch (error) {
+        console.log('❌ SSE 토큰 인증 실패:', error);
+        res.status(401).json({ message: '유효하지 않은 토큰입니다' });
+        return '';
+      }
+    } else {
+      console.log('⚠️ SSE 연결: 토큰 없음, 익명 연결');
+    }
+
     const clientId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
     // SSE 헤더 설정
@@ -29,7 +48,7 @@ class SSEManager {
     const client: SSEClient = {
       id: clientId,
       response: res,
-      userId: (req as any).userId // 인증된 사용자 ID (있는 경우)
+      userId: userId // 인증된 사용자 ID (토큰에서 추출)
     };
     
     this.clients.set(clientId, client);
