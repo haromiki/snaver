@@ -212,12 +212,23 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
   const [bulkRefreshProgress, setBulkRefreshProgress] = useState(0);
   const [searchStatus, setSearchStatus] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState(new Date()); // 실시간 시간 업데이트용
+  const [previousDayRanks, setPreviousDayRanks] = useState<Record<number, number | null>>({}); // 제품별 어제 순위
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
   // SSE 연결 (폴링 대체)
   const { isConnected } = useSSE();
+
+  // 어제 날짜 문자열 계산 (한국 시간 기준)
+  const getYesterdayDateKST = () => {
+    const now = new Date();
+    const kstOffset = 9 * 60 * 60 * 1000; // UTC+9
+    const kstNow = new Date(now.getTime() + kstOffset);
+    const yesterday = new Date(kstNow);
+    yesterday.setDate(yesterday.getDate() - 1);
+    return yesterday.toISOString().split('T')[0]; // YYYY-MM-DD
+  };
 
   // Determine filters based on section
   const getFilters = () => {
@@ -243,6 +254,57 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     staleTime: 0, // 캐시 비활성화 (실시간 데이터 우선)
     // SSE로 실시간 업데이트 대체 (폴링 제거)
   });
+
+  // 어제 날짜 계산 (컴포넌트당 한 번만 계산)
+  const [yesterdayDate] = useState(() => getYesterdayDateKST());
+
+  // 어제 순위 데이터를 로드하는 useEffect
+  useEffect(() => {
+    const loadPreviousDayRanks = async () => {
+      if (!section.includes("tracking") || allProducts.length === 0) {
+        setPreviousDayRanks({});
+        return;
+      }
+
+      const ranks: Record<number, number | null> = {};
+      
+      for (const product of allProducts) {
+        try {
+          const response = await apiRequest("GET", `/products/${product.id}/daily-ranks?date=${yesterdayDate}`);
+          const data = await response.json();
+          
+          if (data?.hourlyRanks) {
+            // 어제의 시간대별 데이터에서 유효한 마지막 순위 찾기
+            const hourlyRanks = data.hourlyRanks;
+            let foundRank = null;
+            
+            for (let i = hourlyRanks.length - 1; i >= 0; i--) {
+              if (hourlyRanks[i].hasData && hourlyRanks[i].rank) {
+                foundRank = hourlyRanks[i].rank;
+                break;
+              }
+            }
+            
+            ranks[product.id] = foundRank;
+          } else {
+            ranks[product.id] = null;
+          }
+        } catch (error) {
+          console.error(`어제 순위 데이터 조회 실패 (제품 ${product.id}):`, error);
+          ranks[product.id] = null;
+        }
+      }
+      
+      setPreviousDayRanks(ranks);
+    };
+
+    loadPreviousDayRanks();
+  }, [allProducts, yesterdayDate, section]);
+
+  // 어제 순위 데이터에서 제품별 순위를 반환하는 함수 (동기)
+  const getPreviousDayRank = (productId: number): number | null => {
+    return previousDayRanks[productId] || null;
+  };
 
   // 키워드 매핑이 더 이상 필요하지 않음 (직접 키워드 필터링)
 
@@ -583,7 +645,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     return date.toLocaleDateString();
   };
 
-  const getRankDisplay = (latestTrack: any, product: any) => {
+  const getRankDisplay = (latestTrack: any, product: any, previousDayRank: number | null) => {
     if (!latestTrack || !latestTrack.globalRank) {
       return { rank: "-", color: "text-gray-400 dark:text-gray-500", previousRank: null };
     }
@@ -593,74 +655,22 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     // 이전 순위와 비교하여 순위 색상 결정
     let color = "text-gray-900 dark:text-gray-100"; // 기본 색상 (변화 없음 또는 첫 검색)
     let trendIcon = null;
-    let previousRank = null;
     
-    // 일일 기준으로 이전 날짜 순위 찾기 (한국 시간 기준)
-    if (product.tracks && product.tracks.length >= 1) {
-      // globalRank가 있는 트랙만 필터링하고 최신 순으로 정렬
-      const validTracks = product.tracks
-        .filter((track: any) => track.globalRank && track.globalRank > 0)
-        .sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
+    if (previousDayRank) {
+      // 순위 변화에 따른 색상 결정
+      const rankDiff = previousDayRank - rank; // 이전 순위 - 현재 순위
       
-      if (validTracks.length >= 1) {
-        const currentTrack = validTracks[0]; // 최신 유효 트랙
-        
-        // 한국 시간 기준으로 어제 날짜 구하기
-        const now = new Date();
-        const kstOffset = 9 * 60 * 60 * 1000; // UTC+9
-        const kstNow = new Date(now.getTime() + kstOffset);
-        const yesterday = new Date(kstNow);
-        yesterday.setDate(yesterday.getDate() - 1);
-        
-        // 어제 날짜의 트랙 찾기 (YYYY-MM-DD 형태로 비교)
-        const yesterdayDate = yesterday.toISOString().split('T')[0];
-        let previousTrack = null;
-        
-        for (const track of validTracks) {
-          const trackDate = new Date(new Date(track.checkedAt).getTime() + kstOffset);
-          const trackDateStr = trackDate.toISOString().split('T')[0];
-          
-          if (trackDateStr === yesterdayDate) {
-            previousTrack = track;
-            break;
-          }
-        }
-        
-        // 어제 데이터가 없으면 어제 이전의 가장 최근 일일 데이터 찾기
-        if (!previousTrack && validTracks.length >= 1) {
-          for (const track of validTracks) {
-            const trackDate = new Date(new Date(track.checkedAt).getTime() + kstOffset);
-            const trackDateStr = trackDate.toISOString().split('T')[0];
-            
-            // 어제 이전 날짜 중 가장 최근 데이터 찾기
-            if (trackDateStr < yesterdayDate) {
-              previousTrack = track;
-              break;
-            }
-          }
-        }
-        
-        if (previousTrack) {
-          // 이전 순위 정보 설정 (전체 순위값만)
-          previousRank = previousTrack.globalRank;
-          
-          // 순위 변화에 따른 색상 결정
-          const currentRank = currentTrack.globalRank;
-          const rankDiff = previousRank - currentRank; // 이전 순위 - 현재 순위
-          
-          if (rankDiff > 0) {
-            // 순위 상승 (숫자가 작아짐) - 파란색
-            color = "text-blue-600 dark:text-blue-400";
-            trendIcon = "▲"; // 상승 삼각형
-          } else if (rankDiff < 0) {
-            // 순위 하락 (숫자가 커짐) - 빨간색
-            color = "text-red-600 dark:text-red-400";
-            trendIcon = "▼"; // 하락 삼각형
-          } else {
-            // 순위 변화 없음 - 검정색
-            color = "text-gray-900 dark:text-gray-100";
-          }
-        }
+      if (rankDiff > 0) {
+        // 순위 상승 (숫자가 작아짐) - 파란색
+        color = "text-blue-600 dark:text-blue-400";
+        trendIcon = "▲"; // 상승 삼각형
+      } else if (rankDiff < 0) {
+        // 순위 하락 (숫자가 커짐) - 빨간색
+        color = "text-red-600 dark:text-red-400";
+        trendIcon = "▼"; // 하락 삼각형
+      } else {
+        // 순위 변화 없음 - 검정색
+        color = "text-gray-900 dark:text-gray-100";
       }
     }
 
@@ -668,7 +678,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
       rank, 
       trendIcon, 
       color, 
-      previousRank // 전체 순위값만 반환
+      previousRank: previousDayRank // 전체 순위값만 반환
     };
   };
 
@@ -821,7 +831,8 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
             </thead>
             <tbody id="sortable-products" className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
               {products.map((product: any) => {
-                const rankDisplay = getRankDisplay(product.latestTrack, product);
+                const previousDayRank = getPreviousDayRank(product.id);
+                const rankDisplay = getRankDisplay(product.latestTrack, product, previousDayRank);
                 
                 return (
                   <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors sortable-item" data-testid={`row-product-${product.id}`}>
