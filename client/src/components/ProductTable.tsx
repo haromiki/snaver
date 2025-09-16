@@ -299,7 +299,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     };
 
     loadPreviousDayRanks();
-  }, [allProducts, yesterdayDate, section]);
+  }, [allProducts.length, section, yesterdayDate]); // allProducts.length로 변경하여 안정성 확보
 
   // 어제 순위 데이터에서 제품별 순위를 반환하는 함수 (동기)
   const getPreviousDayRank = (productId: number): number | null => {
