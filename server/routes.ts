@@ -717,19 +717,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/products/:id/daily-ranks", authenticateToken, async (req, res) => {
     try {
       const productId = parseInt(req.params.id);
-      const { date } = req.query; // 선택적 날짜 파라미터
 
-      // 👇️ KST 기준 특정 날짜 또는 오늘 00:00 ~ 내일 00:00을 절대시간으로 정확히 산출
-      let targetDate = new Date();
-      let ymdKST: string;
-      
-      if (date && typeof date === 'string') {
-        // YYYY-MM-DD 형식의 날짜가 제공된 경우
-        ymdKST = date;
-      } else {
-        ymdKST = getKstYmd(targetDate); // "YYYY-MM-DD" (KST 기준 오늘)
-      }
-      
+      // 👇️ KST 기준 오늘 00:00 ~ 내일 00:00을 절대시간으로 정확히 산출
+      const now = new Date();
+      const ymdKST = getKstYmd(now); // "YYYY-MM-DD" (KST 기준 오늘)
       const todayStartKST = kstDate(ymdKST, 1, 0, 0);
       const tomorrowStartKST = new Date(todayStartKST.getTime() + 24 * 60 * 60 * 1000);
 
