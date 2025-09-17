@@ -228,71 +228,82 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     return kstNow.toISOString().split('T')[0]; // YYYY-MM-DD 형식
   };
 
-  // 이전 순위 데이터 가져오기
-  // 이전 순위 데이터 가져오기 (순위 통계와 동일한 로직 적용)
+  // StatisticsModal과 정확히 동일한 로직
+  const getAdaptiveGroupedData = (tracks: any[], fromDate: string, toDate: string) => {
+    if (tracks.length === 0) return [];
+
+    const from = new Date(fromDate);
+    const to = new Date(toDate);
+    const diffInDays = Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
+
+    // 한국 시간 기준으로 데이터 필터링 및 변환
+    const kstTracks = tracks
+      .filter((track: any) => track.globalRank)
+      .map((track: any) => {
+        const kstDate = new Date(track.checkedAt);
+        return {
+          ...track,
+          kstDate,
+          rank: track.globalRank
+        };
+      })
+      .sort((a, b) => a.kstDate.getTime() - b.kstDate.getTime());
+
+    let groupedData: any[] = [];
+
+    if (diffInDays <= 30) {
+      // 1개월 이하: 일별 평균
+      const dailyGroups = new Map();
+      kstTracks.forEach(track => {
+        const dayKey = track.kstDate.toISOString().split('T')[0];
+        if (!dailyGroups.has(dayKey)) {
+          dailyGroups.set(dayKey, []);
+        }
+        dailyGroups.get(dayKey).push(track.rank);
+      });
+
+      groupedData = Array.from(dailyGroups.entries()).map(([date, ranks]) => ({
+        label: new Date(date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }),
+        value: Math.round(ranks.reduce((sum: number, rank: number) => sum + rank, 0) / ranks.length),
+        date
+      }));
+    }
+
+    return groupedData.sort((a, b) => a.date.localeCompare(b.date));
+  };
+
+  // StatisticsModal 기본값과 동일한 로직
   const fetchPreviousRanks = async (productIds: number[]) => {
     const newPreviousRanks: {[key: number]: number} = {};
 
     for (const productId of productIds) {
       try {
-        // 순위 통계와 동일한 날짜 범위: 7일 전부터 어제까지
-        const yesterday = getKSTDate(-1);
-        const sevenDaysAgo = getKSTDate(-7);
+        // StatisticsModal 기본값: 30일 범위
+        const dateRange = {
+          from: getKSTDate(-30),
+          to: getKSTDate(0),
+        };
 
         const params = new URLSearchParams({
           product_id: productId.toString(),
-          from: sevenDaysAgo,
-          to: yesterday,
+          from: dateRange.from,
+          to: dateRange.to,
         });
 
         const response = await apiRequest("GET", `/tracks?${params}`);
         const tracks = await response.json();
 
-        if (tracks.length === 0) {
-          continue;
-        }
+        if (tracks.length === 0) continue;
 
-        // 순위 통계와 동일한 필터링 및 정렬
-        const kstTracks = tracks
-          .filter((track: any) => track.globalRank && track.globalRank > 0)
-          .map((track: any) => {
-            const kstDate = new Date(track.checkedAt);
-            return {
-              ...track,
-              kstDate,
-              rank: track.globalRank
-            };
-          })
-          .sort((a: any, b: any) => a.kstDate.getTime() - b.kstDate.getTime());
+        // StatisticsModal과 동일한 그룹화
+        const groupedData = getAdaptiveGroupedData(tracks, dateRange.from, dateRange.to);
 
-        if (kstTracks.length === 0) {
-          continue;
-        }
+        if (groupedData.length === 0) continue;
 
-        // 순위 통계와 동일한 일별 그룹화 로직 적용
-        const dailyGroups = new Map();
-        kstTracks.forEach(track => {
-          const dayKey = track.kstDate.toISOString().split('T')[0];
-          if (!dailyGroups.has(dayKey)) {
-            dailyGroups.set(dayKey, []);
-          }
-          dailyGroups.get(dayKey).push(track.rank);
-        });
-
-        // 일별 평균 순위 계산 (순위 통계와 동일)
-        const dailyAverages = Array.from(dailyGroups.entries()).map(([date, ranks]) => ({
-          date,
-          averageRank: Math.round(ranks.reduce((sum: number, rank: number) => sum + rank, 0) / ranks.length)
-        })).sort((a, b) => b.date.localeCompare(a.date)); // 최신 날짜부터
-
-        // 어제 데이터 우선, 없으면 가장 최근 데이터
-        if (dailyAverages.length > 0) {
-          const yesterdayData = dailyAverages.find(d => d.date === yesterday);
-          if (yesterdayData) {
-            newPreviousRanks[productId] = yesterdayData.averageRank;
-          } else {
-            newPreviousRanks[productId] = dailyAverages[0].averageRank;
-          }
+        // 가장 최근 데이터 사용
+        const sortedData = [...groupedData].sort((a, b) => b.date.localeCompare(a.date));
+        if (sortedData.length > 0) {
+          newPreviousRanks[productId] = sortedData[0].value;
         }
 
       } catch (error) {
