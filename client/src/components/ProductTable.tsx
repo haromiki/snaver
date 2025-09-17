@@ -229,40 +229,72 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
   };
 
   // 이전 순위 데이터 가져오기
+  // 이전 순위 데이터 가져오기 (순위 통계와 동일한 로직 적용)
   const fetchPreviousRanks = async (productIds: number[]) => {
-    const yesterday = getKSTDate(-1);
-    const twoDaysAgo = getKSTDate(-2);
     const newPreviousRanks: {[key: number]: number} = {};
 
     for (const productId of productIds) {
       try {
+        // 순위 통계와 동일한 날짜 범위: 7일 전부터 어제까지
+        const yesterday = getKSTDate(-1);
+        const sevenDaysAgo = getKSTDate(-7);
+
         const params = new URLSearchParams({
           product_id: productId.toString(),
-          from: twoDaysAgo,
+          from: sevenDaysAgo,
           to: yesterday,
         });
 
         const response = await apiRequest("GET", `/tracks?${params}`);
         const tracks = await response.json();
 
-        const validTracks = tracks
+        if (tracks.length === 0) {
+          continue;
+        }
+
+        // 순위 통계와 동일한 필터링 및 정렬
+        const kstTracks = tracks
           .filter((track: any) => track.globalRank && track.globalRank > 0)
-          .sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
+          .map((track: any) => {
+            const kstDate = new Date(track.checkedAt);
+            return {
+              ...track,
+              kstDate,
+              rank: track.globalRank
+            };
+          })
+          .sort((a: any, b: any) => a.kstDate.getTime() - b.kstDate.getTime());
 
-        if (validTracks.length > 0) {
-          // 어제 데이터 우선 검색
-          const yesterdayTracks = validTracks.filter((track: any) => {
-            const trackDate = new Date(track.checkedAt);
-            const trackKSTDate = new Date(trackDate.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
-            return trackKSTDate === yesterday;
-          });
+        if (kstTracks.length === 0) {
+          continue;
+        }
 
-          if (yesterdayTracks.length > 0) {
-            newPreviousRanks[productId] = yesterdayTracks[0].globalRank;
+        // 순위 통계와 동일한 일별 그룹화 로직 적용
+        const dailyGroups = new Map();
+        kstTracks.forEach(track => {
+          const dayKey = track.kstDate.toISOString().split('T')[0];
+          if (!dailyGroups.has(dayKey)) {
+            dailyGroups.set(dayKey, []);
+          }
+          dailyGroups.get(dayKey).push(track.rank);
+        });
+
+        // 일별 평균 순위 계산 (순위 통계와 동일)
+        const dailyAverages = Array.from(dailyGroups.entries()).map(([date, ranks]) => ({
+          date,
+          averageRank: Math.round(ranks.reduce((sum: number, rank: number) => sum + rank, 0) / ranks.length)
+        })).sort((a, b) => b.date.localeCompare(a.date)); // 최신 날짜부터
+
+        // 어제 데이터 우선, 없으면 가장 최근 데이터
+        if (dailyAverages.length > 0) {
+          const yesterdayData = dailyAverages.find(d => d.date === yesterday);
+          if (yesterdayData) {
+            newPreviousRanks[productId] = yesterdayData.averageRank;
           } else {
-            newPreviousRanks[productId] = validTracks[0].globalRank;
+            newPreviousRanks[productId] = dailyAverages[0].averageRank;
           }
         }
+
       } catch (error) {
         console.error(`이전 순위 조회 실패 (제품 ID: ${productId}):`, error);
       }
