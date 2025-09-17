@@ -431,6 +431,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
           const currentFilters = getFilters();
           queryClient.setQueryData(["/products", currentFilters], freshData);
 
+
           // 전체 제품 목록 새로고침으로 마지막 확인 시간 업데이트
           queryClient.invalidateQueries({ queryKey: ["/products"] });
 
@@ -556,6 +557,11 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         variant: "destructive",
       });
     },
+    onSettled: () => {
+      // 서버와 동기화 (선택사항: 너무 자주 호출되지 않도록 주의)
+      // const currentFilters = getFilters();
+      // queryClient.invalidateQueries({ queryKey: ["/products", currentFilters] });
+    },
   });
 
   const deleteProductMutation = useMutation({
@@ -581,6 +587,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
       });
     },
   });
+
 
   // Initialize Sortable when products change
   useEffect(() => {
@@ -684,25 +691,63 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     const rank = latestTrack.globalRank;
     const page = Math.ceil(rank / 40);
 
-    // 이전 순위와 비교하여 순위 색상 결정
-    let color = "text-gray-900 dark:text-gray-100"; // 기본 색상
+    // 이전 순위와 비교하여 순위 색상 결정 (오름/내림만)
+    let color = "text-blue-600 dark:text-blue-400"; // 기본값: 파란색 (상승)
     let trendIcon = null;
-    const previousRank = previousRankData; // API에서 가져온 데이터 사용
+    const previousRank = previousRankData;
     let previousPage = previousRank ? Math.ceil(previousRank / 40) : null;
     let previousRankOnPage = null;
 
-    // 순위 변화에 따른 색상 설정
-    if (previousRank && previousRank !== rank) {
-      const rankDiff = previousRank - rank; // 이전 순위 - 현재 순위
+    // 제품의 모든 트랙 데이터에서 이전 순위 찾기 (globalRank가 있는 것만)
+    if (product.tracks && product.tracks.length >= 1) {
+      // globalRank가 있는 트랙만 필터링하고 최신 순으로 정렬
+      const validTracks = product.tracks
+        .filter((track: any) => track.globalRank && track.globalRank > 0)
+        .sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
 
-      if (rankDiff > 0) {
-        // 순위 상승 (숫자가 작아짐) - 파란색
-        color = "text-blue-600 dark:text-blue-400";
-        trendIcon = "▲";
-      } else if (rankDiff < 0) {
-        // 순위 하락 (숫자가 커짐) - 빨간색
-        color = "text-red-600 dark:text-red-400";
-        trendIcon = "▼";
+      if (validTracks.length >= 2) {
+        const currentTrack = validTracks[0]; // 최신 유효 트랙
+
+        // 현재와 다른 순위를 가진 이전 데이터를 무한 검색
+        for (let i = 1; i < validTracks.length; i++) {
+          if (validTracks[i].globalRank !== currentTrack.globalRank) {
+            const previousTrack = validTracks[i];
+            const previousRankFromTracks = previousTrack.globalRank;
+            previousRankOnPage = previousTrack.rankOnPage; // 이전 트랙의 실제 rankOnPage 사용
+            break;
+          }
+        }
+
+        // previousRankData가 있으면 API 데이터 우선 사용, 없으면 tracks 데이터 사용
+        const effectivePreviousRank = previousRank || (validTracks.length >= 2 ? validTracks[1].globalRank : null);
+
+        if (effectivePreviousRank) {
+          const currentRank = currentTrack.globalRank;
+          const rankDiff = effectivePreviousRank - currentRank; // 이전 순위 - 현재 순위
+
+          if (rankDiff > 0) {
+            // 순위 상승 (숫자가 작아짐) - 파란색
+            color = "text-blue-600 dark:text-blue-400";
+            trendIcon = "▲"; // 상승 삼각형
+          } else if (rankDiff < 0) {
+            // 순위 하락 (숫자가 커짐) - 빨간색
+            color = "text-red-600 dark:text-red-400";
+            trendIcon = "▼"; // 하락 삼각형
+          } else {
+            // 변동 없음: 과거 데이터에서 마지막 변동 방향 찾기
+            for (let i = 1; i < validTracks.length; i++) {
+              if (validTracks[i].globalRank !== currentRank) {
+                const pastRankDiff = validTracks[i].globalRank - currentRank;
+                if (pastRankDiff > 0) {
+                  color = "text-blue-600 dark:text-blue-400"; // 마지막 변동이 상승
+                } else {
+                  color = "text-red-600 dark:text-red-400"; // 마지막 변동이 하락
+                }
+                break;
+              }
+            }
+          }
+        }
       }
     }
 
@@ -948,9 +993,22 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                                   </span>
                                 )}
                               </span>
+                              {rankDisplay.previousRank && (
+                                <span className="text-sm text-gray-500 dark:text-gray-400 font-normal" data-testid={`text-previous-rank-${product.id}`}>
+                                  {rankDisplay.previousRank}
+                                  {rankDisplay.previousRankOnPage && (
+                                    <span className="ml-1">
+                                      ({rankDisplay.previousRankOnPage})
+                                    </span>
+                                  )}
+                                </span>
+                              )}
                             </div>
                             <div className="text-xs text-gray-500 dark:text-gray-400">
                               <div>{rankDisplay.page}</div>
+                              {rankDisplay.previousPage && (
+                                <div className="mt-1">{rankDisplay.previousPage}</div>
+                              )}
                             </div>
                           </div>
                         </td>
