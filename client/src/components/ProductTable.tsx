@@ -607,28 +607,34 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
       
       if (validTracks.length >= 2) {
         const currentTrack = validTracks[0]; // 최신 유효 트랙
-        const previousTrack = validTracks[1]; // 가장 최근 이전 트랙
         
-        // 이전 순위 정보 설정 (변화 여부와 무관하게)
-        previousRank = previousTrack.globalRank;
-        previousPage = Math.ceil(previousRank / 40);
-        previousRankOnPage = previousTrack.rankOnPage;
+        // 현재와 다른 순위를 가진 이전 데이터를 무한 검색
+        for (let i = 1; i < validTracks.length; i++) {
+          if (validTracks[i].globalRank !== currentTrack.globalRank) {
+            const previousTrack = validTracks[i];
+            previousRank = previousTrack.globalRank;
+            previousPage = Math.ceil(previousRank / 40);
+            previousRankOnPage = previousTrack.rankOnPage; // 이전 트랙의 실제 rankOnPage 사용
+            break;
+          }
+        }
         
-        // 순위 변화에 따른 색상 결정
-        const currentRank = currentTrack.globalRank;
-        const rankDiff = previousRank - currentRank; // 이전 순위 - 현재 순위
-        
-        if (rankDiff > 0) {
-          // 순위 상승 (숫자가 작아짐) - 파란색
-          color = "text-blue-600 dark:text-blue-400";
-          trendIcon = "▲"; // 상승 삼각형
-        } else if (rankDiff < 0) {
-          // 순위 하락 (숫자가 커짐) - 빨간색
-          color = "text-red-600 dark:text-red-400";
-          trendIcon = "▼"; // 하락 삼각형
-        } else {
-          // 순위 변화 없음 - 검정색
-          color = "text-gray-900 dark:text-gray-100";
+        if (previousRank) {
+          const currentRank = currentTrack.globalRank;
+          const rankDiff = previousRank - currentRank; // 이전 순위 - 현재 순위
+          
+          if (rankDiff > 0) {
+            // 순위 상승 (숫자가 작아짐) - 파란색
+            color = "text-blue-600 dark:text-blue-400";
+            trendIcon = "▲"; // 상승 삼각형
+          } else if (rankDiff < 0) {
+            // 순위 하락 (숫자가 커짐) - 빨간색
+            color = "text-red-600 dark:text-red-400";
+            trendIcon = "▼"; // 하락 삼각형
+          } else {
+            // 순위 변화 없음 - 검정색
+            color = "text-gray-900 dark:text-gray-100";
+          }
         }
       }
     }
@@ -781,7 +787,6 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                   <>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">스토어명</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">제품 가격</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">이전 순위</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">현재 순위</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">순위 변동</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">1일 그래프</th>
@@ -864,29 +869,6 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                         <td className="px-6 py-4">
                           <div className="flex items-center space-x-2">
                             <div className="flex flex-col">
-                              {rankDisplay.previousRank ? (
-                                <span className="text-2xl font-bold text-gray-500 dark:text-gray-400" data-testid={`text-previous-rank-${product.id}`}>
-                                  {rankDisplay.previousRank}
-                                  {rankDisplay.previousRankOnPage && (
-                                    <span className="text-sm text-gray-500 dark:text-gray-400 ml-1 font-normal">
-                                      ({rankDisplay.previousRankOnPage})
-                                    </span>
-                                  )}
-                                </span>
-                              ) : (
-                                <span className="text-2xl font-bold text-gray-400 dark:text-gray-500">-</span>
-                              )}
-                            </div>
-                            {rankDisplay.previousPage && (
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                <div>{rankDisplay.previousPage}</div>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center space-x-2">
-                            <div className="flex flex-col">
                               <span className={`text-2xl font-bold ${rankDisplay.color}`} data-testid={`text-rank-${product.id}`}>
                                 {rankDisplay.rank}
                                 {product.latestTrack?.rankOnPage && (
@@ -895,9 +877,22 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                                   </span>
                                 )}
                               </span>
+                              {rankDisplay.previousRank && (
+                                <span className="text-sm text-gray-500 dark:text-gray-400 font-normal" data-testid={`text-previous-rank-${product.id}`}>
+                                  {rankDisplay.previousRank}
+                                  {rankDisplay.previousRankOnPage && (
+                                    <span className="ml-1">
+                                      ({rankDisplay.previousRankOnPage})
+                                    </span>
+                                  )}
+                                </span>
+                              )}
                             </div>
                             <div className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
                               <div>{rankDisplay.page}</div>
+                              {rankDisplay.previousPage && (
+                                <div className="mt-1">{rankDisplay.previousPage}</div>
+                              )}
                             </div>
                           </div>
                         </td>
