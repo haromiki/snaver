@@ -585,90 +585,62 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
 
   const getRankDisplay = (latestTrack: any, product: any) => {
     if (!latestTrack || !latestTrack.globalRank) {
-      return { rank: "-", color: "text-gray-400 dark:text-gray-500", previousRank: null };
+      return { rank: "-", page: "미발견", change: "", color: "text-gray-400 dark:text-gray-500", changeColor: "text-gray-500 dark:text-gray-400", previousRank: null, previousPage: null, previousRankOnPage: null };
     }
 
     const rank = latestTrack.globalRank;
+    const page = Math.ceil(rank / 40);
     
     // 이전 순위와 비교하여 순위 색상 결정
     let color = "text-gray-900 dark:text-gray-100"; // 기본 색상 (변화 없음 또는 첫 검색)
     let trendIcon = null;
     let previousRank = null;
+    let previousPage = null;
+    let previousRankOnPage = null;
     
-    // 일일 기준으로 이전 날짜 순위 찾기 (한국 시간 기준)
+    // 제품의 모든 트랙 데이터에서 이전 순위 찾기 (globalRank가 있는 것만)
     if (product.tracks && product.tracks.length >= 1) {
       // globalRank가 있는 트랙만 필터링하고 최신 순으로 정렬
       const validTracks = product.tracks
         .filter((track: any) => track.globalRank && track.globalRank > 0)
         .sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
       
-      if (validTracks.length >= 1) {
+      if (validTracks.length >= 2) {
         const currentTrack = validTracks[0]; // 최신 유효 트랙
+        const previousTrack = validTracks[1]; // 가장 최근 이전 트랙
         
-        // 한국 시간 기준으로 어제 날짜 구하기
-        const now = new Date();
-        const kstOffset = 9 * 60 * 60 * 1000; // UTC+9
-        const kstNow = new Date(now.getTime() + kstOffset);
-        const yesterday = new Date(kstNow);
-        yesterday.setDate(yesterday.getDate() - 1);
+        // 이전 순위 정보 설정 (변화 여부와 무관하게)
+        previousRank = previousTrack.globalRank;
+        previousPage = Math.ceil(previousRank / 40);
+        previousRankOnPage = previousTrack.rankOnPage;
         
-        // 어제 날짜의 트랙 찾기 (YYYY-MM-DD 형태로 비교)
-        const yesterdayDate = yesterday.toISOString().split('T')[0];
-        let previousTrack = null;
+        // 순위 변화에 따른 색상 결정
+        const currentRank = currentTrack.globalRank;
+        const rankDiff = previousRank - currentRank; // 이전 순위 - 현재 순위
         
-        for (const track of validTracks) {
-          const trackDate = new Date(new Date(track.checkedAt).getTime() + kstOffset);
-          const trackDateStr = trackDate.toISOString().split('T')[0];
-          
-          if (trackDateStr === yesterdayDate) {
-            previousTrack = track;
-            break;
-          }
-        }
-        
-        // 어제 데이터가 없으면 어제 이전의 가장 최근 일일 데이터 찾기
-        if (!previousTrack && validTracks.length >= 1) {
-          for (const track of validTracks) {
-            const trackDate = new Date(new Date(track.checkedAt).getTime() + kstOffset);
-            const trackDateStr = trackDate.toISOString().split('T')[0];
-            
-            // 어제 이전 날짜 중 가장 최근 데이터 찾기
-            if (trackDateStr < yesterdayDate) {
-              previousTrack = track;
-              break;
-            }
-          }
-        }
-        
-        if (previousTrack) {
-          // 이전 순위 정보 설정 (전체 순위값만)
-          previousRank = previousTrack.globalRank;
-          
-          // 순위 변화에 따른 색상 결정
-          const currentRank = currentTrack.globalRank;
-          const rankDiff = previousRank - currentRank; // 이전 순위 - 현재 순위
-          
-          if (rankDiff > 0) {
-            // 순위 상승 (숫자가 작아짐) - 파란색
-            color = "text-blue-600 dark:text-blue-400";
-            trendIcon = "▲"; // 상승 삼각형
-          } else if (rankDiff < 0) {
-            // 순위 하락 (숫자가 커짐) - 빨간색
-            color = "text-red-600 dark:text-red-400";
-            trendIcon = "▼"; // 하락 삼각형
-          } else {
-            // 순위 변화 없음 - 검정색
-            color = "text-gray-900 dark:text-gray-100";
-          }
+        if (rankDiff > 0) {
+          // 순위 상승 (숫자가 작아짐) - 파란색
+          color = "text-blue-600 dark:text-blue-400";
+          trendIcon = "▲"; // 상승 삼각형
+        } else if (rankDiff < 0) {
+          // 순위 하락 (숫자가 커짐) - 빨간색
+          color = "text-red-600 dark:text-red-400";
+          trendIcon = "▼"; // 하락 삼각형
+        } else {
+          // 순위 변화 없음 - 검정색
+          color = "text-gray-900 dark:text-gray-100";
         }
       }
     }
 
     return { 
       rank, 
+      page: <span className="relative top-1">{page}페이지</span>, 
       trendIcon, 
       color, 
-      previousRank // 전체 순위값만 반환
+      previousRank, 
+      previousPage: previousPage ? <span className="relative top-1">{previousPage}페이지</span> : null,
+      previousRankOnPage 
     };
   };
 
@@ -895,11 +867,21 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                               {rankDisplay.previousRank ? (
                                 <span className="text-2xl font-bold text-gray-500 dark:text-gray-400" data-testid={`text-previous-rank-${product.id}`}>
                                   {rankDisplay.previousRank}
+                                  {rankDisplay.previousRankOnPage && (
+                                    <span className="text-sm text-gray-500 dark:text-gray-400 ml-1 font-normal">
+                                      ({rankDisplay.previousRankOnPage})
+                                    </span>
+                                  )}
                                 </span>
                               ) : (
                                 <span className="text-2xl font-bold text-gray-400 dark:text-gray-500">-</span>
                               )}
                             </div>
+                            {rankDisplay.previousPage && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                <div>{rankDisplay.previousPage}</div>
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -907,7 +889,15 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                             <div className="flex flex-col">
                               <span className={`text-2xl font-bold ${rankDisplay.color}`} data-testid={`text-rank-${product.id}`}>
                                 {rankDisplay.rank}
+                                {product.latestTrack?.rankOnPage && (
+                                  <span className="text-sm text-gray-500 dark:text-gray-400 ml-1 font-normal">
+                                    ({product.latestTrack.rankOnPage})
+                                  </span>
+                                )}
                               </span>
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                              <div>{rankDisplay.page}</div>
                             </div>
                           </div>
                         </td>
