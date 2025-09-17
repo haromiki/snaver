@@ -11,7 +11,7 @@ import { useSSE } from "@/hooks/useSSE";
 // 업데이트 상태 표시 컴포넌트
 function UpdateStatusText({ products }: { products: any[] }) {
   const now = new Date();
-  
+
   // 최근 업데이트된 제품 찾기 (24시간 내)
   const recentlyUpdated = products.filter(product => {
     if (!product.latestTrack?.checkedAt) return false;
@@ -36,7 +36,7 @@ function UpdateStatusText({ products }: { products: any[] }) {
   });
 
   const lastUpdateTime = new Date(mostRecentUpdate.latestTrack.checkedAt);
-  
+
   // 한국 표준 시간(KST)으로 변환 - UTC+9
   const timeText = lastUpdateTime.toLocaleString('ko-KR', {
     timeZone: 'Asia/Seoul',
@@ -57,7 +57,7 @@ function UpdateStatusText({ products }: { products: any[] }) {
 
 function RankChangeIndicator({ product }: { product: any }) {
   // 전달받은 product 데이터 직접 사용 (별도 API 호출 제거)
-  
+
   if (!product?.tracks || product.tracks.length < 2) {
     return <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>;
   }
@@ -66,14 +66,14 @@ function RankChangeIndicator({ product }: { product: any }) {
   const validTracks = product.tracks
     .filter((track: any) => track.globalRank && track.globalRank > 0)
     .sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
-  
+
   if (validTracks.length < 2) {
     return <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>;
   }
 
   // 현재 순위
   const currentRank = validTracks[0].globalRank;
-  
+
   // 현재와 다른 순위를 가진 이전 데이터를 무한 검색
   let previousRank = null;
   for (let i = 1; i < validTracks.length; i++) {
@@ -82,12 +82,12 @@ function RankChangeIndicator({ product }: { product: any }) {
       break;
     }
   }
-  
+
   // 다른 순위를 찾지 못한 경우 빈 공간
   if (previousRank === null) {
     return <div className="w-7 h-7"></div>;
   }
-  
+
   const rankDiff = previousRank - currentRank;
 
   if (rankDiff > 0) {
@@ -146,10 +146,10 @@ function PriceChangeIndicator({ product }: { product: any }) {
   const sortedTracks = [...product.tracks].sort((a, b) => 
     new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime()
   );
-  
+
   const currentTrack = sortedTracks[0]; // 최신 트랙
   const previousTrack = sortedTracks[1]; // 이전 트랙
-  
+
   if (!currentTrack.priceKrw || !previousTrack.priceKrw) {
     return (
       <div className="flex items-center justify-center">
@@ -159,11 +159,11 @@ function PriceChangeIndicator({ product }: { product: any }) {
       </div>
     );
   }
-  
+
   const currentPrice = currentTrack.priceKrw;
   const previousPrice = previousTrack.priceKrw;
   const priceDiff = currentPrice - previousPrice;
-  
+
   if (priceDiff > 0) {
     // 가격 상승 - 빨간색 상승 아이콘
     return (
@@ -194,7 +194,6 @@ function PriceChangeIndicator({ product }: { product: any }) {
   }
 }
 
-
 interface ProductTableProps {
   section: string;
   searchQuery?: string;
@@ -208,17 +207,69 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [priceHistoryProduct, setPriceHistoryProduct] = useState<{id: number, name: string} | null>(null);
   const [sortableList, setSortableList] = useState<any>(null);
-  const [refreshingProducts, setRefreshingProducts] = useState<Set<number>>(new Set()); // 간단한 Set으로 변경
+  const [refreshingProducts, setRefreshingProducts] = useState<Set<number>>(new Set());
   const [bulkRefreshInProgress, setBulkRefreshInProgress] = useState(false);
   const [bulkRefreshProgress, setBulkRefreshProgress] = useState(0);
   const [searchStatus, setSearchStatus] = useState<any>(null);
-  const [currentTime, setCurrentTime] = useState(new Date()); // 실시간 시간 업데이트용
-  
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [previousRanks, setPreviousRanks] = useState<{[key: number]: number}>({});
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
+
   // SSE 연결 (폴링 대체)
   const { isConnected } = useSSE();
+
+  // 한국 시간 기준 날짜 계산 함수
+  const getKSTDate = (offsetDays = 0) => {
+    const now = new Date();
+    const kstOffset = 9 * 60 * 60 * 1000; // UTC+9
+    const kstNow = new Date(now.getTime() + kstOffset + (offsetDays * 24 * 60 * 60 * 1000));
+    return kstNow.toISOString().split('T')[0]; // YYYY-MM-DD 형식
+  };
+
+  // 이전 순위 데이터 가져오기
+  const fetchPreviousRanks = async (productIds: number[]) => {
+    const yesterday = getKSTDate(-1);
+    const twoDaysAgo = getKSTDate(-2);
+    const newPreviousRanks: {[key: number]: number} = {};
+
+    for (const productId of productIds) {
+      try {
+        const params = new URLSearchParams({
+          product_id: productId.toString(),
+          from: twoDaysAgo,
+          to: yesterday,
+        });
+
+        const response = await apiRequest("GET", `/tracks?${params}`);
+        const tracks = await response.json();
+
+        const validTracks = tracks
+          .filter((track: any) => track.globalRank && track.globalRank > 0)
+          .sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
+
+        if (validTracks.length > 0) {
+          // 어제 데이터 우선 검색
+          const yesterdayTracks = validTracks.filter((track: any) => {
+            const trackDate = new Date(track.checkedAt);
+            const trackKSTDate = new Date(trackDate.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
+            return trackKSTDate === yesterday;
+          });
+
+          if (yesterdayTracks.length > 0) {
+            newPreviousRanks[productId] = yesterdayTracks[0].globalRank;
+          } else {
+            newPreviousRanks[productId] = validTracks[0].globalRank;
+          }
+        }
+      } catch (error) {
+        console.error(`이전 순위 조회 실패 (제품 ID: ${productId}):`, error);
+      }
+    }
+
+    setPreviousRanks(newPreviousRanks);
+  };
 
   // Determine filters based on section
   const getFilters = () => {
@@ -234,18 +285,15 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
       const params = new URLSearchParams();
       if (filters.type) params.append("type", filters.type);
       if (filters.active !== undefined) params.append("active", filters.active.toString());
-      
+
       // 캐시 무효화를 위한 타임스탬프 추가 (5초 폴링 시 실시간 데이터 보장)
       params.append("_t", Date.now().toString());
-      
+
       const response = await apiRequest("GET", `/products?${params}`);
       return await response.json();
     },
     staleTime: 0, // 캐시 비활성화 (실시간 데이터 우선)
-    // SSE로 실시간 업데이트 대체 (폴링 제거)
   });
-
-  // 키워드 매핑이 더 이상 필요하지 않음 (직접 키워드 필터링)
 
   // 검색 및 상태 필터링
   const products = allProducts.filter((product: any) => {
@@ -260,7 +308,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
       const productName = product.productName.toLowerCase();
       const keyword = product.keyword.toLowerCase();
       const productNo = product.productNo.toLowerCase();
-      
+
       const matchesSearch = productName.includes(query) || 
                           keyword.includes(query) || 
                           productNo.includes(query);
@@ -285,10 +333,10 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     mutationFn: async (productId: number) => {
       // 검색 중 상태 추가
       setRefreshingProducts(prev => new Set(prev).add(productId));
-      
+
       const response = await apiRequest("POST", `/products/${productId}/refresh`);
       const result = await response.json();
-      
+
       return result;
     },
     onSuccess: (data, productId) => {
@@ -302,7 +350,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         newSet.delete(productId);
         return newSet;
       });
-      
+
       toast({
         title: "수동 검색 실패",
         description: error.message,
@@ -315,40 +363,39 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
   const verifyAndUpdateData = async (productId: number) => {
     let attempts = 0;
     const maxAttempts = 10; // 최대 10회 시도
-    
+
     const checkData = async (): Promise<void> => {
       attempts++;
-      
+
       try {
         // 캐시를 완전히 무시하고 새로운 데이터 강제 요청
         const params = new URLSearchParams();
         const filters = getFilters();
         if (filters.type) params.append("type", filters.type);
         if (filters.active !== undefined) params.append("active", filters.active.toString());
-        
+
         // 타임스탬프 추가로 캐시 완전 무효화
         params.append("_t", Date.now().toString());
-        
+
         const response = await apiRequest("GET", `/products?${params}`);
         const freshData = await response.json();
-        
+
         // 해당 제품의 최신 트랙 데이터 확인
         const updatedProduct = freshData.find((p: any) => p.id === productId);
-        
+
         if (updatedProduct && updatedProduct.latestTrack && updatedProduct.latestTrack.id) {
           // 데이터 확인됨 - UI 업데이트
           const currentFilters = getFilters();
           queryClient.setQueryData(["/products", currentFilters], freshData);
-          
-          
+
           // 전체 제품 목록 새로고침으로 마지막 확인 시간 업데이트
           queryClient.invalidateQueries({ queryKey: ["/products"] });
-          
+
           toast({
             title: "수동 검색 완료",
             description: `순위 정보가 업데이트되었습니다. (${updatedProduct.latestTrack.globalRank ? updatedProduct.latestTrack.globalRank + '위' : '미발견'})`,
           });
-          
+
           // 검색 중 상태 제거
           setTimeout(() => {
             setRefreshingProducts(prev => {
@@ -357,10 +404,10 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
               return newSet;
             });
           }, 1500);
-          
+
           return; // 성공 완료
         }
-        
+
         // 데이터 없음 - 재시도
         if (attempts < maxAttempts) {
           setTimeout(() => checkData(), 1000); // 1초 후 재시도
@@ -371,7 +418,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
             description: "검색이 완료되었지만 결과를 불러오는데 시간이 걸립니다. 잠시 후 새로고침해주세요.",
             variant: "destructive",
           });
-          
+
           // 검색 중 상태 제거
           setRefreshingProducts(prev => {
             const newSet = new Set(prev);
@@ -379,10 +426,10 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
             return newSet;
           });
         }
-        
+
       } catch (error) {
         console.error('데이터 확인 오류:', error);
-        
+
         if (attempts < maxAttempts) {
           setTimeout(() => checkData(), 1000);
         } else {
@@ -391,7 +438,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
             description: "데이터를 불러오는데 실패했습니다.",
             variant: "destructive",
           });
-          
+
           setRefreshingProducts(prev => {
             const newSet = new Set(prev);
             newSet.delete(productId);
@@ -400,7 +447,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         }
       }
     };
-    
+
     // 1초 후 시작 (서버 처리 시간 고려)
     setTimeout(() => checkData(), 1000);
   };
@@ -447,7 +494,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         const orderedProducts = productIds.map(id => 
           (previousProducts as any[]).find(p => p.id === id)
         ).filter(Boolean);
-        
+
         queryClient.setQueryData(["/products", currentFilters], orderedProducts);
       }
 
@@ -459,17 +506,12 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         const currentFilters = getFilters();
         queryClient.setQueryData(["/products", currentFilters], context.previousProducts);
       }
-      
+
       toast({
         title: "정렬 실패",
         description: "제품 순서 변경에 실패했습니다.",
         variant: "destructive",
       });
-    },
-    onSettled: () => {
-      // 서버와 동기화 (선택사항: 너무 자주 호출되지 않도록 주의)
-      // const currentFilters = getFilters();
-      // queryClient.invalidateQueries({ queryKey: ["/products", currentFilters] });
     },
   });
 
@@ -497,7 +539,6 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     },
   });
 
-
   // Initialize Sortable when products change
   useEffect(() => {
     const loadSortable = async () => {
@@ -515,7 +556,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         try {
           // Dynamically import Sortable
           const Sortable = (await import("sortablejs")).default;
-          
+
           const element = document.getElementById("sortable-products");
           if (element) {
             const sortableInstance = Sortable.create(element, {
@@ -529,7 +570,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                   const newOrder = [...products];
                   const [removed] = newOrder.splice(evt.oldIndex!, 1);
                   newOrder.splice(evt.newIndex!, 0, removed);
-                  
+
                   const productIds = newOrder.map(p => p.id);
                   updateSortMutation.mutate(productIds);
                 }
@@ -559,141 +600,66 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     };
   }, [products.length, updateSortMutation.isPending]);
 
+  // 제품 목록이 변경될 때마다 이전 순위 데이터 가져오기
+  useEffect(() => {
+    if (products.length > 0) {
+      const productIds = products.map((p: any) => p.id);
+      fetchPreviousRanks(productIds);
+    }
+  }, [products.map((p: any) => p.id).join(',')]); // 제품 ID 목록이 변경될 때만 실행
+
   // 실시간 시간 업데이트 (매분마다)
   useEffect(() => {
     const updateCurrentTime = () => {
       setCurrentTime(new Date());
     };
-    
+
     updateCurrentTime(); // 초기 설정
     const interval = setInterval(updateCurrentTime, 60000); // 1분마다 업데이트
-    
+
     return () => clearInterval(interval);
   }, []);
 
   const formatLastChecked = (latestTrack: any) => {
     if (!latestTrack) return "미확인";
-    
+
     const date = new Date(latestTrack.checkedAt);
     const diffMs = currentTime.getTime() - date.getTime(); // 실시간 업데이트된 현재 시간 사용
     const diffMins = Math.floor(diffMs / (1000 * 60));
-    
+
     if (diffMins < 1) return "방금 전";
     if (diffMins < 60) return `${diffMins}분 전`;
     if (diffMins < 1440) return `${Math.floor(diffMins / 60)}시간 전`;
     return date.toLocaleDateString();
   };
-  const getPreviousRank = (product: any) => {
-    if (!product?.tracks || product.tracks.length === 0) {
-      return null;
-    }
 
-    // 한국 시간 기준으로 날짜 계산
-    const getKSTDate = (offsetDays = 0) => {
-      const now = new Date();
-      const kstOffset = 9 * 60 * 60 * 1000; // UTC+9
-      const kstNow = new Date(now.getTime() + kstOffset + (offsetDays * 24 * 60 * 60 * 1000));
-      return kstNow.toISOString().split('T')[0]; // YYYY-MM-DD 형식
-    };
-
-    // globalRank가 있는 트랙만 필터링하고 시간순으로 정렬 (최신순)
-    const validTracks = product.tracks
-      .filter((track: any) => track.globalRank && track.globalRank > 0)
-      .sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
-
-    if (validTracks.length === 0) {
-      return null;
-    }
-
-    // 현재 순위 (가장 최신)
-    const currentRank = validTracks[0].globalRank;
-    const currentDate = new Date(validTracks[0].checkedAt);
-    const currentKSTDate = new Date(currentDate.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
-
-    // 어제부터 과거로 순차적으로 검색
-    for (let daysBack = 1; daysBack <= 7; daysBack++) {
-      const targetDate = getKSTDate(-daysBack);
-
-      // 해당 날짜의 트랙들 찾기
-      const targetDateTracks = validTracks.filter((track: any) => {
-        const trackDate = new Date(track.checkedAt);
-        const trackKSTDate = new Date(trackDate.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
-        return trackKSTDate === targetDate;
-      });
-
-      // 해당 날짜에 데이터가 있으면 그 날의 마지막(최신) 순위 반환
-      if (targetDateTracks.length > 0) {
-        const lastRankOfDay = targetDateTracks[0].globalRank; // 이미 시간순 정렬되어 있음
-
-        // 현재 순위와 다른 경우에만 반환 (의미있는 변화)
-        if (lastRankOfDay !== currentRank) {
-          return lastRankOfDay;
-        }
-      }
-    }
-
-    // 7일 내에 다른 순위가 없으면 가장 최근의 두 번째 순위 반환
-    if (validTracks.length >= 2) {
-      return validTracks[1].globalRank;
-    }
-
-    return null;
-  };
-
-  
-  const getRankDisplay = (latestTrack: any, product: any) => {
+  const getRankDisplay = (latestTrack: any, product: any, previousRankData?: number | null) => {
     if (!latestTrack || !latestTrack.globalRank) {
       return { rank: "-", page: "미발견", change: "", color: "text-gray-400 dark:text-gray-500", changeColor: "text-gray-500 dark:text-gray-400", previousRank: null, previousPage: null, previousRankOnPage: null };
     }
 
     const rank = latestTrack.globalRank;
     const page = Math.ceil(rank / 40);
-    
+
     // 이전 순위와 비교하여 순위 색상 결정
-    let color = "text-gray-900 dark:text-gray-100"; // 기본 색상 (변화 없음 또는 첫 검색)
+    let color = "text-gray-900 dark:text-gray-100"; // 기본 색상
     let trendIcon = null;
-    let previousRank = null;
-    let previousPage = null;
+    const previousRank = previousRankData; // API에서 가져온 데이터 사용
+    let previousPage = previousRank ? Math.ceil(previousRank / 40) : null;
     let previousRankOnPage = null;
-    
-    // 제품의 모든 트랙 데이터에서 이전 순위 찾기 (globalRank가 있는 것만)
-    if (product.tracks && product.tracks.length >= 1) {
-      // globalRank가 있는 트랙만 필터링하고 최신 순으로 정렬
-      const validTracks = product.tracks
-        .filter((track: any) => track.globalRank && track.globalRank > 0)
-        .sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
-      
-      if (validTracks.length >= 2) {
-        const currentTrack = validTracks[0]; // 최신 유효 트랙
-        
-        // 현재와 다른 순위를 가진 이전 데이터를 무한 검색
-        for (let i = 1; i < validTracks.length; i++) {
-          if (validTracks[i].globalRank !== currentTrack.globalRank) {
-            const previousTrack = validTracks[i];
-            previousRank = previousTrack.globalRank;
-            previousPage = Math.ceil(previousRank / 40);
-            previousRankOnPage = previousTrack.rankOnPage; // 이전 트랙의 실제 rankOnPage 사용
-            break;
-          }
-        }
-        
-        if (previousRank) {
-          const currentRank = currentTrack.globalRank;
-          const rankDiff = previousRank - currentRank; // 이전 순위 - 현재 순위
-          
-          if (rankDiff > 0) {
-            // 순위 상승 (숫자가 작아짐) - 파란색
-            color = "text-blue-600 dark:text-blue-400";
-            trendIcon = "▲"; // 상승 삼각형
-          } else if (rankDiff < 0) {
-            // 순위 하락 (숫자가 커짐) - 빨간색
-            color = "text-red-600 dark:text-red-400";
-            trendIcon = "▼"; // 하락 삼각형
-          } else {
-            // 순위 변화 없음 - 검정색
-            color = "text-gray-900 dark:text-gray-100";
-          }
-        }
+
+    // 순위 변화에 따른 색상 설정
+    if (previousRank && previousRank !== rank) {
+      const rankDiff = previousRank - rank; // 이전 순위 - 현재 순위
+
+      if (rankDiff > 0) {
+        // 순위 상승 (숫자가 작아짐) - 파란색
+        color = "text-blue-600 dark:text-blue-400";
+        trendIcon = "▲";
+      } else if (rankDiff < 0) {
+        // 순위 하락 (숫자가 커짐) - 빨간색
+        color = "text-red-600 dark:text-red-400";
+        trendIcon = "▼";
       }
     }
 
@@ -726,15 +692,15 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
   // 전체 새로고침 순차 실행 기능
   const handleBulkRefresh = async () => {
     if (products.length === 0 || bulkRefreshInProgress) return;
-    
+
     setBulkRefreshInProgress(true);
     setBulkRefreshProgress(0);
-    
+
     try {
       for (let i = 0; i < products.length; i++) {
         const product = products[i];
         setBulkRefreshProgress(i + 1);
-        
+
         try {
           await new Promise((resolve, reject) => {
             const mutation = refreshProductMutation.mutate(product.id, {
@@ -746,13 +712,13 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
           console.error(`제품 ${product.productName} 새로고침 실패:`, error);
           // 에러가 발생해도 계속 진행
         }
-        
+
         // 각 제품 간 1초 대기 (서버 부하 방지)
         if (i < products.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
       }
-      
+
       toast({
         title: "전체 새로고침 완료",
         description: `${products.length}개 제품의 순위 업데이트가 완료되었습니다.`,
@@ -803,13 +769,8 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             <span className="text-sm text-green-600 dark:text-green-400 font-medium">1시간 간격 자동 추적중</span>
           </div>
-          
-          
-          
+
           <div className="flex items-center space-x-3">
-            {/* <button className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-100 px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">
-              <i className="fas fa-download mr-2"></i>내보내기
-            </button> */}
             <button 
               className="text-sm text-primary hover:text-blue-700 px-3 py-1 rounded border border-primary hover:bg-blue-50"
               onClick={handleBulkRefresh}
@@ -838,32 +799,33 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   <i className="fas fa-grip-vertical mr-2 text-gray-400 dark:text-gray-500"></i>제품 정보
                 </th>
                 {section.includes("tracking") && (
                   <>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">스토어명</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">제품 가격</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">이전 순위</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">현재 순위</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">순위 변동</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">1일 그래프</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">마지막 확인</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">스토어명</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">제품 가격</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">이전 순위</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">현재 순위</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">순위 변동</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">1일 그래프</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">마지막 확인</th>
                   </>
                 )}
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-300 uppercase tracking-wider">작업</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">작업</th>
               </tr>
             </thead>
             <tbody id="sortable-products" className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
               {products.map((product: any) => {
-                const rankDisplay = getRankDisplay(product.latestTrack, product);
-                
+                const previousRank = previousRanks[product.id] || null;
+                const rankDisplay = getRankDisplay(product.latestTrack, product, previousRank);
+
                 return (
                   <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors sortable-item" data-testid={`row-product-${product.id}`}>
                     <td className="px-6 py-4">
                       <div className="flex items-start space-x-4">
-                        <div className="drag-handle cursor-move text-gray-400 dark:text-gray-500 dark:text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 dark:text-gray-500 mt-1">
+                        <div className="drag-handle cursor-move text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 mt-1">
                           <i className="fas fa-grip-vertical"></i>
                         </div>
                         <div className="flex-1">
@@ -877,7 +839,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                               {product.active ? "활성" : "비활성"}
                             </span>
                           </div>
-                          <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                             키워드: <span data-testid={`text-keyword-${product.id}`}>{product.keyword}</span> | 
                             제품번호: <span data-testid={`text-product-no-${product.id}`}>{product.productNo}</span>
                           </p>
@@ -928,7 +890,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-center">
                             <span className="text-lg font-medium text-gray-600 dark:text-gray-400" data-testid={`text-previous-rank-${product.id}`}>
-                              {getPreviousRank(product) || "-"}
+                              {previousRanks[product.id] || "-"}
                             </span>
                           </div>
                         </td>
@@ -943,22 +905,9 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                                   </span>
                                 )}
                               </span>
-                              {rankDisplay.previousRank && (
-                                <span className="text-sm text-gray-500 dark:text-gray-400 font-normal" data-testid={`text-previous-rank-${product.id}`}>
-                                  {rankDisplay.previousRank}
-                                  {rankDisplay.previousRankOnPage && (
-                                    <span className="ml-1">
-                                      ({rankDisplay.previousRankOnPage})
-                                    </span>
-                                  )}
-                                </span>
-                              )}
                             </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
                               <div>{rankDisplay.page}</div>
-                              {rankDisplay.previousPage && (
-                                <div className="mt-1">{rankDisplay.previousPage}</div>
-                              )}
                             </div>
                           </div>
                         </td>
@@ -973,7 +922,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                             {formatLastChecked(product.latestTrack)}
                           </div>
                           {product.latestTrack && (
-                            <div className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
                               {new Date(product.latestTrack.checkedAt).toLocaleString('ko-KR', {
                                 timeZone: 'Asia/Seoul',
                                 year: 'numeric',
@@ -1066,7 +1015,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
         </div>
 
         {products.length === 0 && (
-          <div className="p-8 text-center text-gray-500 dark:text-gray-400 dark:text-gray-500">
+          <div className="p-8 text-center text-gray-500 dark:text-gray-400">
             <i className="fas fa-inbox text-4xl mb-4 text-gray-300"></i>
             <p className="text-lg font-medium mb-2">등록된 제품이 없습니다</p>
             <p className="mb-4">첫 번째 제품을 추가해보세요</p>
@@ -1088,7 +1037,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
               <span className="font-medium"> 1-{products.length}</span>개 표시
             </div>
             <div className="flex items-center space-x-2">
-              <button className="px-3 py-2 text-sm border border-gray-300 rounded-md text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:bg-gray-50 disabled:opacity-50" disabled>
+              <button className="px-3 py-2 text-sm border border-gray-300 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-50 disabled:opacity-50" disabled>
                 이전
               </button>
               <button className="px-3 py-2 text-sm bg-primary text-white rounded-md">1</button>
