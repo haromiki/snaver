@@ -641,14 +641,6 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
   };
 
   
-  // ==========================================
-  // 기존 getRankDisplay 함수 수정
-  // ==========================================
-  // 검색할 고유 코드:
-  // const getRankDisplay = (latestTrack: any, product: any) => {
-
-  // 기존 getRankDisplay 함수를 다음과 같이 완전히 교체하세요:
-
   const getRankDisplay = (latestTrack: any, product: any) => {
     if (!latestTrack || !latestTrack.globalRank) {
       return { rank: "-", page: "미발견", change: "", color: "text-gray-400 dark:text-gray-500", changeColor: "text-gray-500 dark:text-gray-400", previousRank: null, previousPage: null, previousRankOnPage: null };
@@ -656,73 +648,39 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
 
     const rank = latestTrack.globalRank;
     const page = Math.ceil(rank / 40);
-
+    
     // 이전 순위와 비교하여 순위 색상 결정
     let color = "text-gray-900 dark:text-gray-100"; // 기본 색상 (변화 없음 또는 첫 검색)
     let trendIcon = null;
     let previousRank = null;
     let previousPage = null;
     let previousRankOnPage = null;
-
-    // 한국 시간 기준으로 날짜 계산
-    const getKSTDate = (offsetDays = 0) => {
-      const now = new Date();
-      const kstOffset = 9 * 60 * 60 * 1000; // UTC+9
-      const kstNow = new Date(now.getTime() + kstOffset + (offsetDays * 24 * 60 * 60 * 1000));
-      return kstNow.toISOString().split('T')[0]; // YYYY-MM-DD 형식
-    };
-
+    
     // 제품의 모든 트랙 데이터에서 이전 순위 찾기 (globalRank가 있는 것만)
     if (product.tracks && product.tracks.length >= 1) {
       // globalRank가 있는 트랙만 필터링하고 최신 순으로 정렬
       const validTracks = product.tracks
         .filter((track: any) => track.globalRank && track.globalRank > 0)
         .sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
-
-      if (validTracks.length >= 1) {
+      
+      if (validTracks.length >= 2) {
         const currentTrack = validTracks[0]; // 최신 유효 트랙
-        const currentRank = currentTrack.globalRank;
-
-        // 어제부터 과거로 순차적으로 검색하여 다른 순위 찾기
-        for (let daysBack = 1; daysBack <= 7; daysBack++) {
-          const targetDate = getKSTDate(-daysBack);
-
-          // 해당 날짜의 트랙들 찾기
-          const targetDateTracks = validTracks.filter((track: any) => {
-            const trackDate = new Date(track.checkedAt);
-            const trackKSTDate = new Date(trackDate.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
-            return trackKSTDate === targetDate;
-          });
-
-          // 해당 날짜에 데이터가 있고, 현재 순위와 다른 경우
-          if (targetDateTracks.length > 0) {
-            const dayLastRank = targetDateTracks[0].globalRank; // 해당 날짜의 최신 순위
-
-            if (dayLastRank !== currentRank) {
-              previousRank = dayLastRank;
-              previousPage = Math.ceil(previousRank / 40);
-              previousRankOnPage = targetDateTracks[0].rankOnPage;
-              break; // 첫 번째로 다른 순위를 찾으면 중단
-            }
+        
+        // 현재와 다른 순위를 가진 이전 데이터를 무한 검색
+        for (let i = 1; i < validTracks.length; i++) {
+          if (validTracks[i].globalRank !== currentTrack.globalRank) {
+            const previousTrack = validTracks[i];
+            previousRank = previousTrack.globalRank;
+            previousPage = Math.ceil(previousRank / 40);
+            previousRankOnPage = previousTrack.rankOnPage; // 이전 트랙의 실제 rankOnPage 사용
+            break;
           }
         }
-
-        // 7일 내에 다른 순위가 없으면 가장 최근의 두 번째 순위 사용
-        if (!previousRank && validTracks.length >= 2) {
-          for (let i = 1; i < validTracks.length; i++) {
-            if (validTracks[i].globalRank !== currentRank) {
-              previousRank = validTracks[i].globalRank;
-              previousPage = Math.ceil(previousRank / 40);
-              previousRankOnPage = validTracks[i].rankOnPage;
-              break;
-            }
-          }
-        }
-
-        // 순위 변화에 따른 색상 설정
+        
         if (previousRank) {
+          const currentRank = currentTrack.globalRank;
           const rankDiff = previousRank - currentRank; // 이전 순위 - 현재 순위
-
+          
           if (rankDiff > 0) {
             // 순위 상승 (숫자가 작아짐) - 파란색
             color = "text-blue-600 dark:text-blue-400";
