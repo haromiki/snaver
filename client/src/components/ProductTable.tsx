@@ -851,7 +851,15 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                             </span>
                           </div>
                           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            키워드: <span data-testid={`text-keyword-${product.id}`}>{product.keyword}</span> | 
+                            키워드: <a 
+                              href={`https://search.shopping.naver.com/search/all?query=${encodeURIComponent(product.keyword)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:text-blue-700"
+                              data-testid={`link-keyword-${product.id}`}
+                            >
+                              {product.keyword}
+                            </a> | 
                             제품번호: <span data-testid={`text-product-no-${product.id}`}>{product.productNo}</span>
                           </p>
                           {product.latestTrack?.productLink && (
