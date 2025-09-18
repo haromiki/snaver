@@ -55,43 +55,86 @@ function UpdateStatusText({ products }: { products: any[] }) {
   );
 }
 
-function RankChangeIndicator({ product }: { product: any }) {
-  // 전달받은 product 데이터 직접 사용 (별도 API 호출 제거)
-
+// 통합된 순위 데이터 계산 함수
+function getRankChangeData(product: any) {
   if (!product?.tracks || product.tracks.length < 2) {
-    return <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>;
+    return {
+      currentRank: null,
+      currentRankOnPage: null,
+      previousRank: null,
+      previousRankOnPage: null,
+      rankDiff: 0,
+      hasChange: false
+    };
   }
 
-  // globalRank가 있는 트랙만 필터링하고 최신 순으로 정렬 (ProductTable과 동일한 로직)
+  // globalRank가 있는 트랙만 필터링하고 최신 순으로 정렬
   const validTracks = product.tracks
     .filter((track: any) => track.globalRank && track.globalRank > 0)
     .sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
 
   if (validTracks.length < 2) {
-    return <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>;
+    return {
+      currentRank: null,
+      currentRankOnPage: null,
+      previousRank: null,
+      previousRankOnPage: null,
+      rankDiff: 0,
+      hasChange: false
+    };
   }
 
   // 현재 순위
-  const currentRank = validTracks[0].globalRank;
+  const currentTrack = validTracks[0];
+  const currentRank = currentTrack.globalRank;
+  const currentRankOnPage = currentTrack.rankOnPage;
 
-  // 현재와 다른 순위를 가진 이전 데이터를 무한 검색
+  // 현재와 다른 순위를 가진 이전 데이터를 검색
   let previousRank = null;
+  let previousRankOnPage = null;
   for (let i = 1; i < validTracks.length; i++) {
     if (validTracks[i].globalRank !== currentRank) {
       previousRank = validTracks[i].globalRank;
+      previousRankOnPage = validTracks[i].rankOnPage;
       break;
     }
   }
 
-  // 다른 순위를 찾지 못한 경우 빈 공간
+  // 다른 순위를 찾지 못한 경우
   if (previousRank === null) {
-    return <div className="w-7 h-7"></div>;
+    return {
+      currentRank,
+      currentRankOnPage,
+      previousRank: null,
+      previousRankOnPage: null,
+      rankDiff: 0,
+      hasChange: false
+    };
   }
 
   const rankDiff = previousRank - currentRank;
 
+  return {
+    currentRank,
+    currentRankOnPage,
+    previousRank,
+    previousRankOnPage,
+    rankDiff,
+    hasChange: true
+  };
+}
+
+function RankChangeIndicator({ product }: { product: any }) {
+  const rankData = getRankChangeData(product);
+
+  if (!rankData.hasChange) {
+    return <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>;
+  }
+
+  const { rankDiff } = rankData;
+
   if (rankDiff > 0) {
-    // 상승만 표시
+    // 상승
     return (
       <div className="flex items-center space-x-1">
         <svg className="w-7 h-7 text-blue-600 dark:text-blue-400 mt-3" fill="currentColor" viewBox="0 0 20 20">
@@ -103,7 +146,7 @@ function RankChangeIndicator({ product }: { product: any }) {
       </div>
     );
   } else if (rankDiff < 0) {
-    // 하락만 표시
+    // 하락
     return (
       <div className="flex items-center space-x-1">
         <svg className="w-7 h-7 text-red-600 dark:text-red-400 mb-1" fill="currentColor" viewBox="0 0 20 20">
@@ -115,17 +158,8 @@ function RankChangeIndicator({ product }: { product: any }) {
       </div>
     );
   } else {
-    // 하락만 표시
-    return (
-      <div className="flex items-center space-x-1">
-        <svg className="w-7 h-7 text-red-600 dark:text-red-400 mb-1" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" clipRule="evenodd" />
-        </svg>
-        <span className="text-lg font-bold text-red-600 dark:text-red-400">
-          {Math.abs(rankDiff)}
-        </span>
-      </div>
-    );
+    // 변동 없음
+    return <div className="w-7 h-7"></div>;
   }
 }
 
@@ -212,107 +246,12 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
   const [bulkRefreshProgress, setBulkRefreshProgress] = useState(0);
   const [searchStatus, setSearchStatus] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [previousRanks, setPreviousRanks] = useState<{[key: number]: number}>({});
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // SSE 연결 (폴링 대체)
   const { isConnected } = useSSE();
-
-  // 한국 시간 기준 날짜 계산 함수
-  const getKSTDate = (offsetDays = 0) => {
-    const now = new Date();
-    const kstOffset = 9 * 60 * 60 * 1000; // UTC+9
-    const kstNow = new Date(now.getTime() + kstOffset + (offsetDays * 24 * 60 * 60 * 1000));
-    return kstNow.toISOString().split('T')[0]; // YYYY-MM-DD 형식
-  };
-
-  // StatisticsModal과 정확히 동일한 로직
-  const getAdaptiveGroupedData = (tracks: any[], fromDate: string, toDate: string) => {
-    if (tracks.length === 0) return [];
-
-    const from = new Date(fromDate);
-    const to = new Date(toDate);
-    const diffInDays = Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
-
-    // 한국 시간 기준으로 데이터 필터링 및 변환
-    const kstTracks = tracks
-      .filter((track: any) => track.globalRank)
-      .map((track: any) => {
-        const kstDate = new Date(track.checkedAt);
-        return {
-          ...track,
-          kstDate,
-          rank: track.globalRank
-        };
-      })
-      .sort((a, b) => a.kstDate.getTime() - b.kstDate.getTime());
-
-    let groupedData: any[] = [];
-
-    if (diffInDays <= 30) {
-      // 1개월 이하: 일별 평균
-      const dailyGroups = new Map();
-      kstTracks.forEach(track => {
-        const dayKey = track.kstDate.toISOString().split('T')[0];
-        if (!dailyGroups.has(dayKey)) {
-          dailyGroups.set(dayKey, []);
-        }
-        dailyGroups.get(dayKey).push(track.rank);
-      });
-
-      groupedData = Array.from(dailyGroups.entries()).map(([date, ranks]) => ({
-        label: new Date(date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }),
-        value: Math.round(ranks.reduce((sum: number, rank: number) => sum + rank, 0) / ranks.length),
-        date
-      }));
-    }
-
-    return groupedData.sort((a, b) => a.date.localeCompare(b.date));
-  };
-
-  // StatisticsModal 기본값과 동일한 로직
-  const fetchPreviousRanks = async (productIds: number[]) => {
-    const newPreviousRanks: {[key: number]: number} = {};
-
-    for (const productId of productIds) {
-      try {
-        // StatisticsModal 기본값: 30일 범위
-        const dateRange = {
-          from: getKSTDate(-30),
-          to: getKSTDate(0),
-        };
-
-        const params = new URLSearchParams({
-          product_id: productId.toString(),
-          from: dateRange.from,
-          to: dateRange.to,
-        });
-
-        const response = await apiRequest("GET", `/tracks?${params}`);
-        const tracks = await response.json();
-
-        if (tracks.length === 0) continue;
-
-        // StatisticsModal과 동일한 그룹화
-        const groupedData = getAdaptiveGroupedData(tracks, dateRange.from, dateRange.to);
-
-        if (groupedData.length === 0) continue;
-
-        // 가장 최근 데이터 사용
-        const sortedData = [...groupedData].sort((a, b) => b.date.localeCompare(a.date));
-        if (sortedData.length > 0) {
-          newPreviousRanks[productId] = sortedData[0].value;
-        }
-
-      } catch (error) {
-        console.error(`이전 순위 조회 실패 (제품 ID: ${productId}):`, error);
-      }
-    }
-
-    setPreviousRanks(newPreviousRanks);
-  };
 
   // Determine filters based on section
   const getFilters = () => {
@@ -650,14 +589,6 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     };
   }, [products.length, updateSortMutation.isPending]);
 
-  // 제품 목록이 변경될 때마다 이전 순위 데이터 가져오기
-  useEffect(() => {
-    if (products.length > 0) {
-      const productIds = products.map((p: any) => p.id);
-      fetchPreviousRanks(productIds);
-    }
-  }, [products.map((p: any) => p.id).join(',')]); // 제품 ID 목록이 변경될 때만 실행
-
   // 실시간 시간 업데이트 (매분마다)
   useEffect(() => {
     const updateCurrentTime = () => {
@@ -683,81 +614,45 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
     return date.toLocaleDateString();
   };
 
-  const getRankDisplay = (latestTrack: any, product: any, previousRankData?: number | null) => {
+  const getRankDisplay = (latestTrack: any, product: any) => {
     if (!latestTrack || !latestTrack.globalRank) {
-      return { rank: "-", page: "미발견", change: "", color: "text-gray-400 dark:text-gray-500", changeColor: "text-gray-500 dark:text-gray-400", previousRank: null, previousPage: null, previousRankOnPage: null };
+      return { 
+        rank: "-", 
+        page: "미발견", 
+        color: "text-gray-400 dark:text-gray-500",
+        previousRank: null,
+        previousPage: null,
+        previousRankOnPage: null 
+      };
     }
 
-    const rank = latestTrack.globalRank;
+    // 통합된 순위 데이터 사용
+    const rankData = getRankChangeData(product);
+    const rank = rankData.currentRank;
     const page = Math.ceil(rank / 40);
 
-    // 이전 순위와 비교하여 순위 색상 결정 (오름/내림만)
-    let color = "text-blue-600 dark:text-blue-400"; // 기본값: 파란색 (상승)
-    let trendIcon = null;
-    const previousRank = previousRankData;
-    let previousPage = previousRank ? Math.ceil(previousRank / 40) : null;
-    let previousRankOnPage = null;
+    // 순위 변동에 따른 색상 결정
+    let color = "text-gray-400 dark:text-gray-500"; // 기본값
 
-    // 제품의 모든 트랙 데이터에서 이전 순위 찾기 (globalRank가 있는 것만)
-    if (product.tracks && product.tracks.length >= 1) {
-      // globalRank가 있는 트랙만 필터링하고 최신 순으로 정렬
-      const validTracks = product.tracks
-        .filter((track: any) => track.globalRank && track.globalRank > 0)
-        .sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
-
-      if (validTracks.length >= 2) {
-        const currentTrack = validTracks[0]; // 최신 유효 트랙
-
-        // 현재와 다른 순위를 가진 이전 데이터를 무한 검색
-        for (let i = 1; i < validTracks.length; i++) {
-          if (validTracks[i].globalRank !== currentTrack.globalRank) {
-            const previousTrack = validTracks[i];
-            const previousRankFromTracks = previousTrack.globalRank;
-            previousRankOnPage = previousTrack.rankOnPage; // 이전 트랙의 실제 rankOnPage 사용
-            break;
-          }
-        }
-
-        // previousRankData가 있으면 API 데이터 우선 사용, 없으면 tracks 데이터 사용
-        const effectivePreviousRank = previousRank || (validTracks.length >= 2 ? validTracks[1].globalRank : null);
-
-        if (effectivePreviousRank) {
-          const currentRank = currentTrack.globalRank;
-          const rankDiff = effectivePreviousRank - currentRank; // 이전 순위 - 현재 순위
-
-          if (rankDiff > 0) {
-            // 순위 상승 (숫자가 작아짐) - 파란색
-            color = "text-blue-600 dark:text-blue-400";
-            trendIcon = "▲"; // 상승 삼각형
-          } else if (rankDiff < 0) {
-            // 순위 하락 (숫자가 커짐) - 빨간색
-            color = "text-red-600 dark:text-red-400";
-            trendIcon = "▼"; // 하락 삼각형
-          } else {
-            // 변동 없음: 과거 데이터에서 마지막 변동 방향 찾기
-            for (let i = 1; i < validTracks.length; i++) {
-              if (validTracks[i].globalRank !== currentRank) {
-                const pastRankDiff = validTracks[i].globalRank - currentRank;
-                if (pastRankDiff > 0) {
-                  color = "text-blue-600 dark:text-blue-400"; // 마지막 변동이 상승
-                } else {
-                  color = "text-red-600 dark:text-red-400"; // 마지막 변동이 하락
-                }
-                break;
-              }
-            }
-          }
-        }
+    if (rankData.hasChange) {
+      if (rankData.rankDiff > 0) {
+        // 순위 상승 (숫자가 작아짐) - 파란색
+        color = "text-blue-600 dark:text-blue-400";
+      } else if (rankData.rankDiff < 0) {
+        // 순위 하락 (숫자가 커짐) - 빨간색
+        color = "text-red-600 dark:text-red-400";
       }
     }
+
+    // 이전 순위의 페이지 내 순위 계산 (1-40 범위)
+    const previousRankOnPage = rankData.previousRank ? ((rankData.previousRank - 1) % 40) + 1 : null;
 
     return { 
       rank, 
       page: <span className="relative top-1">{page}페이지</span>, 
-      trendIcon, 
       color, 
-      previousRank, 
-      previousPage: previousPage ? <span className="relative top-1">{previousPage}페이지</span> : null,
+      previousRank: rankData.previousRank,
+      previousPage: rankData.previousRank ? <span className="relative top-1">{Math.ceil(rankData.previousRank / 40)}페이지</span> : null,
       previousRankOnPage 
     };
   };
@@ -906,8 +801,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
             </thead>
             <tbody id="sortable-products" className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
               {products.map((product: any) => {
-                const previousRank = previousRanks[product.id] || null;
-                const rankDisplay = getRankDisplay(product.latestTrack, product, previousRank);
+                const rankDisplay = getRankDisplay(product.latestTrack, product);
 
                 return (
                   <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors sortable-item" data-testid={`row-product-${product.id}`}>
@@ -978,7 +872,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-center">
                             <span className="text-lg font-medium text-gray-600 dark:text-gray-400" data-testid={`text-previous-rank-${product.id}`}>
-                              {previousRanks[product.id] || "-"}
+                              {rankDisplay.previousRank || "-"}
                             </span>
                           </div>
                         </td>
@@ -987,9 +881,9 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                             <div className="flex flex-col">
                               <span className={`text-2xl font-bold ${rankDisplay.color}`} data-testid={`text-rank-${product.id}`}>
                                 {rankDisplay.rank}
-                                {product.latestTrack?.rankOnPage && (
+                                {rankDisplay.rank !== "-" && (
                                   <span className="text-sm text-gray-500 dark:text-gray-400 ml-1 font-normal">
-                                    ({product.latestTrack.rankOnPage})
+                                    ({((rankDisplay.rank - 1) % 40) + 1})
                                   </span>
                                 )}
                               </span>
