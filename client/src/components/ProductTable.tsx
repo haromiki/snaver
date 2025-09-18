@@ -158,7 +158,36 @@ function RankChangeIndicator({ product }: { product: any }) {
       </div>
     );
   } else {
-    // 변동 없음
+    // 변동 없음 - 과거 변동 방향의 색상 유지
+    const rankData = getRankChangeData(product);
+
+    // 과거 데이터에서 마지막 변동 방향 찾기
+    if (product.tracks && product.tracks.length >= 3) {
+      const validTracks = product.tracks
+        .filter((track: any) => track.globalRank && track.globalRank > 0)
+        .sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
+
+      const currentRank = validTracks[0].globalRank;
+
+      // 현재와 다른 순위를 가진 과거 데이터들을 찾아서 마지막 변동 방향 결정
+      for (let i = 1; i < validTracks.length; i++) {
+        if (validTracks[i].globalRank !== currentRank) {
+          const pastRankDiff = validTracks[i].globalRank - currentRank;
+          const color = pastRankDiff > 0 ? "text-blue-600 dark:text-blue-400" : "text-red-600 dark:text-red-400";
+          const diff = Math.abs(pastRankDiff);
+
+          return (
+            <div className="flex items-center space-x-1">
+              <span className={`text-lg font-bold ${color}`}>
+                {diff}
+              </span>
+            </div>
+          );
+        }
+      }
+    }
+
+    // 과거 변동을 찾을 수 없으면 빈 공간
     return <div className="w-7 h-7"></div>;
   }
 }
