@@ -1,20 +1,12 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import mkcert from 'vite-plugin-mkcert';
 
-// 🛡️ 리플릿 환경에서만 활성화되는 플러그인 (REPL_ID로 감지)
-const replPlugins =
-  process.env.NODE_ENV !== "production" && process.env.REPL_ID !== undefined
-    ? []
-    : [];
-
-// 👇️ DO NOT MODIFY BELOW: 리플릿 + 서버에서 공통 사용하는 alias 및 기본 경로
 export default defineConfig({
   plugins: [
     react(),
-    runtimeErrorOverlay(),
-    ...replPlugins,
+    mkcert(),
   ],
   resolve: {
     alias: {
@@ -29,10 +21,10 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
+    port: 3000,
     fs: {
       strict: true,
       deny: ["**/.*"],
     },
   },
 });
-// 👆️ DO NOT MODIFY ABOVE

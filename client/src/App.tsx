@@ -11,11 +11,7 @@ import Dashboard from "@/pages/dashboard";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
 
-// 👇️ DO NOT MODIFY BELOW: Server-specific routing fix (snaver base)
-const basePath = window.location.hostname.includes("replit.dev")
-  ? "/"
-  : "/snaver";
-// 👆️ DO NOT MODIFY ABOVE
+const basePath = "/";
 
 function RouterWithRoutes() {
   const { user, isLoading } = useAuth();

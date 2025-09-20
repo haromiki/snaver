@@ -1,7 +1,5 @@
-// 👇️ DO NOT MODIFY BELOW: .env 로딩용 (실서버 전용)
 import dotenv from "dotenv";
 dotenv.config();
-// 👆️ DO NOT MODIFY ABOVE
 
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
