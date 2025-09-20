@@ -11,7 +11,7 @@ import Dashboard from "@/pages/dashboard";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
 
-const basePath = "/";
+const basePath = "/snaver";
 
 function RouterWithRoutes() {
   const { user, isLoading } = useAuth();
