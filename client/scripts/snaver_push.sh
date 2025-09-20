@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # SNAVER 푸시 + 실서버 배포 통합 스크립트
 # 사용법: ./snaver_deploy.sh "커밋 메시지"
 
@@ -31,11 +32,11 @@ echo "=== 2단계: 실서버 배포 ==="
 echo "🌐 실서버에 연결하여 배포 중..."
 
 ssh xpro@xpro0.cafe24.com << 'EOF'
-cd snaver
+cd /srv/xpro0/snaver
 echo "📥 최신 코드 pull..."
 git pull origin main
 echo "🚀 배포 스크립트 실행..."
-./snaver_upload.sh
+./scripts/snaver_upload.sh
 EOF
 
 echo ""
