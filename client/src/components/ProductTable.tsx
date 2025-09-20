@@ -563,7 +563,10 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
       // Cleanup existing sortable first
       if (sortableList) {
         try {
-          sortableList.destroy();
+          // DOM 요소가 존재하는지 확인
+          if (sortableList.el && sortableList.el.parentNode) {
+            sortableList.destroy();
+          }
         } catch (error) {
           console.warn("Sortable cleanup failed:", error);
         }
