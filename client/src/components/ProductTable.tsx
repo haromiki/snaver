@@ -97,12 +97,20 @@ function getRankChangeData(product: any) {
     dailyGroups.get(dayKey).push(track);
   });
 
-  // 날짜순으로 정렬하고 각 날짜의 마지막 데이터만 가져옴
+  // 날짜순으로 정렬하고 각 날짜의 평균 순위 계산 (StatisticsModal과 동일)
   const dailyLastTracks = Array.from(dailyGroups.entries())
     .sort(([dateA], [dateB]) => dateB.localeCompare(dateA)) // 최신순
     .map(([date, tracks]) => {
-      // 해당 날짜의 가장 마지막 트랙
-      return tracks.sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime())[0];
+      // StatisticsModal과 동일한 평균값 계산
+      const ranks = tracks.map((t: any) => t.globalRank);
+      const avgRank = Math.round(ranks.reduce((sum: number, rank: number) => sum + rank, 0) / ranks.length);
+
+      // 가장 마지막 트랙을 기본으로 하되, globalRank를 평균값으로 교체
+      const lastTrack = tracks.sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime())[0];
+      return {
+        ...lastTrack,
+        globalRank: avgRank
+      };
     });
 
   if (dailyLastTracks.length < 1) {
