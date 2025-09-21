@@ -126,6 +126,16 @@ function getRankChangeData(product: any) {
   const currentRank = currentTrack.globalRank;
   const currentRankOnPage = currentTrack.rankOnPage;
 
+  // 실서버 디버깅
+  if (product.productName.includes('두펫 하네스') || product.productName.includes('목걸이')) {
+    console.log('🔍 [DEBUG] 제품:', product.productName);
+    console.log('🔍 [DEBUG] 일별 마지막 트랙들:', dailyLastTracks.map((track, index) => ({
+      index,
+      date: new Date(track.checkedAt).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' }),
+      rank: track.globalRank,
+      checkedAt: track.checkedAt
+    })));
+  }
 
   // 이전 순위 (이전 날짜 마지막 데이터)
   let previousRank = null;
@@ -134,6 +144,10 @@ function getRankChangeData(product: any) {
     const previousTrack = dailyLastTracks[1];
     previousRank = previousTrack.globalRank;
     previousRankOnPage = previousTrack.rankOnPage;
+
+    if (product.productName.includes('두펫 하네스') || product.productName.includes('목걸이')) {
+      console.log('🔍 [DEBUG] 현재 순위:', currentRank, '이전 순위:', previousRank);
+    }
   }
 
   // 이전 순위가 없는 경우
@@ -964,6 +978,16 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                                   </span>
                                 )}
                               </span>
+                              {rankDisplay.previousRank && (
+                                <span className="text-sm text-gray-500 dark:text-gray-400 font-normal" data-testid={`text-previous-rank-${product.id}`}>
+                                  {rankDisplay.previousRank}
+                                  {rankDisplay.previousRankOnPage && (
+                                    <span className="ml-1">
+                                      ({rankDisplay.previousRankOnPage})
+                                    </span>
+                                  )}
+                                </span>
+                              )}
                             </div>
                             <div className="text-xs text-gray-500 dark:text-gray-400">
                               <div>{rankDisplay.page}</div>
