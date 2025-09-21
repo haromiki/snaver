@@ -126,6 +126,7 @@ function getRankChangeData(product: any) {
   const currentRank = currentTrack.globalRank;
   const currentRankOnPage = currentTrack.rankOnPage;
 
+
   // 이전 순위 (이전 날짜 마지막 데이터)
   let previousRank = null;
   let previousRankOnPage = null;
@@ -963,16 +964,6 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                                   </span>
                                 )}
                               </span>
-                              {rankDisplay.previousRank && (
-                                <span className="text-sm text-gray-500 dark:text-gray-400 font-normal" data-testid={`text-previous-rank-${product.id}`}>
-                                  {rankDisplay.previousRank}
-                                  {rankDisplay.previousRankOnPage && (
-                                    <span className="ml-1">
-                                      ({rankDisplay.previousRankOnPage})
-                                    </span>
-                                  )}
-                                </span>
-                              )}
                             </div>
                             <div className="text-xs text-gray-500 dark:text-gray-400">
                               <div>{rankDisplay.page}</div>
