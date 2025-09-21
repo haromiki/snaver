@@ -55,7 +55,7 @@ function UpdateStatusText({ products }: { products: any[] }) {
   );
 }
 
-// 통합된 순위 데이터 계산 함수
+// 통합된 순위 데이터 계산 함수 (일별 마지막 데이터 기준)
 function getRankChangeData(product: any) {
   if (!product?.tracks || product.tracks.length < 2) {
     return {
@@ -73,7 +73,7 @@ function getRankChangeData(product: any) {
     .filter((track: any) => track.globalRank && track.globalRank > 0)
     .sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
 
-  if (validTracks.length < 2) {
+  if (validTracks.length < 1) {
     return {
       currentRank: null,
       currentRankOnPage: null,
@@ -84,23 +84,51 @@ function getRankChangeData(product: any) {
     };
   }
 
-  // 현재 순위
-  const currentTrack = validTracks[0];
+  // 일별 그룹화 (StatisticsModal과 동일한 방식)
+  const dailyGroups = new Map();
+  validTracks.forEach(track => {
+    const kstDate = new Date(track.checkedAt);
+    const dayKey = kstDate.toISOString().split('T')[0];
+    if (!dailyGroups.has(dayKey)) {
+      dailyGroups.set(dayKey, []);
+    }
+    dailyGroups.get(dayKey).push(track);
+  });
+
+  // 날짜순으로 정렬하고 각 날짜의 마지막 데이터만 가져옴
+  const dailyLastTracks = Array.from(dailyGroups.entries())
+    .sort(([dateA], [dateB]) => dateB.localeCompare(dateA)) // 최신순
+    .map(([date, tracks]) => {
+      // 해당 날짜의 가장 마지막 트랙
+      return tracks.sort((a: any, b: any) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime())[0];
+    });
+
+  if (dailyLastTracks.length < 1) {
+    return {
+      currentRank: null,
+      currentRankOnPage: null,
+      previousRank: null,
+      previousRankOnPage: null,
+      rankDiff: 0,
+      hasChange: false
+    };
+  }
+
+  // 현재 순위 (오늘 마지막 데이터)
+  const currentTrack = dailyLastTracks[0];
   const currentRank = currentTrack.globalRank;
   const currentRankOnPage = currentTrack.rankOnPage;
 
-  // 현재와 다른 순위를 가진 이전 데이터를 검색
+  // 이전 순위 (이전 날짜 마지막 데이터)
   let previousRank = null;
   let previousRankOnPage = null;
-  for (let i = 1; i < validTracks.length; i++) {
-    if (validTracks[i].globalRank !== currentRank) {
-      previousRank = validTracks[i].globalRank;
-      previousRankOnPage = validTracks[i].rankOnPage;
-      break;
-    }
+  if (dailyLastTracks.length >= 2) {
+    const previousTrack = dailyLastTracks[1];
+    previousRank = previousTrack.globalRank;
+    previousRankOnPage = previousTrack.rankOnPage;
   }
 
-  // 다른 순위를 찾지 못한 경우
+  // 이전 순위가 없는 경우
   if (previousRank === null) {
     return {
       currentRank,
@@ -113,6 +141,7 @@ function getRankChangeData(product: any) {
   }
 
   const rankDiff = previousRank - currentRank;
+  const hasChange = rankDiff !== 0;
 
   return {
     currentRank,
@@ -120,7 +149,7 @@ function getRankChangeData(product: any) {
     previousRank,
     previousRankOnPage,
     rankDiff,
-    hasChange: true
+    hasChange
   };
 }
 
