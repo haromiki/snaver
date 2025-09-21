@@ -84,11 +84,18 @@ function getRankChangeData(product: any) {
     };
   }
 
-  // 일별 그룹화 (StatisticsModal과 동일한 방식)
+  // 일별 그룹화 (한국시간 기준, StatisticsModal과 동일한 방식)
   const dailyGroups = new Map();
-  validTracks.forEach(track => {
+  validTracks.forEach((track: any) => {
+    // 한국시간 기준으로 날짜 키 생성
     const kstDate = new Date(track.checkedAt);
-    const dayKey = kstDate.toISOString().split('T')[0];
+    const dayKey = kstDate.toLocaleDateString('ko-KR', {
+      timeZone: 'Asia/Seoul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).replace(/\. /g, '-').replace(/\./g, '');
+
     if (!dailyGroups.has(dayKey)) {
       dailyGroups.set(dayKey, []);
     }
