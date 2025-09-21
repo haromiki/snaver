@@ -129,16 +129,6 @@ function getRankChangeData(product: any) {
   const currentRank = currentTrack.globalRank;
   const currentRankOnPage = currentTrack.rankOnPage;
 
-  // 실서버 디버깅
-  if (product.productName.includes('두펫 하네스') || product.productName.includes('목걸이')) {
-    console.log('🔍 [DEBUG] 제품:', product.productName);
-    console.log('🔍 [DEBUG] 일별 마지막 트랙들:', dailyLastTracks.map((track, index) => ({
-      index,
-      date: new Date(track.checkedAt).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' }),
-      rank: track.globalRank,
-      checkedAt: track.checkedAt
-    })));
-  }
 
   // 이전 순위 (이전 날짜 마지막 데이터)
   let previousRank = null;
@@ -148,9 +138,6 @@ function getRankChangeData(product: any) {
     previousRank = previousTrack.globalRank;
     previousRankOnPage = previousTrack.rankOnPage;
 
-    if (product.productName.includes('두펫 하네스') || product.productName.includes('목걸이')) {
-      console.log('🔍 [DEBUG] 현재 순위:', currentRank, '이전 순위:', previousRank);
-    }
   }
 
   // 이전 순위가 없는 경우
@@ -738,7 +725,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
       page: <span className="relative top-1">{page}페이지</span>, 
       color, 
       previousRank: rankData.previousRank,
-      previousPage: rankData.previousRank ? <span className="relative top-1">{Math.ceil(rankData.previousRank / 40)}페이지</span> : null,
+      previousPage: rankData.previousRank ? <span className="relative top-0">{Math.ceil(rankData.previousRank / 40)}페이지</span> : null,
       previousRankOnPage 
     };
   };
@@ -875,7 +862,7 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                   <>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">스토어명</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">제품 가격</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">이전 순위</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">전날 순위</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">현재 순위</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">순위 변동</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">1일 그래프</th>
@@ -965,8 +952,13 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-center">
-                            <span className="text-lg font-medium text-gray-600 dark:text-gray-400" data-testid={`text-previous-rank-${product.id}`}>
+                            <span className="text-lg font-bold text-gray-600 dark:text-gray-400" data-testid={`text-previous-rank-${product.id}`}>
                               {rankDisplay.previousRank || "-"}
+                              {rankDisplay.previousRank && rankDisplay.previousRankOnPage && (
+                                <span className="text-sm text-gray-500 dark:text-gray-400 ml-1 font-normal">
+                                  ({rankDisplay.previousRankOnPage}) {rankDisplay.previousPage}
+                                </span>
+                              )}
                             </span>
                           </div>
                         </td>
@@ -981,22 +973,9 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
                                   </span>
                                 )}
                               </span>
-                              {rankDisplay.previousRank && (
-                                <span className="text-sm text-gray-500 dark:text-gray-400 font-normal" data-testid={`text-previous-rank-${product.id}`}>
-                                  {rankDisplay.previousRank}
-                                  {rankDisplay.previousRankOnPage && (
-                                    <span className="ml-1">
-                                      ({rankDisplay.previousRankOnPage})
-                                    </span>
-                                  )}
-                                </span>
-                              )}
                             </div>
                             <div className="text-xs text-gray-500 dark:text-gray-400">
                               <div>{rankDisplay.page}</div>
-                              {rankDisplay.previousPage && (
-                                <div className="mt-1">{rankDisplay.previousPage}</div>
-                              )}
                             </div>
                           </div>
                         </td>
