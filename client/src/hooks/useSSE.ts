@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { BASE_API_URL } from '@/lib/api';
 
 interface SSEMessage {
   type: 'connected' | 'searchStarted' | 'searchCompleted' | 'searchFailed' | 'productUpdated' | 'rankingUpdated';
@@ -25,7 +26,7 @@ export function useSSE() {
       }
 
       // SSE 연결 설정
-      const eventSource = new EventSource(`/api/events?token=${encodeURIComponent(token)}`);
+      const eventSource = new EventSource(`${BASE_API_URL}/events?token=${encodeURIComponent(token)}`);
       eventSourceRef.current = eventSource;
 
       eventSource.onopen = () => {
