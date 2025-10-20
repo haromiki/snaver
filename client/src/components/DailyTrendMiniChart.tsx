@@ -1,6 +1,6 @@
 import { useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useSSE } from "@/hooks/useSSE";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 interface HourlyRank {
   hour: string;
@@ -23,14 +23,14 @@ interface DailyTrendMiniChartProps {
 export default function DailyTrendMiniChart({ productId, className = "" }: DailyTrendMiniChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // SSE 연결 (폴링 대체)
-  const { isConnected } = useSSE();
-  
-  // 1일 순위 데이터 조회 (SSE로 업데이트)
+  // WebSocket 연결 (실시간 업데이트)
+  const { isConnected } = useWebSocket();
+
+  // 1일 순위 데이터 조회 (WebSocket으로 업데이트)
   const { data: dailyData, isLoading } = useQuery<DailyRankResponse>({
     queryKey: [`/products/${productId}/daily-ranks`],
     staleTime: 0,
-    // SSE로 실시간 업데이트 대체 (폴링 제거)
+    // WebSocket으로 실시간 업데이트 대체 (폴링 제거)
   });
 
   useEffect(() => {

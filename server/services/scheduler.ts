@@ -2,7 +2,7 @@ import cron from "node-cron";
 import { storage } from "../storage.ts";
 import { crawlProduct } from "../crawler/shoppingCrawler.js";
 import { fetchOrganicRank } from "../crawler/naverOrganic.ts";
-import { broadcastSearchStarted, broadcastSearchCompleted, broadcastSearchFailed } from "../sse.ts";
+import { broadcastSearchStarted, broadcastSearchCompleted, broadcastSearchFailed } from "../websocket.ts";
 
 let isRunning = false;
 let searchQueue = []; // 순차 검색 큐
@@ -108,8 +108,8 @@ async function processSearchQueue() {
       };
       searchStatus.set(product.id, statusData);
       
-      // SSE로 검색 시작 알림
-      console.log('📡 SSE 검색 시작 이벤트 발송:', statusData);
+      // WebSocket으로 검색 시작 알림
+      console.log('📡 WebSocket 검색 시작 이벤트 발송:', statusData);
       broadcastSearchStarted(product.id, product.keyword);
       
       let result;
@@ -183,8 +183,8 @@ async function processSearchQueue() {
       };
       searchStatus.set(product.id, completedStatusData);
       
-      // SSE로 검색 완료 알림
-      console.log('📡 SSE 검색 완료 이벤트 발송:', completedStatusData);
+      // WebSocket으로 검색 완료 알림
+      console.log('📡 WebSocket 검색 완료 이벤트 발송:', completedStatusData);
       broadcastSearchCompleted(product.id, completedStatusData);
       
       // 검색 간 지연 (속도 최적화 - 실서버 안정성 확보됨)
@@ -233,7 +233,7 @@ async function processSearchQueue() {
         };
         searchStatus.set(product.id, failedStatusData);
         
-        // SSE로 검색 실패 알림
+        // WebSocket으로 검색 실패 알림
         broadcastSearchFailed(product.id, error.message);
       }
     }
@@ -243,7 +243,7 @@ async function processSearchQueue() {
   console.log(`✅ 큐 처리 완료`);
 }
 
-console.log("🚀 1초 마스터 타이머 시작 - 조건부 검색 실행, SSE 통합");
+console.log("🚀 1초 마스터 타이머 시작 - 조건부 검색 실행, WebSocket 통합");
 
 // 매일 자정 (한국시간) - 일간 통계 업데이트 및 데이터 정리
 cron.schedule("0 0 * * *", async () => {

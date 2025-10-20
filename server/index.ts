@@ -5,6 +5,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { setupWebSocket } from "./websocket";
 
 const app = express();
 app.use(express.json());
@@ -75,6 +76,9 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
+  // WebSocket 서버 초기화
+  setupWebSocket(server);
+
   const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(
     {
@@ -84,10 +88,10 @@ app.use((req, res, next) => {
     },
     () => {
       log(`serving on port ${port}`);
-      
+
       // 실서버 환경 최적화 스케줄러 시작
       import("./services/scheduler.ts")
-        .then(() => log("✅ 스케줄러 시작됨 - OpenAPI 우선, 순차 처리"))
+        .then(() => log("✅ 스케줄러 시작됨 - WebSocket 연동, OpenAPI 우선, 순차 처리"))
         .catch(err => log(`❌ 스케줄러 시작 실패: ${err.message}`));
     },
   );

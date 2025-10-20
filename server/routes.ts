@@ -19,8 +19,6 @@ import { fetchOrganicRankPuppeteer } from "./crawler/naverOrganicPuppeteer.js";
 import { fetchAdRank } from "./crawler/adCrawler.js";
 import { getSearchStatus } from "./services/scheduler.ts";
 import crypto from "crypto";
-// WebSocket 제거됨 - SSE로 대체
-import { handleSSEConnection } from "./sse";
 
 // 세션 타입 확장
 declare module "express-session" {
@@ -1045,14 +1043,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // SSE 연결 엔드포인트 (쿼리 파라미터 인증)
-  app.get("/api/events", (req, res) => {
-    handleSSEConnection(req, res);
-  });
-
   const httpServer = createServer(app);
-
-  // WebSocket 제거됨 - SSE로 대체
 
   return httpServer;
 }

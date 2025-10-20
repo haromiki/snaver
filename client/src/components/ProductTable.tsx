@@ -6,7 +6,7 @@ import StatisticsModal from "./StatisticsModal";
 import PriceHistoryModal from "./PriceHistoryModal";
 import DailyTrendMiniChart from "./DailyTrendMiniChart";
 import { useToast } from "@/hooks/use-toast";
-import { useSSE } from "@/hooks/useSSE";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 // 업데이트 상태 표시 컴포넌트
 function UpdateStatusText({ products }: { products: any[] }) {
@@ -320,8 +320,8 @@ export default function ProductTable({ section, searchQuery = "", statusFilter =
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // SSE 연결 (폴링 대체)
-  const { isConnected } = useSSE();
+  // WebSocket 연결 (실시간 업데이트)
+  const { isConnected } = useWebSocket();
 
   // Determine filters based on section
   const getFilters = () => {

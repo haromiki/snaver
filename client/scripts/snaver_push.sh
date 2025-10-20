@@ -31,7 +31,7 @@ echo ""
 echo "=== 2단계: 실서버 배포 ==="
 echo "🌐 실서버에 연결하여 배포 중..."
 
-ssh xpro@xpro0.cafe24.com << 'EOF'
+ssh xpro@podoo.co.kr << 'EOF'
 cd /srv/xpro0/snaver
 echo "📥 최신 코드 pull..."
 git pull origin main
@@ -41,4 +41,4 @@ EOF
 
 echo ""
 echo "🎉 전체 배포 완료!"
-echo "🔗 웹사이트: https://xpro0.cafe24.com/snaver/"
+echo "🔗 웹사이트: https://podoo.co.kr/snaver/"

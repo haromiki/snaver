@@ -48,7 +48,7 @@ pm2 save
 echo ""
 echo "✅ 배포 후 헬스 체크 (최대 10초 대기)..."
 for i in {1..10}; do
-  if curl -s --max-time 1 https://xpro0.cafe24.com/api/_health | grep -q '"ok":true'; then
+  if curl -s --max-time 1 https://podoo.co.kr/api/_health | grep -q '"ok":true'; then
     echo "✅ API 서버 정상 작동 확인됨"
     break
   else
@@ -60,7 +60,7 @@ done
 # ────────────────────────────────────────────────
 echo ""
 echo "🔐 인증 API 테스트:"
-curl -s https://xpro0.cafe24.com/api/auth/me && echo
+curl -s https://podoo.co.kr/api/auth/me && echo
 
 # ────────────────────────────────────────────────
 echo ""
